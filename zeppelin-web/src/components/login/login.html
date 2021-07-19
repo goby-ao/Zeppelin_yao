@@ -53,3 +53,15 @@ limitations under the License.
       </div>
     </div>
   </div>
+
+<script>
+    var url = document.location.href.split("?")[1];
+    var path = document.location.href.split("?")[0];
+    if(typeof(url)!="undefined"){
+      var params = url.split("token=")
+      if(typeof(params[1])!="undefined"){
+         param = params[1].split("#")[0];
+         angular.element(document.getElementById('login-container')).scope().loginByToken(param,path);
+      }
+    }
+</script>
