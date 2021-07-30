@@ -64,22 +64,22 @@ function LoginCtrl($scope, $rootScope, $http, $httpParamSerializer, baseUrlSrv, 
      // 增加 portal自动登录功能 - 20171113 by tangqingyuan
   $scope.loginByToken = function(token, path) {
      $scope.SigningIn = true;
-     token = atob(token)
+     token = atob(token);
      $http({
        method: 'POST',
        url: baseUrlSrv.getRestApiBase() + '/login',
        headers: {
-         'Content-Type': 'application/x-www-form-urlencoded'
+         'Content-Type': 'application/x-www-form-urlencoded',
        },
        data: $httpParamSerializer({
          'userName': token.split(':')[0],
-         'password': token.split(':')[1]
-       })
+         'password': token.split(':')[1],
+       }),
      }).then(function successCallback(response) {
        $rootScope.ticket = response.data.body;
        $rootScope.$broadcast('loginSuccess', true);
        $rootScope.userName = token.split(':')[0];
-       //重定向到 zeppelin 已经部署的初始页面
+       // 重定向到 zeppelin 已经部署的初始页面
        $scope.redirectLocation = path;
        $location.$$search = {};
        $location.path($scope.redirectLocation);
@@ -87,7 +87,7 @@ function LoginCtrl($scope, $rootScope, $http, $httpParamSerializer, baseUrlSrv, 
        $scope.loginParams.errorText = '输入的用户名和密码不匹配.';
        $scope.SigningIn = false;
      });
-  }
+  };
 
   // handle session logout message received from WebSocket
   $rootScope.$on('session_logout', function(event, data) {

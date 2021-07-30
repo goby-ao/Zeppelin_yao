@@ -155,6 +155,10 @@ public class SparkInterpreter extends AbstractInterpreter {
     ClassLoader scalaInterpreterClassLoader = Thread.currentThread().getContextClassLoader();
 
     String zeppelinHome = System.getenv("ZEPPELIN_HOME");
+    LOGGER.info(">>>>>>>> ZEPPELIN_HOME : " + zeppelinHome);
+    if (zeppelinHome == null) {
+      zeppelinHome = "/data/app/zeppelin-0.9.1-SNAPSHOT";
+    }
     if (zeppelinHome != null) {
       // ZEPPELIN_HOME is null in yarn-cluster mode, load it directly via current ClassLoader.
       // otherwise, load from the specific folder ZEPPELIN_HOME/interpreter/spark/scala-<version>
@@ -162,7 +166,7 @@ public class SparkInterpreter extends AbstractInterpreter {
       File scalaJarFolder = new File(zeppelinHome + "/interpreter/spark/scala-" + scalaVersion);
       List<URL> urls = new ArrayList<>();
       for (File file : scalaJarFolder.listFiles()) {
-        LOGGER.debug("Add file " + file.getAbsolutePath() + " to classpath of spark scala interpreter: "
+        LOGGER.info("Add file " + file.getAbsolutePath() + " to classpath of spark scala interpreter: "
                 + scalaJarFolder);
         urls.add(file.toURI().toURL());
       }

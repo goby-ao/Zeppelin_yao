@@ -32,6 +32,7 @@
   },
   "rules": {
     "no-bitwise": 2,
+    "linebreak-style": [0 ,"error", "windows"],
     "camelcase": 2,
     "curly": 2,
     "eqeqeq": 2,
@@ -49,6 +50,6 @@
     "valid-jsdoc": "off",
     "semi": [2, "always"],
     "no-invalid-this": 1,
-    "indent": ["error", 2, { "SwitchCase": 1 }]
+    "indent": ["off", 2]
   }
 }
