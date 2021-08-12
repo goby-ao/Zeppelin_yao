@@ -93,6 +93,7 @@ public class TicketContainer {
    * @return
    */
   public synchronized Entry getTicketEntry(String principal, Set<String> roles) {
+    LOGGER.debug("getTicketEntry getTicketEntry : " + principal);
     Entry entry = sessions.get(principal);
     if (entry == null) {
       String ticket;
@@ -100,9 +101,11 @@ public class TicketContainer {
         ticket = "anonymous";
       } else {
         ticket = UUID.randomUUID().toString();
+        LOGGER.debug("generate uuid for ticket: " + ticket);
       }
       entry = new Entry(ticket, principal, roles);
       sessions.put(principal, entry);
+      LOGGER.debug("put entry to session: " + principal);
     }
     return entry;
   }
@@ -127,6 +130,7 @@ public class TicketContainer {
     if ("anonymous".equals(ticket)) {
       return ANONYMOUS_ENTRY;
     }
+    LOGGER.debug("session size: " + sessions.size());
     return sessions.get(ticket);
   }
 

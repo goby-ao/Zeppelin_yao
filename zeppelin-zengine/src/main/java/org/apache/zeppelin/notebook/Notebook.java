@@ -394,8 +394,8 @@ public class Notebook {
     fireNoteUpdateEvent(note, subject);
   }
 
-  public boolean containsNote(String notePath) {
-    return noteManager.containsNote(notePath);
+  public boolean containsNote(String notePath, String noteId) {
+    return noteManager.containsNote(notePath, noteId);
   }
 
   public boolean containsFolder(String folderPath) {

@@ -73,16 +73,16 @@ public class NoteManager {
   // build the tree structure of notes
   private void init() throws IOException {
     this.notesInfo = notebookRepo.list(AuthenticationInfo.ANONYMOUS).values().stream()
-        .collect(Collectors.toMap(NoteInfo::getId, NoteInfo::getPath));
+            .collect(Collectors.toMap(NoteInfo::getId, NoteInfo::getPath));
     this.notesInfo.entrySet().stream()
-        .forEach(entry ->
-        {
-          try {
-            addOrUpdateNoteNode(new Note(new NoteInfo(entry.getKey(), entry.getValue())));
-          } catch (IOException e) {
-            LOGGER.warn(e.getMessage());
-          }
-        });
+            .forEach(entry ->
+            {
+              try {
+                addOrUpdateNoteNode(new Note(new NoteInfo(entry.getKey(), entry.getValue())));
+              } catch (IOException e) {
+                LOGGER.warn(e.getMessage());
+              }
+            });
   }
 
   public Map<String, String> getNotesInfo() {
@@ -92,23 +92,24 @@ public class NoteManager {
   /**
    * Return java stream instead of List to save memory, otherwise OOM will happen
    * when there's large amount of notes.
+   *
    * @return
    */
   public Stream<Note> getNotesStream() {
-    return notesInfo.values().stream()
-            .map(notePath -> {
+    return notesInfo.keySet().stream()
+            .map(noteId -> {
               try {
-                return getNoteNode(notePath).getNote();
+                return getNoteNode(notesInfo.get(noteId), noteId).getNote();
               } catch (Exception e) {
-                LOGGER.warn("Fail to load note: {}", notePath, e);
+                LOGGER.warn("Fail to load note: {}", noteId, e);
                 return null;
               }
             })
             .filter(Objects::nonNull);
   }
 
+
   /**
-   *
    * @throws IOException
    */
   public void reloadNotes() throws IOException {
@@ -120,7 +121,7 @@ public class NoteManager {
   private void addOrUpdateNoteNode(Note note, boolean checkDuplicates) throws IOException {
     String notePath = note.getPath();
 
-    if (checkDuplicates && !isNotePathAvailable(notePath)) {
+    if (checkDuplicates && !isNotePathAvailable(notePath, note.getId())) {
       throw new NotePathAlreadyExistsException("Note '" + notePath + "' existed");
     }
 
@@ -132,7 +133,7 @@ public class NoteManager {
       }
     }
 
-    curFolder.addNote(tokens[tokens.length -1], note);
+    curFolder.addNote(tokens[tokens.length - 1], note);
     this.notesInfo.put(note.getId(), note.getPath());
   }
 
@@ -146,9 +147,9 @@ public class NoteManager {
    * @param notePath
    * @return
    */
-  public boolean containsNote(String notePath) {
+  public boolean containsNote(String notePath, String noteId) {
     try {
-      getNoteNode(notePath);
+      getNoteNode(notePath, noteId);
       return true;
     } catch (IOException e) {
       return false;
@@ -173,8 +174,8 @@ public class NoteManager {
   /**
    * Save note to NoteManager, it won't check duplicates, this is used when updating note.
    * Only save note in 2 cases:
-   *  1. Note is new created, isSaved is false
-   *  2. Note is in loaded state. Unload state means its content is empty.
+   * 1. Note is new created, isSaved is false
+   * 2. Note is in loaded state. Unload state means its content is empty.
    *
    * @param note
    * @param subject
@@ -216,8 +217,9 @@ public class NoteManager {
    */
   public void removeNote(String noteId, AuthenticationInfo subject) throws IOException {
     String notePath = this.notesInfo.remove(noteId);
+    LOGGER.info("yao remove noteId: " + noteId + ", notePath:" + notePath);
     Folder folder = getOrCreateFolder(getFolderName(notePath));
-    folder.removeNote(getNoteName(notePath));
+    folder.removeNote(getNoteName(notePath, noteId));
     this.notebookRepo.remove(noteId, notePath, subject);
   }
 
@@ -229,13 +231,13 @@ public class NoteManager {
       throw new IOException("No metadata found for this note: " + noteId);
     }
 
-    if (!isNotePathAvailable(newNotePath)) {
+    if (!isNotePathAvailable(newNotePath, noteId)) {
       throw new NotePathAlreadyExistsException("Note '" + newNotePath + "' existed");
     }
 
     // move the old NoteNode from notePath to newNotePath
-    NoteNode noteNode = getNoteNode(notePath);
-    noteNode.getParent().removeNote(getNoteName(notePath));
+    NoteNode noteNode = getNoteNode(notePath, noteId);
+    noteNode.getParent().removeNote(getNoteName(notePath, noteId));
     noteNode.setNotePath(newNotePath);
     String newParent = getFolderName(newNotePath);
     Folder newFolder = getOrCreateFolder(newParent);
@@ -304,7 +306,8 @@ public class NoteManager {
     if (notePath == null) {
       return null;
     }
-    NoteNode noteNode = getNoteNode(notePath);
+    NoteNode noteNode = getNoteNode(notePath, noteId);
+    LOGGER.debug("yao get note_id 2:" + noteNode.getNoteId());
     return noteNode.getNote(reload);
   }
 
@@ -317,16 +320,16 @@ public class NoteManager {
    */
   public Note getNote(String noteId) throws IOException {
     String notePath = this.notesInfo.get(noteId);
+    LOGGER.debug("yao get note_id: " + noteId + ", notePath:" + notePath);
     if (notePath == null) {
       return null;
     }
-    NoteNode noteNode = getNoteNode(notePath);
+    NoteNode noteNode = getNoteNode(notePath, noteId);
     return noteNode.getNote();
   }
 
   /**
-   *
-   * @param folderName  Absolute path of folder name
+   * @param folderName Absolute path of folder name
    * @return
    */
   public Folder getOrCreateFolder(String folderName) {
@@ -338,24 +341,6 @@ public class NoteManager {
       }
     }
     return curFolder;
-  }
-
-  private NoteNode getNoteNode(String notePath) throws IOException {
-    String[] tokens = notePath.split("/");
-    Folder curFolder = root;
-    for (int i = 0; i < tokens.length - 1; ++i) {
-      if (!StringUtils.isBlank(tokens[i])) {
-        curFolder = curFolder.getFolder(tokens[i]);
-        if (curFolder == null) {
-          throw new IOException("Can not find note: " + notePath);
-        }
-      }
-    }
-    NoteNode noteNode = curFolder.getNote(tokens[tokens.length - 1]);
-    if (noteNode == null) {
-      throw new IOException("Can not find note: " + notePath);
-    }
-    return noteNode;
   }
 
   private Folder getFolder(String folderPath) throws IOException {
@@ -372,6 +357,25 @@ public class NoteManager {
     return curFolder;
   }
 
+
+  private NoteNode getNoteNode(String notePath, String noteId) throws IOException {
+    String[] tokens = notePath.split("/");
+    Folder curFolder = root;
+    for (int i = 0; i < tokens.length - 1; ++i) {
+      if (!StringUtils.isBlank(tokens[i])) {
+        curFolder = curFolder.getFolder(tokens[i]);
+        if (curFolder == null) {
+          throw new IOException("Can not find note: " + notePath);
+        }
+      }
+    }
+    NoteNode noteNode = curFolder.getNote(tokens[tokens.length - 1] + "_" + noteId + ".zpln");
+    if (noteNode == null) {
+      throw new IOException("Can not find note: " + notePath);
+    }
+    return noteNode;
+  }
+
   public Folder getTrashFolder() {
     return this.trash;
   }
@@ -381,12 +385,12 @@ public class NoteManager {
     return notePath.substring(0, pos);
   }
 
-  private String getNoteName(String notePath) {
+  private String getNoteName(String notePath, String noteId) {
     int pos = notePath.lastIndexOf('/');
-    return notePath.substring(pos + 1);
+    return notePath.substring(pos + 1) + "_" + noteId + ".zpln";
   }
 
-  private boolean isNotePathAvailable(String notePath) {
+  private boolean isNotePathAvailable(String notePath, String noteId) {
     String[] tokens = notePath.split("/");
     Folder curFolder = root;
     for (int i = 0; i < tokens.length - 1; ++i) {
@@ -397,7 +401,7 @@ public class NoteManager {
         }
       }
     }
-    if (curFolder.containsNote(tokens[tokens.length - 1])) {
+    if (curFolder.containsNote(tokens[tokens.length - 1] + "_" + noteId + ".zpln")) {
       return false;
     }
 
@@ -467,7 +471,7 @@ public class NoteManager {
     }
 
     public void addNote(String noteName, Note note) {
-      notes.put(noteName, new NoteNode(note, this, notebookRepo));
+      notes.put(noteName + "_" + note.getId() + ".zpln", new NoteNode(note, this, notebookRepo));
     }
 
     /**
@@ -489,10 +493,11 @@ public class NoteManager {
 
     /**
      * Attach note under this folder, this is used when moving note
+     *
      * @param noteNode
      */
     public void addNoteNode(NoteNode noteNode) {
-      this.notes.put(noteNode.getNoteName(), noteNode);
+      this.notes.put(noteNode.getNoteName() + "_" + noteNode.getNoteId() + ".zpln", noteNode);
       noteNode.setParent(this);
     }
 
@@ -554,7 +559,7 @@ public class NoteManager {
    * This class has 2 usage scenarios:
    * 1. metadata of note (only noteId and note name is loaded via reading the file name)
    * 2. the note object (note content is loaded from NotebookRepo)
-   *
+   * <p>
    * It will load note from NotebookRepo lazily until method getNote is called.
    */
   public static class NoteNode {
@@ -570,12 +575,13 @@ public class NoteManager {
     }
 
     public synchronized Note getNote() throws IOException {
-        return getNote(false);
+      return getNote(false);
     }
 
     /**
      * This method will load note from NotebookRepo. If you just want to get noteId, noteName or
      * notePath, you can call method getNoteId, getNoteName & getNotePath
+     *
      * @return
      * @throws IOException
      */

@@ -1018,7 +1018,7 @@ public class NotebookService {
       return;
     }
     String destNotePath = "/" + NoteManager.TRASH_FOLDER + note.getPath();
-    if (notebook.containsNote(destNotePath)) {
+    if (notebook.containsNote(destNotePath, noteId)) {
       destNotePath = destNotePath + " " + TRASH_CONFLICT_TIMESTAMP_FORMATTER.format(Instant.now());
     }
     notebook.moveNote(noteId, destNotePath, context.getAutheInfo());
@@ -1034,7 +1034,7 @@ public class NotebookService {
     LOGGER.info("Move folder {} to trash", folderPath);
 
     String destFolderPath = "/" + NoteManager.TRASH_FOLDER + "/" + folderPath;
-    if (notebook.containsNote(destFolderPath)) {
+    if (notebook.containsNote(destFolderPath, "")) {
       destFolderPath = destFolderPath + " " +
           TRASH_CONFLICT_TIMESTAMP_FORMATTER.format(Instant.now());
     }
