@@ -11,7 +11,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+.ui-grid-selectable .ui-grid-disable-selection {
+     -webkit-touch-callout: default;
+     -webkit-user-select: text;
+     -khtml-user-select: text;
+     -moz-user-select: text;
+     -ms-user-select: text;
+     user-select: text;
+     cursor:auto;
+ }
 .ui-grid-pager-panel {
   vertical-align: middle;
   background-color: #f3f3f3;
