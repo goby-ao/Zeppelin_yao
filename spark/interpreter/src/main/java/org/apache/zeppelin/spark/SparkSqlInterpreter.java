@@ -26,7 +26,7 @@ import org.apache.zeppelin.interpreter.InterpreterContext;
 import org.apache.zeppelin.interpreter.InterpreterException;
 import org.apache.zeppelin.interpreter.InterpreterResult;
 import org.apache.zeppelin.interpreter.InterpreterResult.Code;
-import org.apache.zeppelin.interpreter.thrift.InterpreterCompletion;
+import org.apache.zeppelin.interpreter.util.MgSQLFilter;
 import org.apache.zeppelin.interpreter.util.SqlSplitter;
 import org.apache.zeppelin.scheduler.Scheduler;
 import org.apache.zeppelin.scheduler.SchedulerFactory;
@@ -62,12 +62,32 @@ public class SparkSqlInterpreter extends AbstractInterpreter {
   }
 
   @Override
-  public void close() {}
+  public void close() {
+  }
 
   @Override
   protected boolean isInterpolate() {
     return Boolean.parseBoolean(getProperty("zeppelin.spark.sql.interpolation", "false"));
   }
+
+  /**
+   * cluster of migu
+   *
+   * @return
+   */
+  private String getCluster() {
+    return getProperty("zeppelin.spark.mg.filter.cluster", "-1");
+  }
+
+  /**
+   * cluster of migu
+   *
+   * @return
+   */
+  private String getFilterRestUrl() {
+    return getProperty("zeppelin.spark.mg.filter.restapi", "-1");
+  }
+
 
   @Override
   public ZeppelinContext getZeppelinContext() {
@@ -76,11 +96,22 @@ public class SparkSqlInterpreter extends AbstractInterpreter {
 
   @Override
   public InterpreterResult internalInterpret(String st, InterpreterContext context)
-      throws InterpreterException {
+          throws InterpreterException {
     if (sparkInterpreter.isUnsupportedSparkVersion()) {
       return new InterpreterResult(Code.ERROR, "Spark "
-          + sparkInterpreter.getSparkVersion().toString() + " is not supported");
+              + sparkInterpreter.getSparkVersion().toString() + " is not supported");
     }
+
+    try {
+      InterpreterResult filterResult = MgSQLFilter.filterSensitiveTable(st, getCluster(), getFilterRestUrl());
+      if (null != filterResult) {
+        LOGGER.info("find sensitive table, filter sql: {}", st);
+        return filterResult;
+      }
+    } catch (Exception e) {
+      LOGGER.error("[mg]: error during check table if sensitive, skip check", e);
+    }
+
     Utils.printDeprecateMessage(sparkInterpreter.getSparkVersion(), context, properties);
     sparkInterpreter.getZeppelinContext().setInterpreterContext(context);
     Object sqlContext = sparkInterpreter.getSQLContext();
@@ -97,7 +128,7 @@ public class SparkSqlInterpreter extends AbstractInterpreter {
     try {
       if (!sparkInterpreter.isScala212()) {
         // TODO(zjffdu) scala 2.12 still doesn't work for codegen (ZEPPELIN-4627)
-      Thread.currentThread().setContextClassLoader(sparkInterpreter.getScalaShellClassLoader());
+        Thread.currentThread().setContextClassLoader(sparkInterpreter.getScalaShellClassLoader());
       }
       Method method = sqlContext.getClass().getMethod("sql", String.class);
       for (String sql : sqls) {
@@ -172,7 +203,7 @@ public class SparkSqlInterpreter extends AbstractInterpreter {
     if (concurrentSQL()) {
       int maxConcurrency = Integer.parseInt(getProperty("zeppelin.spark.concurrentSQL.max", "10"));
       return SchedulerFactory.singleton().createOrGetParallelScheduler(
-          SparkSqlInterpreter.class.getName() + this.hashCode(), maxConcurrency);
+              SparkSqlInterpreter.class.getName() + this.hashCode(), maxConcurrency);
     } else {
       // getSparkInterpreter() calls open() inside.
       // That means if SparkInterpreter is not opened, it'll wait until SparkInterpreter open.
@@ -182,7 +213,7 @@ public class SparkSqlInterpreter extends AbstractInterpreter {
       // to getSparkInterpreter without opening it.
       try {
         return getInterpreterInTheSameSessionByClassName(SparkInterpreter.class, false)
-            .getScheduler();
+                .getScheduler();
       } catch (InterpreterException e) {
         throw new RuntimeException("Fail to getScheduler", e);
       }

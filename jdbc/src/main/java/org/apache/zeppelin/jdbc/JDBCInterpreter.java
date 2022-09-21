@@ -14,11 +14,6 @@
  */
 package org.apache.zeppelin.jdbc;
 
-import static org.apache.commons.lang3.StringUtils.containsIgnoreCase;
-import static org.apache.commons.lang3.StringUtils.isEmpty;
-import static org.apache.commons.lang3.StringUtils.isNotEmpty;
-import static org.apache.hadoop.security.UserGroupInformation.AuthenticationMethod.KERBEROS;
-
 import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 import org.apache.commons.dbcp2.ConnectionFactory;
@@ -33,11 +28,18 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.alias.CredentialProvider;
 import org.apache.hadoop.security.alias.CredentialProviderFactory;
-import org.apache.zeppelin.interpreter.SingleRowInterpreterResult;
-import org.apache.zeppelin.interpreter.ZeppelinContext;
+import org.apache.zeppelin.interpreter.*;
+import org.apache.zeppelin.interpreter.InterpreterResult.Code;
+import org.apache.zeppelin.interpreter.thrift.InterpreterCompletion;
+import org.apache.zeppelin.interpreter.util.MgSQLFilter;
 import org.apache.zeppelin.interpreter.util.SqlSplitter;
 import org.apache.zeppelin.jdbc.hive.HiveUtils;
+import org.apache.zeppelin.jdbc.security.JDBCSecurityImpl;
+import org.apache.zeppelin.scheduler.Scheduler;
+import org.apache.zeppelin.scheduler.SchedulerFactory;
 import org.apache.zeppelin.tabledata.TableDataUtils;
+import org.apache.zeppelin.user.UserCredentials;
+import org.apache.zeppelin.user.UsernamePassword;
 import org.apache.zeppelin.util.PropertiesUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,38 +47,17 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.security.PrivilegedExceptionAction;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.sql.*;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.zeppelin.interpreter.InterpreterContext;
-import org.apache.zeppelin.interpreter.InterpreterException;
-import org.apache.zeppelin.interpreter.InterpreterResult;
-import org.apache.zeppelin.interpreter.InterpreterResult.Code;
-import org.apache.zeppelin.interpreter.KerberosInterpreter;
-import org.apache.zeppelin.interpreter.ResultMessages;
-import org.apache.zeppelin.interpreter.thrift.InterpreterCompletion;
-import org.apache.zeppelin.jdbc.security.JDBCSecurityImpl;
-import org.apache.zeppelin.scheduler.Scheduler;
-import org.apache.zeppelin.scheduler.SchedulerFactory;
-import org.apache.zeppelin.user.UserCredentials;
-import org.apache.zeppelin.user.UsernamePassword;
+import static org.apache.commons.lang3.StringUtils.*;
+import static org.apache.hadoop.security.UserGroupInformation.AuthenticationMethod.KERBEROS;
+
 
 /**
  * JDBC interpreter for Zeppelin. This interpreter can also be used for accessing HAWQ,
@@ -927,10 +908,39 @@ public class JDBCInterpreter extends KerberosInterpreter {
     return context.getLocalProperties().get("refreshInterval") != null;
   }
 
+  /**
+   * cluster of migu
+   *
+   * @return
+   */
+  private String getCluster() {
+    return getProperty("zeppelin.jdbc.mg.filter.cluster", "-1");
+  }
+
+  /**
+   * cluster of migu
+   *
+   * @return
+   */
+  private String getFilterRestUrl() {
+    return getProperty("zeppelin.jdbc.mg.filter.restapi", "-1");
+  }
+
   @Override
   public InterpreterResult internalInterpret(String cmd, InterpreterContext context)
           throws InterpreterException {
     LOGGER.debug("Run SQL command '{}'", cmd);
+    //  filter sensitive table. added by yao
+    try {
+      InterpreterResult filterResult = MgSQLFilter.filterSensitiveTable(cmd, getCluster(), getFilterRestUrl());
+      if (null != filterResult) {
+        LOGGER.info("find sensitive table, filter sql: {}", cmd);
+        return filterResult;
+      }
+    } catch (Exception e) {
+      LOGGER.error("[mg]: error during check table if sensitive, skip check", e);
+    }
+
     String dbPrefix = getDBPrefix(context);
     LOGGER.debug("DBPrefix: {}, SQL command: '{}'", dbPrefix, cmd);
     if (!isRefreshMode(context)) {
@@ -963,6 +973,7 @@ public class JDBCInterpreter extends KerberosInterpreter {
           LOGGER.error("");
         }
       }
+
       refreshExecutorServices.remove(context.getParagraphId());
       if (paragraphCancelMap.getOrDefault(context.getParagraphId(), false)) {
         return new InterpreterResult(Code.ERROR);
