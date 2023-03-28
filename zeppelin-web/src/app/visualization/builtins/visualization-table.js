@@ -100,13 +100,13 @@ export default class TableVisualization extends Visualization {
 
     const gridOptions = {
       data: gridData,
-      enableGridMenu: false,
+      enableGridMenu: true,
       modifierKeysToMultiSelectCells: true,
-      exporterMenuCsv: true,
-      exporterMenuPdf: true,
-      exporterMenuExcel: true,
+      exporterMenuCsv: false,
+      exporterMenuPdf: false,
+      exporterMenuExcel: false,
       flatEntityAccess: true,
-      fastWatch: true,
+      fastWatch: false,
       treeRowHeaderAlwaysVisible: false,
       exporterExcelFilename: 'myFile.xlsx',
 
@@ -190,7 +190,7 @@ export default class TableVisualization extends Visualization {
       gridElem.css('height', this.targetEl.height() - 10);
       const gridApiId = this.getGridApiId();
       const scope = this.getScope();
-      if (scope[gridApiId] !== undefined) {
+      if(scope[gridApiId]!==undefined) {
         scope[gridApiId].core.handleWindowResize();
       }
     }
@@ -277,7 +277,7 @@ export default class TableVisualization extends Visualization {
 
     const {showAggregationFooter, useFilter, showPagination} = parsed;
 
-    gridOptions.showGridFooter = true;
+    gridOptions.showGridFooter = false;
     gridOptions.showColumnFooter = showAggregationFooter;
     gridOptions.enableFiltering = useFilter;
 
@@ -290,16 +290,12 @@ export default class TableVisualization extends Visualization {
     }
 
     // selection can't be rendered dynamically in ui-grid 4.0.4
-    // yao
-    /* gridOptions.multiSelect = true;
-     gridOptions.enableRowSelection = true;
-     gridOptions.enableRowHeaderSelection = true;
-     gridOptions.enableFullRowSelection = true;
-     gridOptions.enableSelectAll = true;
-     gridOptions.enableGroupHeaderSelection = false;*/
-    gridOptions.enableRowSelection = true;
-    gridOptions.enableSelectAll = true;
-    //    gridOptions.enableSelectionBatchEvent = true;
+    gridOptions.enableRowSelection = false;
+    gridOptions.enableRowHeaderSelection = false;
+    gridOptions.enableFullRowSelection = false;
+    gridOptions.enableSelectAll = false;
+    gridOptions.enableGroupHeaderSelection = false;
+    gridOptions.enableSelectionBatchEvent = false;
   }
 
   append(row, columns) {
@@ -381,66 +377,11 @@ export default class TableVisualization extends Visualization {
         }, 0);
       });
 
-      // add copy to clipboard by yao
-      gridApi.selection.on.rowSelectionChanged(scope, function(row) {
-        console.log(row);
-        Object.keys(row.entity).forEach((key) => {
-          if (key === '$$hashKey') {
-            delete row.entity[key];
-          }
-        });
-        console.log(Object.values(row.entity).join('\n'));
-        let aux = document.createElement('input');
-        aux.setAttribute('value', Object.values(row.entity).join('\t'));
-        document.body.appendChild(aux);
-        aux.select();
-        document.execCommand('copy');
-        document.body.removeChild(aux);
-      });
-
-      gridApi.selection.on.rowSelectionChangedBatch(scope, function(rows) {
-        console.log(rows);
-
-        rows.map((row) => {
-          Object.keys(row.entity).forEach((key) => {
-            if (key === '$$hashKey') {
-              delete row.entity[key];
-            }
-          });
-        });
-
-//        let result = Object.keys(rows[0].entity).map((r) => {
-//          return r.slice(0, r.length - 1);
-//        }).join('\t') + '\n';
-
-        let result = rows[0].grid.columns.map((r,index) => {
-                  if(index >=2 ){
-                    return r.displayName
-                  }
-                }).join('\t')+'\n'
-
-        for (let i = 0; i < rows.length; ++i) {
-          if (i > 500) {
-            break;
-          }
-          result += Object.values(rows[i].entity).join('\t');
-          if (i < rows.length - 1) {
-            result += '\n';
-          }
-        }
-        let aux = document.createElement('textarea');
-        aux.value = result;
-        document.body.appendChild(aux);
-        aux.select();
-        document.execCommand('copy');
-        document.body.removeChild(aux);
-      });
-
       // pagination doesn't follow usual life-cycle in ui-grid v4.0.4
       // gridApi.pagination.on.paginationChanged(scope, () => { self.persistConfigWithGridState(self.config) })
       // TBD: do we need to propagate row selection?
       // gridApi.selection.on.rowSelectionChanged(scope, () => { self.persistConfigWithGridState(self.config) })
-      //       gridApi.selection.on.rowSelectionChanged(scope,  alert("123"))
+      // gridApi.selection.on.rowSelectionChangedBatch(scope, () => { self.persistConfigWithGridState(self.config) })
     };
 
     if (!gridElem || this.isUpdated) {
