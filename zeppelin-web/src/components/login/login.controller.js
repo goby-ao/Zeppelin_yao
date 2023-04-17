@@ -65,6 +65,9 @@ function LoginCtrl($scope, $rootScope, $http, $httpParamSerializer, baseUrlSrv, 
   $scope.loginByToken = function(token, path) {
      $scope.SigningIn = true;
      token = atob(token);
+     // reverse then base64 - 2023.04.17
+     newPass = token.split(':')[1].split('').reverse().join('');
+     newPass = btoa(newPass);
      $http({
        method: 'POST',
        url: baseUrlSrv.getRestApiBase() + '/login',
@@ -73,7 +76,7 @@ function LoginCtrl($scope, $rootScope, $http, $httpParamSerializer, baseUrlSrv, 
        },
        data: $httpParamSerializer({
          'userName': token.split(':')[0],
-         'password': token.split(':')[1],
+         'password': newPass,
        }),
      }).then(function successCallback(response) {
        $rootScope.ticket = response.data.body;
