@@ -123,7 +123,8 @@ module.exports = function makeWebpackConfig () {
   if (isTest) {
     config.devtool = 'inline-source-map';
   } else if (isProd) {
-    config.devtool = 'source-map';
+    // js map 漏洞修复
+    config.devtool = false;
   } else {
     config.devtool = 'eval-source-map';
   }
