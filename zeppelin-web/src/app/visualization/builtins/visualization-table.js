@@ -409,9 +409,16 @@ export default class TableVisualization extends Visualization {
           });
         });
 
-        let result = Object.keys(rows[0].entity).map((r) => {
-          return r.slice(0, r.length - 1);
-        }).join('\t') + '\n';
+//        let result = Object.keys(rows[0].entity).map((r) => {
+//          return r.slice(0, r.length - 1);
+//        }).join('\t') + '\n';
+
+        let result = rows[0].grid.columns.map((r,index) => {
+                  if(index >=2 ){
+                    return r.displayName
+                  }
+                }).join('\t')+'\n'
+
         for (let i = 0; i < rows.length; ++i) {
           if (i > 500) {
             break;
