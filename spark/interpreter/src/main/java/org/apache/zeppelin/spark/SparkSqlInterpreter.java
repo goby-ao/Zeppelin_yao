@@ -103,7 +103,7 @@ public class SparkSqlInterpreter extends AbstractInterpreter {
     }
 
     try {
-      InterpreterResult filterResult = MgSQLFilter.filterSensitiveTable(st, getCluster(), getFilterRestUrl());
+      InterpreterResult filterResult = MgSQLFilter.filterSensitiveTable(st, getCluster(), getFilterRestUrl(), context.getAuthenticationInfo().getUser());
       if (null != filterResult) {
         LOGGER.info("find sensitive table, filter sql: {}", st);
         return filterResult;

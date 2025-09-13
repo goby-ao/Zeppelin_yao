@@ -31,6 +31,7 @@ import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -116,9 +117,10 @@ public class MgSQLFilter {
    * @param sql
    * @param cluster: cluster1 cluster2 cluster3
    * @param restApi
+   * @param user
    * @return null if check pass，list when find sensitive table
    */
-  public static InterpreterResult filterSensitiveTable(String sql, String cluster, String restApi) {
+  public static InterpreterResult filterSensitiveTable(String sql, String cluster, String restApi, String user) {
     List<SQLStatement> statementList = SQLUtils.parseStatements(sql, DbType.hive);
     List<TableCheck> list = new ArrayList<>();
     LOGGER.info("[mg] config info: cluster:{}, rest:{}", cluster, restApi);
@@ -179,9 +181,14 @@ public class MgSQLFilter {
 
     // send post request check if exist Sensitive Table
     HttpPost post = new HttpPost(restApi);
+
+    Map<String, Object> requestBody = new HashMap<>();
+    requestBody.put("tables", list);
+    requestBody.put("accountName", user); // 替换为实际的accountName
+
     Gson gson = new Gson();
-    String checkInfo = gson.toJson(list);
-    LOGGER.info("[mg] tables to check: {}", checkInfo);
+    String checkInfo = gson.toJson(requestBody);
+    LOGGER.info("[mg] user: {}, tables to check: {}", user, checkInfo);
 
     try {
       CloseableHttpClient httpClient = createSSLHttpClient();
@@ -202,8 +209,8 @@ public class MgSQLFilter {
         return null;
       }
 
-      String filerMsg = "【查询已拦截】 您查询的表涉及敏感数据，按安全规范要求，查询需要通过金库审批。\n" +
-              "请使用 \"自助报表-自助取数工具\" 重新提交该任务，并前往 \"个人中心获\" 取结果数据。感谢理解和支持！\n" +
+      String filerMsg = "【查询已拦截】 由于您查询的表涉敏，按照安全要求涉敏表需金库认证才能查询。\n" +
+              "请先通过页面顶部右上角进行金库认证。感谢理解和支持！\n" +
               "敏感表信息：" + gson.toJson(resultList.getData());
       return new InterpreterResult(InterpreterResult.Code.ERROR, filerMsg);
     } catch (Exception e) {

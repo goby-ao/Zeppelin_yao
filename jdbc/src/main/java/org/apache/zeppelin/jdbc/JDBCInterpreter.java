@@ -483,6 +483,11 @@ public class JDBCInterpreter extends KerberosInterpreter {
       }
     }
 
+    if(url.contains("kyuubi")) {
+      properties.setProperty("user", user);
+      properties.setProperty("password", "");
+    }
+
     ConnectionFactory connectionFactory =
             new DriverManagerConnectionFactory(url, properties);
 
@@ -511,7 +516,13 @@ public class JDBCInterpreter extends KerberosInterpreter {
     if (!getJDBCConfiguration(user).isConnectionInDBDriverPool(dbPrefix)) {
       createConnectionPool(url, user, dbPrefix, properties);
     }
-    return DriverManager.getConnection(jdbcDriver);
+    // kyuubi 修改
+    if (url.contains("kyuubi")) {
+      LOGGER.info("THIS IS KYUUBI, user is :" + user);
+      return DriverManager.getConnection(jdbcDriver,user,"");
+    } else {
+      return DriverManager.getConnection(jdbcDriver);
+    }
   }
 
   public Connection getConnection(String dbPrefix, InterpreterContext context)
@@ -932,7 +943,7 @@ public class JDBCInterpreter extends KerberosInterpreter {
     LOGGER.debug("Run SQL command '{}'", cmd);
     //  filter sensitive table. added by yao
     try {
-      InterpreterResult filterResult = MgSQLFilter.filterSensitiveTable(cmd, getCluster(), getFilterRestUrl());
+      InterpreterResult filterResult = MgSQLFilter.filterSensitiveTable(cmd, getCluster(), getFilterRestUrl(), getUser(context));
       if (null != filterResult) {
         LOGGER.info("find sensitive table, filter sql: {}", cmd);
         return filterResult;
