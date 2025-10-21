@@ -59,6 +59,12 @@
 
 .plainTextContent{
   white-space:pre-wrap; /** to preserve white-space and newlines of result */
+   /* 核心属性：禁止用户选择元素内的文本 */
+   user-select: none;
+   /* 兼容性前缀，确保在各种浏览器中都生效 */
+   -webkit-user-select: none; /* Chrome, Safari, Opera */
+   -moz-user-select: none;    /* Firefox */
+   -ms-user-select: none;     /* Internet Explorer/Edge */
 }
 
 .plainTextContent div {
@@ -69,6 +75,11 @@
   position: relative;
   margin-bottom: 5px;
   overflow: visible;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
 }
 
 .graphContainer .table {
