@@ -66,7 +66,7 @@ function LoginCtrl($scope, $rootScope, $http, $httpParamSerializer, baseUrlSrv, 
      $scope.SigningIn = true;
      token = atob(token);
      // reverse then base64 - 2023.04.17
-     newPass = token.split(':')[1].split('').reverse().join('');
+     let newPass = token.split(':')[1].split('').reverse().join('');
      newPass = btoa(newPass);
      $http({
        method: 'POST',

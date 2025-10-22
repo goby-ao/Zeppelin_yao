@@ -413,11 +413,11 @@ export default class TableVisualization extends Visualization {
 //          return r.slice(0, r.length - 1);
 //        }).join('\t') + '\n';
 
-        let result = rows[0].grid.columns.map((r,index) => {
-                  if(index >=2 ){
-                    return r.displayName
+        let result = rows[0].grid.columns.map((r, index) => {
+                  if (index >= 2) {
+                    return r.displayName;
                   }
-                }).join('\t')+'\n'
+                }).join('\t')+'\n';
 
         for (let i = 0; i < rows.length; ++i) {
           if (i > 500) {
