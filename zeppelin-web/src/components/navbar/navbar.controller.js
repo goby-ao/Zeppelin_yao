@@ -299,11 +299,12 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
       const svgContent = `
           <svg xmlns='http://www.w3.org/2000/svg' width='350' height='200'>
               <text x='50%' y='50%'
-                    font-family='Arial, sans-serif'
-                    font-size='24'
+                    font-family='-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+                    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"'
+                    font-size='20'
                     opacity='0.1'
                     fill='#808080'
-                    transform='rotate(-45 175 100)'
+                    transform='rotate(-45 140 75)'
                     dominant-baseline='middle'
                     text-anchor='middle'>${username}</text>
           </svg>
