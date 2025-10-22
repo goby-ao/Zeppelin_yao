@@ -70,6 +70,23 @@ limitations under the License.
     <link rel="stylesheet" ng-href="assets/styles/looknfeel/{{looknfeel}}.css" />
     <link rel="stylesheet" href="assets/styles/printMode.css" />
     <style>
+      /* --- GLOBAL WATERMARK STYLES --- */
+      #global-watermark {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          z-index: 99999; /* 确保它在所有元素之上 */
+          pointer-events: none; /* 关键：允许点击穿透 */
+          overflow: hidden;
+          background-color: transparent;
+
+          /* JS 会设置 background-image, repeat, size */
+          background-repeat: repeat;
+          background-size: 350px 200px; /* 水印重复密度 */
+          background-image: none;
+      }
 
       /* This is kept here puropsly to show preloader */
       #pre-loader {
@@ -108,7 +125,8 @@ limitations under the License.
       }
     </style>
   </head>
-  <body ng-class="{'bodyAsIframe': asIframe}">
+  <body ng-class="{'bodyAsIframe': asIframe}" data-username="{{$root.ticket.screenUsername}}">
+  <div id="global-watermark"></div>
   <div id="pre-loader">
     <div class="pre-loader-content">
       <div class="loader"></div>

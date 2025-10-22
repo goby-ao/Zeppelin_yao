@@ -231,6 +231,9 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
     listConfigurations();
     loadNotes();
     getHomeNote();
+
+    // 立即更新水印
+    updateWatermark($rootScope.ticket.screenUsername);
   });
 
   /*
@@ -274,4 +277,53 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
   $rootScope.isRevisionSupported = function() {
     return revisionSupported;
   };
+
+  /**
+   * 动态生成 SVG Watermark 并设置背景
+   * @param {string} username - 当前登录用户的姓名
+   */
+  function updateWatermark(username) {
+      const watermarkElement = document.getElementById('global-watermark');
+      if (!watermarkElement) {
+          return;
+      }
+
+      // 如果没有用户名或为匿名用户，则清除水印
+      if (!username || username === 'anonymous' || username === '') {
+          watermarkElement.style.backgroundImage = 'none';
+          return;
+      }
+
+      // 1. 创建 SVG 文本，包含用户名和旋转
+      // width/height 与 CSS 中的 background-size 匹配 (350x200)
+      const svgContent = `
+          <svg xmlns='http://www.w3.org/2000/svg' width='350' height='200'>
+              <text x='50%' y='50%'
+                    font-family='Arial, sans-serif'
+                    font-size='24'
+                    opacity='0.1'
+                    fill='#808080'
+                    transform='rotate(-45 175 100)'
+                    dominant-baseline='middle'
+                    text-anchor='middle'>${username}</text>
+          </svg>
+      `.trim();
+
+      // 2. 将 SVG 内容转换为 Base64 编码的 Data URL
+      const encodedSvg = encodeURIComponent(svgContent)
+          .replace(/'/g, '%27')
+          .replace(/"/g, '%22');
+
+      const dataUrl = `url("data:image/svg+xml;charset=utf8,${encodedSvg}")`;
+
+      // 3. 应用到容器的背景属性
+      watermarkElement.style.backgroundImage = dataUrl;
+  }
+
+  // 4. 监听用户名的变化，确保水印在登录成功后加载
+  $scope.$watch('$root.ticket.screenUsername', function(newUsername) {
+      if (newUsername) {
+          updateWatermark(newUsername);
+      }
+  });
 }
