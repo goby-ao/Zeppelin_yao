@@ -280,10 +280,15 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
 
     // --- 新增：读取水印开关状态 ---
     // 注意：后端发送的配置值通常是字符串 zeppelin.fire.enabled = true 时打开水印
-    $rootScope.watermarkEnabled = (event.configurations['zeppelin.fire.enabled'] === 'true');
+    $rootScope.watermarkEnabled = (event.configurations['zeppelin.fire.enable'] === 'true');
 
     // 复制 zeppelin.pc.enabled = false 时禁止复制
-    $rootScope.disableCopyEnabled = (event.configurations['zeppelin.pc.enabled'] === 'false');
+    $rootScope.disableCopyEnabled = (event.configurations['zeppelin.pc.enable'] === 'false');
+
+    // --- 修正：配置加载完成后，如果开启水印，则尝试更新水印 ---
+    if ($rootScope.watermarkEnabled && $rootScope.ticket && $rootScope.ticket.screenUsername) {
+        updateWatermark($rootScope.ticket.screenUsername);
+    }
   });
 
   $rootScope.isRevisionSupported = function() {
