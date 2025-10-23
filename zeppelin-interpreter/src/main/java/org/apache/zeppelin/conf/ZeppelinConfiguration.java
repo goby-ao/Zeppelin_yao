@@ -757,6 +757,14 @@ public class ZeppelinConfiguration {
     return getBoolean(ConfVars.ZEPPELIN_NOTEBOOK_COLLABORATIVE_MODE_ENABLE);
   }
 
+  public boolean isPcEnabled() {
+    return getBoolean(ConfVars.ZEPPELIN_PC_ENABLE);
+  }
+
+  public boolean isFireEnabled() {
+    return getBoolean(ConfVars.ZEPPELIN_FIRE_ENABLE);
+  }
+
   public String getZeppelinProxyUrl() {
     return getString(ConfVars.ZEPPELIN_PROXY_URL);
   }
@@ -1081,7 +1089,10 @@ public class ZeppelinConfiguration {
     ZEPPELIN_JOBMANAGER_ENABLE("zeppelin.jobmanager.enable", false),
     ZEPPELIN_SPARK_ONLY_YARN_CLUSTER("zeppelin.spark.only_yarn_cluster", false),
     ZEPPELIN_SESSION_CHECK_INTERVAL("zeppelin.session.check_interval", 60 * 10 * 1000),
-    ZEPPELIN_NOTE_FILE_EXCLUDE_FIELDS("zeppelin.note.file.exclude.fields", "");
+    ZEPPELIN_NOTE_FILE_EXCLUDE_FIELDS("zeppelin.note.file.exclude.fields", ""),
+    ZEPPELIN_PC_ENABLE("zeppelin.pc.enable", true), // turn on cp?
+    ZEPPELIN_FIRE_ENABLE("zeppelin.fire.enable", false); // turn on watermark ?
+
 
     private String varName;
     private Class<?> varClass;

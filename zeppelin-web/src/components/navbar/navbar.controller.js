@@ -19,6 +19,11 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
                  arrayOrderingSrv, searchService, TRASH_FOLDER_ID) {
   'ngInject';
 
+  // 初始化全局水印开关状态
+  $rootScope.watermarkEnabled = false;
+  // 全局拷贝开关
+  $rootScope.disableCopyEnabled = false;
+
   let vm = this;
   vm.arrayOrderingSrv = arrayOrderingSrv;
   vm.connected = websocketMsgSrv.isConnected();
@@ -272,6 +277,13 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
     if(event.configurations['isRevisionSupported']==='true') {
       revisionSupported = true;
     }
+
+    // --- 新增：读取水印开关状态 ---
+    // 注意：后端发送的配置值通常是字符串 zeppelin.fire.enabled = true 时打开水印
+    $rootScope.watermarkEnabled = (event.configurations['zeppelin.fire.enabled'] === 'true');
+
+    // 复制 zeppelin.pc.enabled = false 时禁止复制
+    $rootScope.disableCopyEnabled = (event.configurations['zeppelin.pc.enabled'] === 'false');
   });
 
   $rootScope.isRevisionSupported = function() {
@@ -283,6 +295,11 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
    * @param {string} username - 当前登录用户的姓名
    */
   function updateWatermark(username) {
+      // 检查全局开关是否启用
+      if (!$rootScope.watermarkEnabled) {
+          return;
+      }
+
       const watermarkElement = document.getElementById('global-watermark');
       if (!watermarkElement) {
           return;
@@ -324,7 +341,10 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
   // 4. 监听用户名的变化，确保水印在登录成功后加载
   $scope.$watch('$root.ticket.screenUsername', function(newUsername) {
       if (newUsername) {
-          updateWatermark(newUsername);
+          // 如果水印被启用，重新检查并更新水印
+          if ($rootScope.watermarkEnabled) {
+              updateWatermark($rootScope.ticket.screenUsername);
+          }
       }
   });
 }

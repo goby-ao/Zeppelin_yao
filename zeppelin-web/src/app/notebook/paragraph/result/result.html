@@ -59,7 +59,7 @@ limitations under the License.
       <!-- graph -->
       <div id="p{{id}}_graph"
            class="graphContainer"
-           ng-class="{'noOverflow': graphMode=='table'}">
+           ng-class="{'noOverflow': graphMode=='table', 'no-copy': $root.disableCopyEnabled}">
         <div ng-repeat="viz in builtInTableDataVisualizationList track by $index"
              id="p{{id}}_{{viz.id}}"
              ng-show="graphMode == viz.id">
@@ -88,7 +88,8 @@ limitations under the License.
            uib-tooltip="Follow Output"></div>
       <div id="p{{id}}_text"
            style="max-height: {{config.graph.height}}px; overflow: auto"
-           class="text plainTextContent"></div>
+           class="text plainTextContent"
+           ng-class="{'no-copy': $root.disableCopyEnabled}"></div>
       <div class="fa fa-chevron-up scroll-paragraph-up"
            ng-show="showScrollUpIcon()"
            ng-click="scrollParagraphUp()"

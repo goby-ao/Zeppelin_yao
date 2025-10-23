@@ -61,6 +61,23 @@
   white-space:pre-wrap; /** to preserve white-space and newlines of result */
 }
 
+/* ------------------ 禁止复制功能样式 ------------------ */
+/* 该类由 JS 动态添加 */
+.no-copy {
+    /* 禁用文本选择 */
+    -webkit-user-select: none; /* Chrome, Safari, Opera */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* IE 10+ */
+    user-select: none; /* Standard */
+
+    /* 禁用复制粘贴的辅助功能 */
+    pointer-events: auto; /* 确保不影响其他事件 */
+
+    /* 可选：改变光标，给用户提示文本不可选 */
+    cursor: default !important;
+}
+/* ---------------------------------------------------- */
+
 .plainTextContent div {
   min-height:17px;
 }
