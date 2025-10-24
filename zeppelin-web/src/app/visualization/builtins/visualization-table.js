@@ -332,6 +332,11 @@ export default class TableVisualization extends Visualization {
     const config = this.config;
     const self = this; // for closure
     const scope = this.getScope();
+
+    // --- 新增：获取 $rootScope 和开关状态 ---
+    const $rootScope = scope.$root;
+    const enableCopy = ($rootScope.disableCopyEnabled === false); // 如果 disableCopyEnabled 是 true, enableCopy 就是 false
+
     // set gridApi for this elem
     const gridApiId = this.getGridApiId();
     const gridOptions = this.createGridOptions(tableData, onRegisterApiCallback, config);
@@ -384,6 +389,10 @@ export default class TableVisualization extends Visualization {
       // add copy to clipboard by yao
       gridApi.selection.on.rowSelectionChanged(scope, function(row) {
         console.log(row);
+        if (!enableCopy) { // 检查开关
+          return;
+        }
+
         Object.keys(row.entity).forEach((key) => {
           if (key === '$$hashKey') {
             delete row.entity[key];
@@ -400,6 +409,9 @@ export default class TableVisualization extends Visualization {
 
       gridApi.selection.on.rowSelectionChangedBatch(scope, function(rows) {
         console.log(rows);
+        if (!enableCopy) { // 检查开关
+          return;
+        }
 
         rows.map((row) => {
           Object.keys(row.entity).forEach((key) => {
@@ -408,10 +420,6 @@ export default class TableVisualization extends Visualization {
             }
           });
         });
-
-//        let result = Object.keys(rows[0].entity).map((r) => {
-//          return r.slice(0, r.length - 1);
-//        }).join('\t') + '\n';
 
         let result = rows[0].grid.columns.map((r, index) => {
                   if (index >= 2) {
