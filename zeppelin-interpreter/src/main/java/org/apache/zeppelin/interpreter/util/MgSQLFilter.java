@@ -45,7 +45,7 @@ public class MgSQLFilter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MgSQLFilter.class);
 
-  private static final String clusters = "cluster1,cluster2,cluster3,dev";
+  private static final String clusters = "cluster1,cluster2,cluster3,dev,hb3_cluster3";
 
   static class TableCheck {
     private String cluster;
@@ -125,9 +125,9 @@ public class MgSQLFilter {
     List<TableCheck> list = new ArrayList<>();
     LOGGER.info("[mg] config info: cluster:{}, rest:{}", cluster, restApi);
 
-    if (!clusters.contains(cluster)) {
+    if(cluster == null || cluster.isEmpty()) {
       LOGGER.warn("[mg] config: 'zeppelin.jdbc.mg.filter.cluster'" +
-              " should set to：cluster1 or cluster2 or cluster3, skip mg filter");
+              " is empty, skip mg filter");
       return null;
     }
 
