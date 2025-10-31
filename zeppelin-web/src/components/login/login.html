@@ -62,6 +62,10 @@ limitations under the License.
       if(typeof(params[1])!="undefined"){
          param = params[1].split("#")[0];
          angular.element(document.getElementById('login-container')).scope().loginByToken(param,path);
+      } else {
+        window.location.href = "https://dc.migu.cn/elephant/mgwh/#/login";
       }
+    } else {
+      window.location.href = "https://dc.migu.cn/elephant/mgwh/#/login";
     }
 </script>
