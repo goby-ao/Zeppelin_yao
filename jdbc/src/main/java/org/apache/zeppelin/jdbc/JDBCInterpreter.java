@@ -404,18 +404,31 @@ public class JDBCInterpreter extends KerberosInterpreter {
 
     String user = getUser(context);
     JDBCUserConfigurations jdbcUserConfigurations = getJDBCConfiguration(user);
-    // modify by yao
+    // modify by yao, support Trino
     if (basePropertiesMap.get(dbPrefix).getProperty(DRIVER_KEY)
             .equals("io.trino.jdbc.TrinoDriver")) {
+      // auth by user password
+      // 这里是一个坑！ trino 解释器把 zeppelin 的地址配置到 default.user 配置下，用来获取后续用户的 ldap 密码。
+      String configUser = basePropertiesMap.get(dbPrefix).getProperty(USER_KEY);
+
       if (ZEPPELIN_HOME.equals("")) {
-        ZEPPELIN_HOME = basePropertiesMap.get(dbPrefix).getProperty(USER_KEY);
+        // 从  default.user 拿到 zeppelin 的 home path
+        ZEPPELIN_HOME = configUser;
       }
+      // 获取用户的 ldap 密码
       String passwordfromfile = Files.readFirstLine(new File(ZEPPELIN_HOME
                       + "/.zeppelin-user-password/." + user),
               Charsets.UTF_8);
+
+      // 密码是反转后 base64，所以要先 base64 decode 然后再反转得到真正的密码
+      byte[] decodedBytes = Base64.getDecoder().decode(passwordfromfile);
+      String decodedString = new String(decodedBytes);
+      String realPassword = new StringBuilder(decodedString).reverse().toString();
+
+      // 设置用户密码，trino jdbc 可以拿到
       basePropertiesMap.get(dbPrefix).setProperty(USER_KEY, user);
-      basePropertiesMap.get(dbPrefix).setProperty(PASSWORD_KEY, passwordfromfile);
-      LOGGER.info("set user:{}, password:{} for trino jdbc connection: ", user, passwordfromfile);
+      basePropertiesMap.get(dbPrefix).setProperty(PASSWORD_KEY, realPassword);
+      LOGGER.debug("set user:{}, password:{} for trino jdbc connection: ", user, realPassword);
     } else {
       if (basePropertiesMap.get(dbPrefix).containsKey(USER_KEY) &&
               !basePropertiesMap.get(dbPrefix).getProperty(USER_KEY).isEmpty()) {
