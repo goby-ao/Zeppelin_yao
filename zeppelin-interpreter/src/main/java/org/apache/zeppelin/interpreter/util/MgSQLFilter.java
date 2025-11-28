@@ -121,15 +121,22 @@ public class MgSQLFilter {
    * @return null if check pass，list when find sensitive table
    */
   public static InterpreterResult filterSensitiveTable(String sql, String cluster, String restApi, String user) {
-    List<SQLStatement> statementList = SQLUtils.parseStatements(sql, DbType.hive);
-    List<TableCheck> list = new ArrayList<>();
-    LOGGER.info("[mg] config info: cluster:{}, rest:{}", cluster, restApi);
 
-    if(cluster == null || cluster.isEmpty()) {
+    // ^ 表示开头，\\s 表示空白字符，+ 表示一个或多个
+    String result = sql.replaceFirst("^\\s+", "");
+    if (result.startsWith("--;")) {
+      return null;
+    }
+
+    if (cluster == null || cluster.isEmpty()) {
       LOGGER.warn("[mg] config: 'zeppelin.jdbc.mg.filter.cluster'" +
               " is empty, skip mg filter");
       return null;
     }
+
+    List<SQLStatement> statementList = SQLUtils.parseStatements(sql, DbType.hive);
+    List<TableCheck> list = new ArrayList<>();
+    LOGGER.info("[mg] config info: cluster:{}, rest:{}", cluster, restApi);
 
     if (restApi.equals("-1")) {
       LOGGER.warn("[mg] filter rest api is empty, please config: " +
