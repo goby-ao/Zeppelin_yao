@@ -25,7 +25,26 @@ import java.util.stream.Collectors;
 public class TableDataUtils {
 
   /**
+   * 手机号脱敏：11位中国大陆手机号，中间4位替换为****
+   * 支持格式：13812345678、包含手机号的文本等
+   * code by yao's AI
+   */
+  private static String maskPhoneNumber(String value) {
+    if (value == null || value.isEmpty()) {
+      return value;
+    }
+    // 正则说明：
+    // (?<!\d)     - 负向后顾断言，前面不能是数字（避免匹配更长数字串的一部分）
+    // 1[3-9]     - 以1开头，第二位是3-9（中国大陆手机号规则）
+    // \d{9}      - 后面跟着9位数字
+    // (?!\d)     - 负向前瞻断言，后面不能是数字
+    // 分组：$1=前3位, $2=中间4位, $3=后4位
+    return value.replaceAll("(?<!\\d)(1[3-9]\\d)(\\d{4})(\\d{4})(?!\\d)", "$1****$3");
+  }
+
+  /**
    * Replace '\t','\r\n','\n' which represent field delimiter and row delimiter with while space.
+   * Also mask sensitive phone numbers in the content.
    * @param column
    * @column
    */
@@ -33,11 +52,14 @@ public class TableDataUtils {
     if (column == null) {
       return "null";
     }
-    return column.replace("\t", " ").replace("\r\n", " ").replace("\n", " ");
+    String normalized = column.replace("\t", " ").replace("\r\n", " ").replace("\n", " ");
+    // 手机号脱敏 - code by yao's AI
+    return maskPhoneNumber(normalized);
   }
 
   /**
    * Convert obj to String first, convert it to empty string it is null.
+   * Also mask sensitive phone numbers in the content.
    * @param obj
    * @column
    */
