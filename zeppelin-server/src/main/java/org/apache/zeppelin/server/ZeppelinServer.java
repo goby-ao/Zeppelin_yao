@@ -81,6 +81,9 @@ import org.apache.zeppelin.notebook.Notebook;
 import org.apache.zeppelin.notebook.AuthorizationService;
 import org.apache.zeppelin.notebook.Paragraph;
 import org.apache.zeppelin.notebook.repo.NotebookRepo;
+import org.apache.zeppelin.audit.AuditJobListener;
+import org.apache.zeppelin.audit.AuditLogRepository;
+import org.apache.zeppelin.audit.AuditLoggerFactory;
 import org.apache.zeppelin.notebook.repo.NotebookRepoSync;
 import org.apache.zeppelin.notebook.scheduler.NoSchedulerService;
 import org.apache.zeppelin.notebook.scheduler.QuartzSchedulerService;
@@ -275,6 +278,29 @@ public class ZeppelinServer extends ResourceConfig {
             sharedServiceLocator, Notebook.class.getName());
     // Try to recover here, don't do it in constructor of Notebook, because it would cause deadlock.
     notebook.recoveryIfNecessary();
+
+    // 审计日志集成 - by yao's AI
+    if (conf.getBoolean(ZeppelinConfiguration.ConfVars.ZEPPELIN_AUDIT_ENABLED)) {
+      try {
+        LOG.info("Initializing audit log...");
+        // 获取 NotebookServer 实例（它实现了 ParagraphJobListener）
+        NotebookServer notebookServer = ServiceLocatorUtilities.getService(
+                sharedServiceLocator, NotebookServer.class.getName());
+
+        // 创建审计日志仓储
+        AuditLogRepository auditRepository = AuditLoggerFactory.createRepository(conf);
+
+        // 包装原有的 ParagraphJobListener
+        AuditJobListener auditJobListener = new AuditJobListener(notebookServer, auditRepository);
+
+        // 设置包装后的 listener 到 Notebook
+        notebook.setParagraphJobListener(auditJobListener);
+
+        LOG.info("Audit log initialized successfully");
+      } catch (Exception e) {
+        LOG.error("Failed to initialize audit log, audit functionality will be disabled", e);
+      }
+    }
 
     // when zeppelin is started inside of ide (especially for eclipse)
     // for graceful shutdown, input any key in console window

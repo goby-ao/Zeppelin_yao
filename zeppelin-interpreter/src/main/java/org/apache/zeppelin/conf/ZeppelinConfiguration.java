@@ -1091,7 +1091,14 @@ public class ZeppelinConfiguration {
     ZEPPELIN_SESSION_CHECK_INTERVAL("zeppelin.session.check_interval", 60 * 10 * 1000),
     ZEPPELIN_NOTE_FILE_EXCLUDE_FIELDS("zeppelin.note.file.exclude.fields", ""),
     ZEPPELIN_PC_ENABLE("zeppelin.pc.enable", true), // turn on cp?
-    ZEPPELIN_FIRE_ENABLE("zeppelin.fire.enable", false); // turn on watermark ?
+    ZEPPELIN_FIRE_ENABLE("zeppelin.fire.enable", false), // turn on watermark ?
+    // 审计日志配置 - by yao's AI
+    ZEPPELIN_AUDIT_ENABLED("zeppelin.audit.enabled", false),
+    ZEPPELIN_AUDIT_STORAGE_TYPE("zeppelin.audit.storage.type", "noop"),
+    ZEPPELIN_AUDIT_JDBC_URL("zeppelin.audit.jdbc.url", null),
+    ZEPPELIN_AUDIT_JDBC_USER("zeppelin.audit.jdbc.user", null),
+    ZEPPELIN_AUDIT_JDBC_PASSWORD("zeppelin.audit.jdbc.password", null),
+    ZEPPELIN_AUDIT_JDBC_MAX_POOL_SIZE("zeppelin.audit.jdbc.maxPoolSize", 5);
 
 
     private String varName;

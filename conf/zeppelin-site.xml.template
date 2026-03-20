@@ -821,4 +821,56 @@
   <description>fields to be excluded from being saved in note files, with Paragraph prefix mean the fields in Paragraph, e.g. Paragraph.results</description>
 </property>
 
+<!-- 审计日志配置 - by yao's AI -->
+<!--
+  审计日志功能：记录用户提交的任务执行信息到数据库
+  使用前请确保：
+  1. 将对应数据库的 JDBC 驱动放入 $ZEPPELIN_HOME/lib/ 目录
+     支持的数据库：
+     - MySQL:    mysql-connector-java-8.0.28.jar
+     - PostgreSQL: postgresql-42.2.23.jar
+     - H2:       (已内置，用于测试)
+  2. 在数据库中执行建表 SQL（见文档）
+
+  JDBC URL 示例：
+  - MySQL:    jdbc:mysql://localhost:3306/zeppelin_audit?useSSL=false&serverTimezone=UTC
+  - PostgreSQL: jdbc:postgresql://localhost:5432/zeppelin_audit
+  - H2:       jdbc:h2:mem:zeppelin_audit
+-->
+<property>
+  <name>zeppelin.audit.enabled</name>
+  <value>false</value>
+  <description>Enable task audit logging. When enabled, task execution information will be saved to database.</description>
+</property>
+
+<property>
+  <name>zeppelin.audit.storage.type</name>
+  <value>noop</value>
+  <description>Audit log storage type. Supported values: 'noop' (no operation, default), 'jdbc' (relational database).</description>
+</property>
+
+<property>
+  <name>zeppelin.audit.jdbc.url</name>
+  <value></value>
+  <description>JDBC URL for audit log database.</description>
+</property>
+
+<property>
+  <name>zeppelin.audit.jdbc.user</name>
+  <value></value>
+  <description>Database user for audit log.</description>
+</property>
+
+<property>
+  <name>zeppelin.audit.jdbc.password</name>
+  <value></value>
+  <description>Database password for audit log.</description>
+</property>
+
+<property>
+  <name>zeppelin.audit.jdbc.maxPoolSize</name>
+  <value>5</value>
+  <description>Max pool size for audit log database connections.</description>
+</property>
+
 </configuration>
