@@ -1,4 +1,4 @@
--- Zeppelin 任务审计日志表
+-- Zeppelin 任务审计日志表 - 支持多集群
 -- by yao's AI
 --
 -- 使用方法：
@@ -8,6 +8,7 @@
 
 CREATE TABLE IF NOT EXISTS zeppelin_task_audit (
   id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  cluster_name VARCHAR(100) COMMENT '集群名称 (ns1/ns2/ns3)',
   task_id VARCHAR(255) NOT NULL COMMENT 'Paragraph ID',
   job_name VARCHAR(500) COMMENT '任务名称',
   note_id VARCHAR(255) COMMENT 'Notebook ID',
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS zeppelin_task_audit (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
 
+  INDEX idx_cluster_name (cluster_name),
   INDEX idx_task_id (task_id),
   INDEX idx_note_id (note_id),
   INDEX idx_user (user),

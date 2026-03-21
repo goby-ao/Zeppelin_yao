@@ -55,11 +55,12 @@ AuditLogRepository
 
 ## 数据结构
 
-### 数据库表
+### 数据库表（支持多集群）
 
 ```sql
 CREATE TABLE IF NOT EXISTS zeppelin_task_audit (
   id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  cluster_name VARCHAR(100) COMMENT '集群名称 (ns1/ns2/ns3)',
   task_id VARCHAR(255) NOT NULL COMMENT 'Paragraph ID',
   job_name VARCHAR(500) COMMENT '任务名称',
   note_id VARCHAR(255) COMMENT 'Notebook ID',
@@ -79,6 +80,7 @@ CREATE TABLE IF NOT EXISTS zeppelin_task_audit (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
 
+  INDEX idx_cluster_name (cluster_name),
   INDEX idx_task_id (task_id),
   INDEX idx_note_id (note_id),
   INDEX idx_user (user),
@@ -203,6 +205,12 @@ UNKNOWN → READY → PENDING → RUNNING → FINISHED/ERROR/ABORT
 <property>
   <name>zeppelin.audit.jdbc.maxPoolSize</name>
   <value>5</value>
+</property>
+
+<!-- 集群名称（多集群支持） -->
+<property>
+  <name>zeppelin.audit.cluster.name</name>
+  <value></value>
 </property>
 ```
 
@@ -346,6 +354,132 @@ JDBC 实现：
   - 异步写入，不阻塞任务执行线程
   - 线程池配置：核心 1 线程，最大 2 线程，队列容量 1000
   - 队列满时使用 DiscardPolicy 丢弃新任务（保证主流程稳定）
+
+---
+
+## 多集群部署方案
+
+### 场景说明
+
+如有三套 Zeppelin 服务（ns1、ns2、ns3），需要将审计数据写入同一套 MySQL 数据库，并能区分集群来源。
+
+### 架构
+
+```
+┌──────────────┐
+│ Zeppelin ns1 │ ──┐
+└──────────────┘   │
+                   │
+┌──────────────┐   │    ┌──────────────────┐
+│ Zeppelin ns2 │ ──┼───→│   MySQL 数据库    │
+└──────────────┘   │    │  (同一套实例)    │
+                   │    └──────────────────┘
+┌──────────────┐   │
+│ Zeppelin ns3 │ ──┘
+└──────────────┘
+```
+
+### 配置方式
+
+#### 集群 ns1 (conf/zeppelin-site.xml)
+
+```xml
+<property>
+  <name>zeppelin.audit.enabled</name>
+  <value>true</value>
+</property>
+<property>
+  <name>zeppelin.audit.cluster.name</name>
+  <value>ns1</value>
+</property>
+<property>
+  <name>zeppelin.audit.jdbc.url</name>
+  <value>jdbc:mysql://mysql-host:3306/zeppelin_audit?useSSL=false&serverTimezone=UTC</value>
+</property>
+<property>
+  <name>zeppelin.audit.jdbc.user</name>
+  <value>root</value>
+</property>
+<property>
+  <name>zeppelin.audit.jdbc.password</name>
+  <value>your_password</value>
+</property>
+```
+
+#### 集群 ns2 (conf/zeppelin-site.xml)
+
+```xml
+<property>
+  <name>zeppelin.audit.enabled</name>
+  <value>true</value>
+</property>
+<property>
+  <name>zeppelin.audit.cluster.name</name>
+  <value>ns2</value>
+</property>
+<property>
+  <name>zeppelin.audit.jdbc.url</name>
+  <value>jdbc:mysql://mysql-host:3306/zeppelin_audit?useSSL=false&serverTimezone=UTC</value>
+</property>
+<property>
+  <name>zeppelin.audit.jdbc.user</name>
+  <value>root</value>
+</property>
+<property>
+  <name>zeppelin.audit.jdbc.password</name>
+  <value>your_password</value>
+</property>
+```
+
+#### 集群 ns3 (conf/zeppelin-site.xml)
+
+```xml
+<property>
+  <name>zeppelin.audit.enabled</name>
+  <value>true</value>
+</property>
+<property>
+  <name>zeppelin.audit.cluster.name</name>
+  <value>ns3</value>
+</property>
+<property>
+  <name>zeppelin.audit.jdbc.url</name>
+  <value>jdbc:mysql://mysql-host:3306/zeppelin_audit?useSSL=false&serverTimezone=UTC</value>
+</property>
+<property>
+  <name>zeppelin.audit.jdbc.user</name>
+  <value>root</value>
+</property>
+<property>
+  <name>zeppelin.audit.jdbc.password</name>
+  <value>your_password</value>
+</property>
+```
+
+### 查询示例
+
+```sql
+-- 查询 ns1 集群所有任务
+SELECT * FROM zeppelin_task_audit WHERE cluster_name = 'ns1';
+
+-- 查询三个集群的 PENDING 任务统计
+SELECT cluster_name, status, COUNT(*) as cnt
+FROM zeppelin_task_audit
+WHERE status = 'PENDING'
+GROUP BY cluster_name, status;
+
+-- 查询某个用户在所有集群的任务
+SELECT cluster_name, user, COUNT(*) as cnt
+FROM zeppelin_task_audit
+WHERE user = 'some_user'
+GROUP BY cluster_name, user;
+
+-- 按集群统计任务执行时长
+SELECT cluster_name, AVG(execution_duration) as avg_duration
+FROM zeppelin_task_audit
+WHERE status = 'FINISHED' AND execution_duration IS NOT NULL
+GROUP BY cluster_name;
+```
 
 ---
 

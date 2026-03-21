@@ -48,13 +48,15 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
   private final String jdbcUrl;
   private final String jdbcUser;
   private final String jdbcPassword;
+  private final String clusterName;  // 集群名称 - by yao's AI
 
   private ExecutorService executorService;
 
-  public JdbcAuditLogRepository(String jdbcUrl, String jdbcUser, String jdbcPassword, int maxPoolSize) {
+  public JdbcAuditLogRepository(String jdbcUrl, String jdbcUser, String jdbcPassword, int maxPoolSize, String clusterName) {
     this.jdbcUrl = jdbcUrl;
     this.jdbcUser = jdbcUser;
     this.jdbcPassword = jdbcPassword;
+    this.clusterName = clusterName;  // 保存集群名称
   }
 
   @Override
@@ -127,6 +129,7 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
       auditLog = existingLog;
     } else {
       auditLog = new AuditLog();
+      auditLog.setClusterName(clusterName);  // 设置集群名称 - by yao's AI
       auditLog.setTaskId(taskId);
       auditLog.setJobName(paragraph.getJobName());
       auditLog.setDateCreated(paragraph.getDateCreated());
@@ -168,21 +171,22 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
    * by yao's AI
    */
   private AuditLog findByTaskId(String taskId) {
-    String sql = "SELECT id, task_id, job_name, note_id, note_name, note_path, " +
+    String sql = "SELECT id, cluster_name, task_id, job_name, note_id, note_name, note_path, " +
         "paragraph_title, user, interpreter_type, script_text, status, error_message, " +
         "date_created, date_submitted, date_started, date_finished, execution_duration, " +
-        "created_at, updated_at FROM zeppelin_task_audit WHERE task_id = ?";
+        "created_at, updated_at FROM zeppelin_task_audit WHERE task_id = ? AND cluster_name = ?";
 
     try (Connection conn = getConnection();
          PreparedStatement stmt = conn.prepareStatement(sql)) {
       stmt.setString(1, taskId);
+      stmt.setString(2, clusterName);
       try (ResultSet rs = stmt.executeQuery()) {
         if (rs.next()) {
           return extractAuditLog(rs);
         }
       }
     } catch (SQLException e) {
-      LOGGER.debug("Audit log not found for taskId: {}", taskId);
+      LOGGER.debug("Audit log not found for taskId: {}, cluster: {}", taskId, clusterName);
     }
     return null;
   }
@@ -193,10 +197,10 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
    */
   private void insertAuditLog(AuditLog auditLog) {
     String sql = "INSERT INTO zeppelin_task_audit (" +
-        "task_id, job_name, note_id, note_name, note_path, paragraph_title, " +
+        "cluster_name, task_id, job_name, note_id, note_name, note_path, paragraph_title, " +
         "user, interpreter_type, script_text, status, error_message, " +
         "date_created, date_submitted, date_started, date_finished, execution_duration, " +
-        "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     try (Connection conn = getConnection();
          PreparedStatement stmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
@@ -257,6 +261,7 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
    */
   private void setAuditLogParameters(PreparedStatement stmt, AuditLog auditLog) throws SQLException {
     int index = 1;
+    stmt.setString(index++, auditLog.getClusterName());
     stmt.setString(index++, auditLog.getTaskId());
     stmt.setString(index++, auditLog.getJobName());
     stmt.setString(index++, auditLog.getNoteId());
@@ -284,6 +289,7 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
   private AuditLog extractAuditLog(ResultSet rs) throws SQLException {
     AuditLog log = new AuditLog();
     log.setId(rs.getLong("id"));
+    log.setClusterName(rs.getString("cluster_name"));
     log.setTaskId(rs.getString("task_id"));
     log.setJobName(rs.getString("job_name"));
     log.setNoteId(rs.getString("note_id"));

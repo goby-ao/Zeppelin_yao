@@ -1098,7 +1098,8 @@ public class ZeppelinConfiguration {
     ZEPPELIN_AUDIT_JDBC_URL("zeppelin.audit.jdbc.url", null),
     ZEPPELIN_AUDIT_JDBC_USER("zeppelin.audit.jdbc.user", null),
     ZEPPELIN_AUDIT_JDBC_PASSWORD("zeppelin.audit.jdbc.password", null),
-    ZEPPELIN_AUDIT_JDBC_MAX_POOL_SIZE("zeppelin.audit.jdbc.maxPoolSize", 5);
+    ZEPPELIN_AUDIT_JDBC_MAX_POOL_SIZE("zeppelin.audit.jdbc.maxPoolSize", 5),
+    ZEPPELIN_AUDIT_CLUSTER_NAME("zeppelin.audit.cluster.name", null);
 
 
     private String varName;

@@ -873,4 +873,10 @@
   <description>Max pool size for audit log database connections.</description>
 </property>
 
+<property>
+  <name>zeppelin.audit.cluster.name</name>
+  <value></value>
+  <description>Cluster name for audit log, e.g., ns1, ns2, ns3. Used to distinguish multiple Zeppelin clusters writing to the same database.</description>
+</property>
+
 </configuration>

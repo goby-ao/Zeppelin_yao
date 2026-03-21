@@ -28,6 +28,7 @@ import java.util.Date;
 public class AuditLog {
 
   private Long id;
+  private String clusterName;      // 集群名称 (ns1/ns2/ns3) - by yao's AI
   private String taskId;           // Paragraph ID
   private String jobName;          // 任务名称
   private String noteId;           // Notebook ID
@@ -59,6 +60,14 @@ public class AuditLog {
 
   public void setId(Long id) {
     this.id = id;
+  }
+
+  public String getClusterName() {
+    return clusterName;
+  }
+
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
   }
 
   public String getTaskId() {
