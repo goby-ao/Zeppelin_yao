@@ -141,8 +141,10 @@ public class ZeppelinServer extends ResourceConfig {
 
   private static ZeppelinConfiguration conf;
   private static PrometheusMeterRegistry promMetricRegistry;
+  private static AuditLogRepository auditLogRepository;
 
   public static void reset() {
+    closeAuditLogRepository();
     conf = null;
     jettyWebServer = null;
     sharedServiceLocator = null;
@@ -267,40 +269,19 @@ public class ZeppelinServer extends ResourceConfig {
     }
     LOG.info("Done, zeppelin server started");
 
-    runNoteOnStart(conf);
-
-    Runtime.getRuntime().addShutdownHook(shutdown(conf));
-
     // Try to get Notebook from ServiceLocator, because Notebook instantiation is lazy, it is
     // created when user open zeppelin in browser if we don't get it explicitly here.
     // Lazy loading will cause paragraph recovery and cron job initialization is delayed.
     Notebook notebook = ServiceLocatorUtilities.getService(
             sharedServiceLocator, Notebook.class.getName());
+    initializeAuditLog(notebook);
+
+    Runtime.getRuntime().addShutdownHook(shutdown(conf));
+
+    runNoteOnStart(conf);
+
     // Try to recover here, don't do it in constructor of Notebook, because it would cause deadlock.
     notebook.recoveryIfNecessary();
-
-    // 审计日志集成 - by yao's AI
-    if (conf.getBoolean(ZeppelinConfiguration.ConfVars.ZEPPELIN_AUDIT_ENABLED)) {
-      try {
-        LOG.info("Initializing audit log...");
-        // 获取 NotebookServer 实例（它实现了 ParagraphJobListener）
-        NotebookServer notebookServer = ServiceLocatorUtilities.getService(
-                sharedServiceLocator, NotebookServer.class.getName());
-
-        // 创建审计日志仓储
-        AuditLogRepository auditRepository = AuditLoggerFactory.createRepository(conf);
-
-        // 包装原有的 ParagraphJobListener
-        AuditJobListener auditJobListener = new AuditJobListener(notebookServer, auditRepository);
-
-        // 设置包装后的 listener 到 Notebook
-        notebook.setParagraphJobListener(auditJobListener);
-
-        LOG.info("Audit log initialized successfully");
-      } catch (Exception e) {
-        LOG.error("Failed to initialize audit log, audit functionality will be disabled", e);
-      }
-    }
 
     // when zeppelin is started inside of ide (especially for eclipse)
     // for graceful shutdown, input any key in console window
@@ -316,6 +297,32 @@ public class ZeppelinServer extends ResourceConfig {
     jettyWebServer.join();
     if (!conf.isRecoveryEnabled()) {
       sharedServiceLocator.getService(InterpreterSettingManager.class).close();
+    }
+    closeAuditLogRepository();
+  }
+
+  private static void initializeAuditLog(Notebook notebook) {
+    if (conf.getBoolean(ZeppelinConfiguration.ConfVars.ZEPPELIN_AUDIT_ENABLED)) {
+      try {
+        LOG.info("Initializing audit log...");
+        // 获取 NotebookServer 实例（它实现了 ParagraphJobListener）
+        NotebookServer notebookServer = ServiceLocatorUtilities.getService(
+                sharedServiceLocator, NotebookServer.class.getName());
+
+        // 创建审计日志仓储
+        auditLogRepository = AuditLoggerFactory.createRepository(conf);
+
+        // 包装原有的 ParagraphJobListener
+        AuditJobListener auditJobListener = new AuditJobListener(notebookServer, auditLogRepository);
+
+        // 设置包装后的 listener 到 Notebook
+        notebook.setParagraphJobListener(auditJobListener);
+
+        LOG.info("Audit log initialized successfully");
+      } catch (Exception e) {
+        LOG.error("Failed to initialize audit log, audit functionality will be disabled", e);
+        closeAuditLogRepository();
+      }
     }
   }
 
@@ -350,12 +357,25 @@ public class ZeppelinServer extends ResourceConfig {
                   }
                   sharedServiceLocator.getService(Notebook.class).close();
                 }
+                closeAuditLogRepository();
                 Thread.sleep(3000);
               } catch (Exception e) {
                 LOG.error("Error while stopping servlet container", e);
               }
               LOG.info("Bye");
             });
+  }
+
+  private static void closeAuditLogRepository() {
+    if (auditLogRepository != null) {
+      try {
+        auditLogRepository.close();
+      } catch (Exception e) {
+        LOG.warn("Failed to close audit log repository", e);
+      } finally {
+        auditLogRepository = null;
+      }
+    }
   }
 
   private static Server setupJettyServer(ZeppelinConfiguration conf) {

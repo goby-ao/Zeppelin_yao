@@ -28,6 +28,7 @@ import java.util.Date;
 public class AuditLog {
 
   private Long id;
+  private String runId;            // 单次运行 ID
   private String taskId;           // Paragraph ID
   private String jobName;          // 任务名称
   private String noteId;           // Notebook ID
@@ -59,6 +60,14 @@ public class AuditLog {
 
   public void setId(Long id) {
     this.id = id;
+  }
+
+  public String getRunId() {
+    return runId;
+  }
+
+  public void setRunId(String runId) {
+    this.runId = runId;
   }
 
   public String getTaskId() {

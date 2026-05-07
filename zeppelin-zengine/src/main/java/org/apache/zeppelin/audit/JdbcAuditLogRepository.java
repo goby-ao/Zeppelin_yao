@@ -34,7 +34,10 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * JDBC 审计日志仓储实现 - 将审计日志保存到关系型数据库
@@ -44,17 +47,22 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class JdbcAuditLogRepository implements AuditLogRepository {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcAuditLogRepository.class);
+  private static final int AUDIT_QUEUE_SIZE = 1000;
 
   private final String jdbcUrl;
   private final String jdbcUser;
   private final String jdbcPassword;
+  private final int maxPoolSize;
 
   private ExecutorService executorService;
+  private final ConcurrentMap<String, String> activeRunIds = new ConcurrentHashMap<>();
+  private final AtomicLong runSequence = new AtomicLong(1);
 
   public JdbcAuditLogRepository(String jdbcUrl, String jdbcUser, String jdbcPassword, int maxPoolSize) {
     this.jdbcUrl = jdbcUrl;
     this.jdbcUser = jdbcUser;
     this.jdbcPassword = jdbcPassword;
+    this.maxPoolSize = Math.max(1, maxPoolSize);
   }
 
   @Override
@@ -65,8 +73,8 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
 
       // 初始化异步写入线程池
       this.executorService = new ThreadPoolExecutor(
-          1, 2, 60L, TimeUnit.SECONDS,
-          new LinkedBlockingQueue<>(1000),
+          this.maxPoolSize, this.maxPoolSize, 60L, TimeUnit.SECONDS,
+          new LinkedBlockingQueue<>(AUDIT_QUEUE_SIZE),
           new ThreadFactory() {
             private final AtomicInteger threadNumber = new AtomicInteger(1);
             @Override
@@ -79,7 +87,8 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
           new ThreadPoolExecutor.DiscardPolicy()  // 队列满时丢弃新任务，不影响主流程
       );
 
-      LOGGER.info("JdbcAuditLogRepository initialized with URL: {}", jdbcUrl);
+      LOGGER.info("JdbcAuditLogRepository initialized with URL: {}, maxPoolSize: {}",
+          jdbcUrl, this.maxPoolSize);
     } catch (Exception e) {
       LOGGER.error("Failed to initialize JdbcAuditLogRepository", e);
       // 初始化失败时降级为不工作，但不抛出异常
@@ -92,10 +101,12 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
     if (executorService == null || executorService.isShutdown()) {
       return;
     }
+    Date eventTime = new Date();
+    AuditLog auditLog = buildAuditLog(paragraph, after, eventTime);
     // 异步保存，不阻塞任务执行
     executorService.submit(() -> {
       try {
-        saveInternal(paragraph, before, after);
+        saveInternal(auditLog);
       } catch (Exception e) {
         LOGGER.error("Failed to save audit log", e);
       }
@@ -118,71 +129,96 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
    * 内部保存方法 - 在异步线程中执行
    * by yao's AI
    */
-  private void saveInternal(Paragraph paragraph, Job.Status before, Job.Status after) {
+  private AuditLog buildAuditLog(Paragraph paragraph, Job.Status status, Date eventTime) {
+    AuditLog auditLog = new AuditLog();
     String taskId = paragraph.getId();
-    AuditLog existingLog = findByTaskId(taskId);
+    String runId;
 
-    AuditLog auditLog;
-    if (existingLog != null) {
-      auditLog = existingLog;
+    if (status == Job.Status.PENDING) {
+      runId = generateRunId(taskId, eventTime);
+      activeRunIds.put(taskId, runId);
     } else {
-      auditLog = new AuditLog();
-      auditLog.setTaskId(taskId);
-      auditLog.setJobName(paragraph.getJobName());
-      auditLog.setDateCreated(paragraph.getDateCreated());
-      if (paragraph.getNote() != null) {
-        auditLog.setNoteId(paragraph.getNote().getId());
-        auditLog.setNoteName(paragraph.getNote().getName());
-        auditLog.setNotePath(paragraph.getNote().getPath());
-      }
-      auditLog.setUser(paragraph.getUser());
-      auditLog.setParagraphTitle(paragraph.getTitle());
-      auditLog.setInterpreterType(paragraph.getIntpText());
-      auditLog.setScriptText(paragraph.getScriptText());
+      runId = activeRunIds.get(taskId);
     }
 
-    // 更新状态和时间
-    auditLog.setStatus(after);
-    auditLog.setUpdatedAt(new Date());
+    auditLog.setRunId(runId);
+    auditLog.setTaskId(taskId);
+    auditLog.setJobName(paragraph.getJobName());
+    auditLog.setDateCreated(paragraph.getDateCreated());
+    if (paragraph.getNote() != null) {
+      auditLog.setNoteId(paragraph.getNote().getId());
+      auditLog.setNoteName(paragraph.getNote().getName());
+      auditLog.setNotePath(paragraph.getNote().getPath());
+    }
+    auditLog.setUser(paragraph.getUser());
+    auditLog.setParagraphTitle(paragraph.getTitle());
+    auditLog.setInterpreterType(paragraph.getIntpText());
+    auditLog.setScriptText(paragraph.getScriptText());
+    auditLog.setStatus(status);
+    auditLog.setUpdatedAt(eventTime);
 
-    Date now = new Date();
-    if (after == Job.Status.PENDING) {
-      auditLog.setDateSubmitted(now);
-    } else if (after == Job.Status.RUNNING) {
-      auditLog.setDateStarted(paragraph.getDateStarted() != null ? paragraph.getDateStarted() : now);
-    } else if (after.isCompleted()) {
-      auditLog.setDateFinished(paragraph.getDateFinished() != null ? paragraph.getDateFinished() : now);
+    if (status == Job.Status.PENDING) {
+      auditLog.setDateSubmitted(eventTime);
+    } else if (status == Job.Status.RUNNING) {
+      auditLog.setDateStarted(paragraph.getDateStarted() != null
+          ? paragraph.getDateStarted() : eventTime);
+    } else if (status.isCompleted()) {
+      auditLog.setDateStarted(paragraph.getDateStarted());
+      auditLog.setDateFinished(paragraph.getDateFinished() != null
+          ? paragraph.getDateFinished() : eventTime);
       auditLog.setErrorMessage(paragraph.getErrorMessage());
       auditLog.calculateDuration();
     }
 
-    if (existingLog != null) {
-      updateAuditLog(auditLog);
-    } else {
+    return auditLog;
+  }
+
+  /**
+   * 内部保存方法 - 在异步线程中执行
+   * by yao's AI
+   */
+  private void saveInternal(AuditLog auditLog) {
+    if (auditLog.getRunId() == null) {
+      String runId = findLatestActiveRunId(auditLog.getTaskId());
+      if (runId == null) {
+        runId = generateRunId(auditLog.getTaskId(), auditLog.getUpdatedAt());
+      }
+      auditLog.setRunId(runId);
+      activeRunIds.putIfAbsent(auditLog.getTaskId(), runId);
+    }
+
+    if (auditLog.getStatus() == Job.Status.PENDING) {
       insertAuditLog(auditLog);
+    } else {
+      int updatedRows = updateAuditLog(auditLog);
+      if (updatedRows == 0) {
+        insertAuditLog(auditLog);
+      }
+    }
+
+    if (auditLog.getStatus().isCompleted()) {
+      activeRunIds.remove(auditLog.getTaskId(), auditLog.getRunId());
     }
   }
 
   /**
-   * 根据 taskId 查询已存在的审计日志
+   * 查询最近一次还未完成的运行记录
    * by yao's AI
    */
-  private AuditLog findByTaskId(String taskId) {
-    String sql = "SELECT id, task_id, job_name, note_id, note_name, note_path, " +
-        "paragraph_title, user, interpreter_type, script_text, status, error_message, " +
-        "date_created, date_submitted, date_started, date_finished, execution_duration, " +
-        "created_at, updated_at FROM zeppelin_task_audit WHERE task_id = ?";
+  private String findLatestActiveRunId(String taskId) {
+    String sql = "SELECT run_id FROM zeppelin_task_audit " +
+        "WHERE task_id = ? AND status IN ('PENDING', 'RUNNING') ORDER BY id DESC LIMIT 1";
 
     try (Connection conn = getConnection();
          PreparedStatement stmt = conn.prepareStatement(sql)) {
       stmt.setString(1, taskId);
       try (ResultSet rs = stmt.executeQuery()) {
         if (rs.next()) {
-          return extractAuditLog(rs);
+          return rs.getString("run_id");
         }
       }
     } catch (SQLException e) {
-      LOGGER.debug("Audit log not found for taskId: {}", taskId);
+      LOGGER.debug("Active audit log not found for taskId: {}", taskId);
     }
     return null;
   }
@@ -193,10 +229,10 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
    */
   private void insertAuditLog(AuditLog auditLog) {
     String sql = "INSERT INTO zeppelin_task_audit (" +
-        "task_id, job_name, note_id, note_name, note_path, paragraph_title, " +
+        "run_id, task_id, job_name, note_id, note_name, note_path, paragraph_title, " +
         "user, interpreter_type, script_text, status, error_message, " +
         "date_created, date_submitted, date_started, date_finished, execution_duration, " +
-        "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     try (Connection conn = getConnection();
          PreparedStatement stmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
@@ -209,6 +245,15 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
         }
       }
     } catch (SQLException e) {
+      if (isDuplicateKey(e)) {
+        if (auditLog.getStatus() == Job.Status.PENDING) {
+          LOGGER.debug("Audit log already exists for runId: {}", auditLog.getRunId());
+          updateSubmittedTime(auditLog);
+        } else {
+          updateAuditLog(auditLog);
+        }
+        return;
+      }
       LOGGER.error("Failed to insert audit log", e);
     }
   }
@@ -217,12 +262,17 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
    * 更新审计日志
    * by yao's AI
    */
-  private void updateAuditLog(AuditLog auditLog) {
+  private int updateAuditLog(AuditLog auditLog) {
     String sql = "UPDATE zeppelin_task_audit SET " +
         "job_name = ?, note_id = ?, note_name = ?, note_path = ?, paragraph_title = ?, " +
         "user = ?, interpreter_type = ?, script_text = ?, status = ?, error_message = ?, " +
-        "date_created = ?, date_submitted = ?, date_started = ?, date_finished = ?, " +
-        "execution_duration = ?, updated_at = ? WHERE id = ?";
+        "date_created = ?, date_submitted = COALESCE(date_submitted, ?), " +
+        "date_started = COALESCE(?, date_started), date_finished = COALESCE(?, date_finished), " +
+        "execution_duration = COALESCE(?, execution_duration), updated_at = ? WHERE run_id = ?";
+
+    if (auditLog.getStatus() == Job.Status.RUNNING) {
+      sql += " AND status IN ('PENDING', 'RUNNING')";
+    }
 
     try (Connection conn = getConnection();
          PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -243,11 +293,27 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
       stmt.setTimestamp(index++, toTimestamp(auditLog.getDateFinished()));
       stmt.setObject(index++, auditLog.getExecutionDuration());
       stmt.setTimestamp(index++, toTimestamp(auditLog.getUpdatedAt()));
-      stmt.setLong(index++, auditLog.getId());
+      stmt.setString(index++, auditLog.getRunId());
 
-      stmt.executeUpdate();
+      return stmt.executeUpdate();
     } catch (SQLException e) {
       LOGGER.error("Failed to update audit log", e);
+      return 0;
+    }
+  }
+
+  private void updateSubmittedTime(AuditLog auditLog) {
+    String sql = "UPDATE zeppelin_task_audit SET date_submitted = COALESCE(date_submitted, ?), " +
+        "updated_at = ? WHERE run_id = ?";
+
+    try (Connection conn = getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+      stmt.setTimestamp(1, toTimestamp(auditLog.getDateSubmitted()));
+      stmt.setTimestamp(2, toTimestamp(auditLog.getUpdatedAt()));
+      stmt.setString(3, auditLog.getRunId());
+      stmt.executeUpdate();
+    } catch (SQLException e) {
+      LOGGER.error("Failed to update audit log submit time", e);
     }
   }
 
@@ -257,6 +323,7 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
    */
   private void setAuditLogParameters(PreparedStatement stmt, AuditLog auditLog) throws SQLException {
     int index = 1;
+    stmt.setString(index++, auditLog.getRunId());
     stmt.setString(index++, auditLog.getTaskId());
     stmt.setString(index++, auditLog.getJobName());
     stmt.setString(index++, auditLog.getNoteId());
@@ -277,36 +344,12 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
     stmt.setTimestamp(index++, toTimestamp(auditLog.getUpdatedAt()));
   }
 
-  /**
-   * 从 ResultSet 提取 AuditLog 对象
-   * by yao's AI
-   */
-  private AuditLog extractAuditLog(ResultSet rs) throws SQLException {
-    AuditLog log = new AuditLog();
-    log.setId(rs.getLong("id"));
-    log.setTaskId(rs.getString("task_id"));
-    log.setJobName(rs.getString("job_name"));
-    log.setNoteId(rs.getString("note_id"));
-    log.setNoteName(rs.getString("note_name"));
-    log.setNotePath(rs.getString("note_path"));
-    log.setParagraphTitle(rs.getString("paragraph_title"));
-    log.setUser(rs.getString("user"));
-    log.setInterpreterType(rs.getString("interpreter_type"));
-    log.setScriptText(rs.getString("script_text"));
+  private String generateRunId(String taskId, Date eventTime) {
+    return taskId + "_" + eventTime.getTime() + "_" + runSequence.getAndIncrement();
+  }
 
-    String statusStr = rs.getString("status");
-    if (statusStr != null) {
-      log.setStatus(Job.Status.valueOf(statusStr));
-    }
-    log.setErrorMessage(rs.getString("error_message"));
-    log.setDateCreated(rs.getTimestamp("date_created"));
-    log.setDateSubmitted(rs.getTimestamp("date_submitted"));
-    log.setDateStarted(rs.getTimestamp("date_started"));
-    log.setDateFinished(rs.getTimestamp("date_finished"));
-    log.setExecutionDuration((Long) rs.getObject("execution_duration"));
-    log.setCreatedAt(rs.getTimestamp("created_at"));
-    log.setUpdatedAt(rs.getTimestamp("updated_at"));
-    return log;
+  private boolean isDuplicateKey(SQLException e) {
+    return e.getErrorCode() == 1062 || (e.getSQLState() != null && e.getSQLState().startsWith("23"));
   }
 
   /**

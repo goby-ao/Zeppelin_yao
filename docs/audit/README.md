@@ -60,6 +60,7 @@ AuditLogRepository
 ```sql
 CREATE TABLE IF NOT EXISTS zeppelin_task_audit (
   id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  run_id VARCHAR(255) NOT NULL COMMENT '单次运行ID',
   task_id VARCHAR(255) NOT NULL COMMENT 'Paragraph ID',
   job_name VARCHAR(500) COMMENT '任务名称',
   note_id VARCHAR(255) COMMENT 'Notebook ID',
@@ -79,7 +80,9 @@ CREATE TABLE IF NOT EXISTS zeppelin_task_audit (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
 
+  UNIQUE KEY uk_run_id (run_id),
   INDEX idx_task_id (task_id),
+  INDEX idx_task_status (task_id, status),
   INDEX idx_note_id (note_id),
   INDEX idx_user (user),
   INDEX idx_status (status),
@@ -113,7 +116,8 @@ UNKNOWN → READY → PENDING → RUNNING → FINISHED/ERROR/ABORT
    ↓
 5. AuditJobListener 拦截：
    - 先委托 NotebookServer 发送 WebSocket 通知
-   - 异步保存审计日志（状态：PENDING）
+   - 为本次运行生成 run_id
+   - 异步插入审计日志（状态：PENDING）
    ↓
 6. 任务提交到调度器
 ```
@@ -127,7 +131,7 @@ UNKNOWN → READY → PENDING → RUNNING → FINISHED/ERROR/ABORT
    ↓
 3. JobListener.onStatusChange() 被触发
    ↓
-4. AuditJobListener 更新审计日志（状态：RUNNING，记录开始时间）
+4. AuditJobListener 按 run_id 更新审计日志（状态：RUNNING，记录开始时间）
    ↓
 5. 执行用户代码
 ```
@@ -141,7 +145,7 @@ UNKNOWN → READY → PENDING → RUNNING → FINISHED/ERROR/ABORT
    ↓
 3. JobListener.onStatusChange() 被触发
    ↓
-4. AuditJobListener 更新审计日志：
+4. AuditJobListener 按 run_id 更新审计日志：
    - 记录结束时间
    - 计算执行耗时
    - 记录错误信息（如有）
@@ -236,8 +240,7 @@ cd $ZEPPELIN_HOME/lib
 # MySQL
 wget https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.28/mysql-connector-java-8.0.28.jar
 
-# 或 PostgreSQL
-wget https://repo1.maven.org/maven2/org/postgresql/postgresql/42.2.23/postgresql-42.2.23.jar
+# PostgreSQL/H2 需要准备对应方言的建表脚本
 ```
 
 ### 4. 修改配置
@@ -323,7 +326,7 @@ JDBC 实现：
 
 - 使用 `DriverManager` 获取连接（无需额外连接池依赖）
 - 异步线程池执行数据库操作
-- 支持 MySQL、PostgreSQL、H2 等
+- 当前建表脚本为 MySQL 方言；其他数据库需要准备对应 DDL
 
 ---
 
@@ -344,7 +347,7 @@ JDBC 实现：
 - **默认关闭**：无任何性能影响
 - **开启后**：
   - 异步写入，不阻塞任务执行线程
-  - 线程池配置：核心 1 线程，最大 2 线程，队列容量 1000
+  - 线程池配置：`zeppelin.audit.jdbc.maxPoolSize` 个 writer 线程，队列容量 1000
   - 队列满时使用 DiscardPolicy 丢弃新任务（保证主流程稳定）
 
 ---
