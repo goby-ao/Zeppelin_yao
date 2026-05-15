@@ -229,6 +229,7 @@ public class LoginRestApi {
     JsonResponse<Map<String, String>> response = null;
 
     // base64 解码后反转字符串就是真正的
+    String rawRevBase64Pass = password;
     byte[] decodedBytes = Base64.getDecoder().decode(password);
     String decodedString = new String(decodedBytes);
     password = new StringBuilder(decodedString).reverse().toString();
@@ -250,7 +251,8 @@ public class LoginRestApi {
     File pass = new File(filePath);
     try {
       LOG.info("record user's password to file: " + filePath);
-      Files.write(password.getBytes(Charsets.UTF_8), pass);
+      // 需要写入反转后的 base64 因为 interpreter 脚本的 su 也是这样的
+      Files.write(rawRevBase64Pass.getBytes(Charsets.UTF_8), pass);
     } catch (IOException e) {
       e.printStackTrace();
     }
