@@ -101,6 +101,9 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
     if (executorService == null || executorService.isShutdown()) {
       return;
     }
+    if (after == Job.Status.READY) {
+      return;
+    }
     Date eventTime = new Date();
     AuditLog auditLog = buildAuditLog(paragraph, after, eventTime);
     // 异步保存，不阻塞任务执行
@@ -303,14 +306,13 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
   }
 
   private void updateSubmittedTime(AuditLog auditLog) {
-    String sql = "UPDATE zeppelin_task_audit SET date_submitted = COALESCE(date_submitted, ?), " +
-        "updated_at = ? WHERE run_id = ?";
+    String sql = "UPDATE zeppelin_task_audit SET date_submitted = COALESCE(date_submitted, ?) " +
+        "WHERE run_id = ?";
 
     try (Connection conn = getConnection();
          PreparedStatement stmt = conn.prepareStatement(sql)) {
       stmt.setTimestamp(1, toTimestamp(auditLog.getDateSubmitted()));
-      stmt.setTimestamp(2, toTimestamp(auditLog.getUpdatedAt()));
-      stmt.setString(3, auditLog.getRunId());
+      stmt.setString(2, auditLog.getRunId());
       stmt.executeUpdate();
     } catch (SQLException e) {
       LOGGER.error("Failed to update audit log submit time", e);
