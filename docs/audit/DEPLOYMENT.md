@@ -76,6 +76,19 @@ mysql -h YOUR_MYSQL_HOST -u YOUR_DDL_USER -p YOUR_AUDIT_DB \
   < docs/audit/zeppelin_task_audit.sql
 ```
 
+如果线上已经存在旧版 `zeppelin_task_audit` 表，需要先确认是否已有集群字段：
+
+```sql
+SHOW COLUMNS FROM zeppelin_task_audit LIKE 'cluster_name';
+```
+
+如果没有 `cluster_name`，执行增量脚本：
+
+```bash
+mysql -h YOUR_MYSQL_HOST -u YOUR_DDL_USER -p YOUR_AUDIT_DB \
+  < docs/audit/zeppelin_task_audit_add_cluster_name.sql
+```
+
 ### 3. 授权运行账号
 
 审计运行账号只需要最小写入权限：
@@ -152,13 +165,18 @@ ${ZEPPELIN_HOME}/conf/zeppelin-site.xml
 </property>
 
 <property>
+  <name>zeppelin.audit.cluster.name</name>
+  <value>cluster1</value>
+</property>
+
+<property>
   <name>zeppelin.audit.storage.type</name>
   <value>jdbc</value>
 </property>
 
 <property>
   <name>zeppelin.audit.jdbc.url</name>
-  <value>jdbc:mysql://YOUR_MYSQL_HOST:3306/YOUR_AUDIT_DB?useSSL=false&amp;serverTimezone=UTC</value>
+  <value>jdbc:mysql://YOUR_MYSQL_HOST:3306/YOUR_AUDIT_DB?useSSL=false&amp;serverTimezone=Asia/Shanghai</value>
 </property>
 
 <property>
@@ -180,6 +198,7 @@ ${ZEPPELIN_HOME}/conf/zeppelin-site.xml
 说明：
 
 - `zeppelin.audit.enabled=false` 时审计完全关闭。
+- `zeppelin.audit.cluster.name` 是集群短标识，例如 `cluster1`、`cluster2`，会写入 `cluster_name` 并建索引用于过滤。
 - `zeppelin.audit.storage.type=noop` 时不写数据库。
 - `zeppelin.audit.jdbc.maxPoolSize` 是异步审计 writer 线程数，建议先保持 `5`，后续按写入压力调整。
 
@@ -222,7 +241,7 @@ grep -E "Initializing audit log|Audit log initialized successfully|JdbcAuditLogR
 在 Zeppelin 页面上用普通用户执行一个简单 paragraph。执行成功后查询：
 
 ```sql
-SELECT id, run_id, task_id, user, interpreter_type, status,
+SELECT id, run_id, cluster_name, task_id, user, interpreter_type, status,
        date_submitted, date_started, date_finished, execution_duration
 FROM zeppelin_task_audit
 ORDER BY id DESC
@@ -233,6 +252,7 @@ LIMIT 5;
 
 - 新增一条记录。
 - `run_id` 非空。
+- `cluster_name` 等于 `zeppelin.audit.cluster.name` 配置值。
 - `status` 为 `FINISHED` 或实际终态。
 - `date_submitted`、`date_started`、`date_finished` 按执行过程写入。
 
@@ -247,7 +267,7 @@ LIMIT 5;
 查询：
 
 ```sql
-SELECT run_id, task_id, status, date_submitted, date_started, date_finished
+SELECT run_id, cluster_name, task_id, status, date_submitted, date_started, date_finished
 FROM zeppelin_task_audit
 WHERE task_id = 'YOUR_PARAGRAPH_ID'
 ORDER BY id DESC
@@ -341,6 +361,7 @@ cp "${BACKUP_DIR}/zeppelin-server-${VERSION}.jar" "${ZEPPELIN_HOME}/lib/"
 
 - `CREATE DATABASE IF NOT EXISTS YOUR_AUDIT_DB`：只创建不存在的数据库，不删除已有数据。
 - `CREATE TABLE IF NOT EXISTS zeppelin_task_audit`：只创建不存在的表，不删除已有数据。
+- `ALTER TABLE zeppelin_task_audit ADD COLUMN cluster_name ... ADD INDEX ...`：只增加字段和索引，不删除已有数据；MySQL 5.7 可能短暂锁表，建议低峰期执行。
 - `GRANT SELECT, INSERT, UPDATE`：只授权审计账号访问审计表，不授予 `DELETE` / `DROP` / `TRUNCATE`。
 - jar 替换命令会覆盖 `${ZEPPELIN_HOME}/lib` 下同名 jar，执行前必须完成备份。
 - 重启 Zeppelin 会中断当前 Web 服务和正在运行的 paragraph，建议在维护窗口或滚动发布时执行。

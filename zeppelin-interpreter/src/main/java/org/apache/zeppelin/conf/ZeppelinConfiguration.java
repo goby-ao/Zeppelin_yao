@@ -1094,6 +1094,7 @@ public class ZeppelinConfiguration {
     ZEPPELIN_FIRE_ENABLE("zeppelin.fire.enable", false), // turn on watermark ?
     // 审计日志配置 - by yao's AI
     ZEPPELIN_AUDIT_ENABLED("zeppelin.audit.enabled", false),
+    ZEPPELIN_AUDIT_CLUSTER_NAME("zeppelin.audit.cluster.name", null),
     ZEPPELIN_AUDIT_STORAGE_TYPE("zeppelin.audit.storage.type", "noop"),
     ZEPPELIN_AUDIT_JDBC_URL("zeppelin.audit.jdbc.url", null),
     ZEPPELIN_AUDIT_JDBC_USER("zeppelin.audit.jdbc.user", null),

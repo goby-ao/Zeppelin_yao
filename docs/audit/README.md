@@ -61,6 +61,7 @@ AuditLogRepository
 CREATE TABLE IF NOT EXISTS zeppelin_task_audit (
   id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
   run_id VARCHAR(255) NOT NULL COMMENT '单次运行ID',
+  cluster_name VARCHAR(64) COMMENT '集群标识',
   task_id VARCHAR(255) NOT NULL COMMENT 'Paragraph ID',
   job_name VARCHAR(500) COMMENT '任务名称',
   note_id VARCHAR(255) COMMENT 'Notebook ID',
@@ -81,6 +82,7 @@ CREATE TABLE IF NOT EXISTS zeppelin_task_audit (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
 
   UNIQUE KEY uk_run_id (run_id),
+  INDEX idx_cluster_name (cluster_name),
   INDEX idx_task_id (task_id),
   INDEX idx_task_status (task_id, status),
   INDEX idx_note_id (note_id),
@@ -166,6 +168,7 @@ UNKNOWN → READY → PENDING → RUNNING → FINISHED/ERROR/ABORT
 | `zeppelin-zengine/src/main/java/org/apache/zeppelin/audit/AuditJobListener.java` | JobListener 包装器 |
 | `zeppelin-zengine/src/main/java/org/apache/zeppelin/audit/AuditLoggerFactory.java` | 仓储工厂类 |
 | `docs/audit/zeppelin_task_audit.sql` | 数据库建表脚本 |
+| `docs/audit/zeppelin_task_audit_add_cluster_name.sql` | 既有表增加集群标识字段脚本 |
 | `docs/audit/README.md` | 本文档 |
 
 ### 修改文件
@@ -183,6 +186,12 @@ UNKNOWN → READY → PENDING → RUNNING → FINISHED/ERROR/ABORT
 <property>
   <name>zeppelin.audit.enabled</name>
   <value>false</value>
+</property>
+
+<!-- 集群标识：例如 cluster1 / cluster2 -->
+<property>
+  <name>zeppelin.audit.cluster.name</name>
+  <value></value>
 </property>
 
 <!-- 存储类型：noop/jdbc -->
@@ -253,12 +262,16 @@ wget https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.28/mysql-conn
   <value>true</value>
 </property>
 <property>
+  <name>zeppelin.audit.cluster.name</name>
+  <value>cluster1</value>
+</property>
+<property>
   <name>zeppelin.audit.storage.type</name>
   <value>jdbc</value>
 </property>
 <property>
   <name>zeppelin.audit.jdbc.url</name>
-  <value>jdbc:mysql://localhost:3306/zeppelin_audit?useSSL=false&serverTimezone=UTC</value>
+  <value>jdbc:mysql://localhost:3306/zeppelin_audit?useSSL=false&amp;serverTimezone=UTC</value>
 </property>
 <property>
   <name>zeppelin.audit.jdbc.user</name>

@@ -17,6 +17,7 @@
 
 package org.apache.zeppelin.audit;
 
+import org.apache.zeppelin.notebook.Note;
 import org.apache.zeppelin.notebook.Paragraph;
 import org.apache.zeppelin.scheduler.Job;
 import org.junit.After;
@@ -36,10 +37,13 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Logger;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -89,6 +93,56 @@ public class JdbcAuditLogRepositoryTest {
     assertFalse(updateSql.contains("updated_at"));
   }
 
+  @Test
+  public void shouldUseNoteDefaultInterpreterWhenParagraphHasNoInterpreterText() {
+    JdbcAuditLogRepository repository =
+        new JdbcAuditLogRepository(JDBC_URL_PREFIX + "default-interpreter", "", "", 1);
+    repository.init();
+
+    Note note = new Note();
+    note.setDefaultInterpreterGroup("dataanalysis3_mysql");
+    Paragraph paragraph = new Paragraph("paragraph_1", null, null);
+    paragraph.setNote(note);
+    paragraph.setText("select * from zeppelin_task_audit");
+
+    repository.save(paragraph, Job.Status.READY, Job.Status.PENDING);
+    repository.close();
+
+    assertEquals("dataanalysis3_mysql", driver.getInsertInterpreterTypes().get(0));
+  }
+
+  @Test
+  public void shouldWriteConfiguredClusterName() {
+    JdbcAuditLogRepository repository =
+        new JdbcAuditLogRepository(JDBC_URL_PREFIX + "cluster-name", "", "", 1, "cluster1");
+    repository.init();
+
+    Paragraph paragraph = new Paragraph("paragraph_1", null, null);
+    paragraph.setText("%sh\nwhoami");
+
+    repository.save(paragraph, Job.Status.READY, Job.Status.PENDING);
+    repository.close();
+
+    assertEquals("cluster1", driver.getInsertClusterNames().get(0));
+  }
+
+  @Test
+  public void shouldUseClusterNameWhenLookingUpActiveRun() {
+    JdbcAuditLogRepository repository =
+        new JdbcAuditLogRepository(JDBC_URL_PREFIX + "active-run", "", "", 1, "cluster1");
+    repository.init();
+
+    Paragraph paragraph = new Paragraph("paragraph_1", null, null);
+    paragraph.setText("%sh\nwhoami");
+
+    repository.save(paragraph, Job.Status.PENDING, Job.Status.RUNNING);
+    repository.close();
+
+    String selectSql = findSqlStartingWith("SELECT run_id FROM zeppelin_task_audit");
+    assertTrue(selectSql.contains("cluster_name = ?"));
+  }
+
+
   private String findSqlStartingWith(String prefix) {
     for (String sql : driver.getSqls()) {
       if (sql.startsWith(prefix)) {
@@ -102,6 +156,10 @@ public class JdbcAuditLogRepositoryTest {
   private static final class RecordingDriver implements Driver {
 
     private final List<String> sqls = Collections.synchronizedList(new ArrayList<String>());
+    private final List<String> insertClusterNames =
+        Collections.synchronizedList(new ArrayList<String>());
+    private final List<String> insertInterpreterTypes =
+        Collections.synchronizedList(new ArrayList<String>());
     private volatile boolean duplicateOnInsert;
 
     void setDuplicateOnInsert(boolean duplicateOnInsert) {
@@ -110,6 +168,14 @@ public class JdbcAuditLogRepositoryTest {
 
     List<String> getSqls() {
       return sqls;
+    }
+
+    List<String> getInsertClusterNames() {
+      return insertClusterNames;
+    }
+
+    List<String> getInsertInterpreterTypes() {
+      return insertInterpreterTypes;
     }
 
     @Override
@@ -186,6 +252,7 @@ public class JdbcAuditLogRepositoryTest {
 
     private final RecordingDriver driver;
     private final String sql;
+    private final Map<Integer, Object> parameters = new HashMap<>();
 
     PreparedStatementHandler(RecordingDriver driver, String sql) {
       this.driver = driver;
@@ -195,8 +262,21 @@ public class JdbcAuditLogRepositoryTest {
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
       String methodName = method.getName();
+      if (methodName.startsWith("set") && args != null && args.length >= 2
+          && args[0] instanceof Integer) {
+        parameters.put((Integer) args[0], args[1]);
+        return null;
+      }
       if ("executeUpdate".equals(methodName)) {
         driver.getSqls().add(sql);
+        if (sql.startsWith("INSERT INTO zeppelin_task_audit")) {
+          Object clusterName = parameters.get(2);
+          driver.getInsertClusterNames().add(
+              clusterName == null ? null : clusterName.toString());
+          Object interpreterType = parameters.get(10);
+          driver.getInsertInterpreterTypes().add(
+              interpreterType == null ? null : interpreterType.toString());
+        }
         if (driver.duplicateOnInsert && sql.startsWith("INSERT INTO zeppelin_task_audit")) {
           throw new SQLException("Duplicate run_id", "23000", 1062);
         }

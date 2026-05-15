@@ -17,6 +17,9 @@
 
 package org.apache.zeppelin.audit;
 
+import org.apache.zeppelin.interpreter.Interpreter;
+import org.apache.zeppelin.interpreter.InterpreterSetting;
+import org.apache.zeppelin.interpreter.ManagedInterpreterGroup;
 import org.apache.zeppelin.notebook.Paragraph;
 import org.apache.zeppelin.scheduler.Job;
 import org.slf4j.Logger;
@@ -53,16 +56,23 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
   private final String jdbcUser;
   private final String jdbcPassword;
   private final int maxPoolSize;
+  private final String clusterName;
 
   private ExecutorService executorService;
   private final ConcurrentMap<String, String> activeRunIds = new ConcurrentHashMap<>();
   private final AtomicLong runSequence = new AtomicLong(1);
 
   public JdbcAuditLogRepository(String jdbcUrl, String jdbcUser, String jdbcPassword, int maxPoolSize) {
+    this(jdbcUrl, jdbcUser, jdbcPassword, maxPoolSize, null);
+  }
+
+  public JdbcAuditLogRepository(String jdbcUrl, String jdbcUser, String jdbcPassword, int maxPoolSize,
+                                String clusterName) {
     this.jdbcUrl = jdbcUrl;
     this.jdbcUser = jdbcUser;
     this.jdbcPassword = jdbcPassword;
     this.maxPoolSize = Math.max(1, maxPoolSize);
+    this.clusterName = trimToNull(clusterName);
   }
 
   @Override
@@ -145,6 +155,7 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
     }
 
     auditLog.setRunId(runId);
+    auditLog.setClusterName(clusterName);
     auditLog.setTaskId(taskId);
     auditLog.setJobName(paragraph.getJobName());
     auditLog.setDateCreated(paragraph.getDateCreated());
@@ -155,7 +166,7 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
     }
     auditLog.setUser(paragraph.getUser());
     auditLog.setParagraphTitle(paragraph.getTitle());
-    auditLog.setInterpreterType(paragraph.getIntpText());
+    auditLog.setInterpreterType(resolveInterpreterType(paragraph));
     auditLog.setScriptText(paragraph.getScriptText());
     auditLog.setStatus(status);
     auditLog.setUpdatedAt(eventTime);
@@ -174,6 +185,38 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
     }
 
     return auditLog;
+  }
+
+  private String resolveInterpreterType(Paragraph paragraph) {
+    String interpreterType = trimToNull(paragraph.getIntpText());
+    if (interpreterType != null) {
+      return interpreterType;
+    }
+
+    Interpreter interpreter = paragraph.getInterpreter();
+    if (interpreter != null && interpreter.getInterpreterGroup() instanceof ManagedInterpreterGroup) {
+      InterpreterSetting interpreterSetting =
+          ((ManagedInterpreterGroup) interpreter.getInterpreterGroup()).getInterpreterSetting();
+      if (interpreterSetting != null) {
+        interpreterType = trimToNull(interpreterSetting.getName());
+        if (interpreterType != null) {
+          return interpreterType;
+        }
+      }
+    }
+
+    if (paragraph.getNote() != null) {
+      return trimToNull(paragraph.getNote().getDefaultInterpreterGroup());
+    }
+    return null;
+  }
+
+  private String trimToNull(String value) {
+    if (value == null) {
+      return null;
+    }
+    String trimmed = value.trim();
+    return trimmed.isEmpty() ? null : trimmed;
   }
 
   /**
@@ -210,11 +253,20 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
    */
   private String findLatestActiveRunId(String taskId) {
     String sql = "SELECT run_id FROM zeppelin_task_audit " +
-        "WHERE task_id = ? AND status IN ('PENDING', 'RUNNING') ORDER BY id DESC LIMIT 1";
+        "WHERE task_id = ? AND status IN ('PENDING', 'RUNNING') ";
+    if (clusterName != null) {
+      sql += "AND cluster_name = ? ";
+    } else {
+      sql += "AND cluster_name IS NULL ";
+    }
+    sql += "ORDER BY id DESC LIMIT 1";
 
     try (Connection conn = getConnection();
          PreparedStatement stmt = conn.prepareStatement(sql)) {
       stmt.setString(1, taskId);
+      if (clusterName != null) {
+        stmt.setString(2, clusterName);
+      }
       try (ResultSet rs = stmt.executeQuery()) {
         if (rs.next()) {
           return rs.getString("run_id");
@@ -232,10 +284,10 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
    */
   private void insertAuditLog(AuditLog auditLog) {
     String sql = "INSERT INTO zeppelin_task_audit (" +
-        "run_id, task_id, job_name, note_id, note_name, note_path, paragraph_title, " +
+        "run_id, cluster_name, task_id, job_name, note_id, note_name, note_path, paragraph_title, " +
         "user, interpreter_type, script_text, status, error_message, " +
         "date_created, date_submitted, date_started, date_finished, execution_duration, " +
-        "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     try (Connection conn = getConnection();
          PreparedStatement stmt = conn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
@@ -267,6 +319,7 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
    */
   private int updateAuditLog(AuditLog auditLog) {
     String sql = "UPDATE zeppelin_task_audit SET " +
+        "cluster_name = COALESCE(?, cluster_name), " +
         "job_name = ?, note_id = ?, note_name = ?, note_path = ?, paragraph_title = ?, " +
         "user = ?, interpreter_type = ?, script_text = ?, status = ?, error_message = ?, " +
         "date_created = ?, date_submitted = COALESCE(date_submitted, ?), " +
@@ -280,6 +333,7 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
     try (Connection conn = getConnection();
          PreparedStatement stmt = conn.prepareStatement(sql)) {
       int index = 1;
+      stmt.setString(index++, auditLog.getClusterName());
       stmt.setString(index++, auditLog.getJobName());
       stmt.setString(index++, auditLog.getNoteId());
       stmt.setString(index++, auditLog.getNoteName());
@@ -326,6 +380,7 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
   private void setAuditLogParameters(PreparedStatement stmt, AuditLog auditLog) throws SQLException {
     int index = 1;
     stmt.setString(index++, auditLog.getRunId());
+    stmt.setString(index++, auditLog.getClusterName());
     stmt.setString(index++, auditLog.getTaskId());
     stmt.setString(index++, auditLog.getJobName());
     stmt.setString(index++, auditLog.getNoteId());

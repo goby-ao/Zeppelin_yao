@@ -845,6 +845,12 @@
 </property>
 
 <property>
+  <name>zeppelin.audit.cluster.name</name>
+  <value></value>
+  <description>Short cluster name for audit log records, e.g. cluster1 or cluster2.</description>
+</property>
+
+<property>
   <name>zeppelin.audit.storage.type</name>
   <value>noop</value>
   <description>Audit log storage type. Supported values: 'noop' (no operation, default), 'jdbc' (relational database).</description>

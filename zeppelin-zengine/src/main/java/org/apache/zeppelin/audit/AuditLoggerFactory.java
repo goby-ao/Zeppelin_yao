@@ -49,6 +49,7 @@ public class AuditLoggerFactory {
       String jdbcUser = conf.getString(ZeppelinConfiguration.ConfVars.ZEPPELIN_AUDIT_JDBC_USER);
       String jdbcPassword = conf.getString(ZeppelinConfiguration.ConfVars.ZEPPELIN_AUDIT_JDBC_PASSWORD);
       int maxPoolSize = conf.getInt(ZeppelinConfiguration.ConfVars.ZEPPELIN_AUDIT_JDBC_MAX_POOL_SIZE);
+      String clusterName = conf.getString(ZeppelinConfiguration.ConfVars.ZEPPELIN_AUDIT_CLUSTER_NAME);
 
       if (jdbcUrl == null || jdbcUrl.isEmpty()) {
         LOGGER.warn("Audit log JDBC URL is not configured, using NoopAuditLogRepository");
@@ -56,7 +57,8 @@ public class AuditLoggerFactory {
       }
 
       LOGGER.info("Creating JdbcAuditLogRepository with URL: {}", jdbcUrl);
-      JdbcAuditLogRepository repo = new JdbcAuditLogRepository(jdbcUrl, jdbcUser, jdbcPassword, maxPoolSize);
+      JdbcAuditLogRepository repo =
+          new JdbcAuditLogRepository(jdbcUrl, jdbcUser, jdbcPassword, maxPoolSize, clusterName);
       repo.init();
       return repo;
     }

@@ -29,6 +29,7 @@ public class AuditLog {
 
   private Long id;
   private String runId;            // 单次运行 ID
+  private String clusterName;      // 集群标识
   private String taskId;           // Paragraph ID
   private String jobName;          // 任务名称
   private String noteId;           // Notebook ID
@@ -68,6 +69,14 @@ public class AuditLog {
 
   public void setRunId(String runId) {
     this.runId = runId;
+  }
+
+  public String getClusterName() {
+    return clusterName;
+  }
+
+  public void setClusterName(String clusterName) {
+    this.clusterName = clusterName;
   }
 
   public String getTaskId() {

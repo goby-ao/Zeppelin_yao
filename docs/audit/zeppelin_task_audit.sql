@@ -9,6 +9,7 @@
 CREATE TABLE IF NOT EXISTS zeppelin_task_audit (
   id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
   run_id VARCHAR(255) NOT NULL COMMENT '单次运行ID',
+  cluster_name VARCHAR(64) COMMENT '集群标识',
   task_id VARCHAR(255) NOT NULL COMMENT 'Paragraph ID',
   job_name VARCHAR(500) COMMENT '任务名称',
   note_id VARCHAR(255) COMMENT 'Notebook ID',
@@ -29,6 +30,7 @@ CREATE TABLE IF NOT EXISTS zeppelin_task_audit (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '记录更新时间',
 
   UNIQUE KEY uk_run_id (run_id),
+  INDEX idx_cluster_name (cluster_name),
   INDEX idx_task_id (task_id),
   INDEX idx_task_status (task_id, status),
   INDEX idx_note_id (note_id),
