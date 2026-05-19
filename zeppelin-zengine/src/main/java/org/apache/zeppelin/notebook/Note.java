@@ -352,6 +352,9 @@ public class Note implements JsonSerializable {
 
   void setParagraphJobListener(ParagraphJobListener paragraphJobListener) {
     this.paragraphJobListener = paragraphJobListener;
+    for (Paragraph paragraph : paragraphs) {
+      paragraph.setListener(paragraphJobListener);
+    }
   }
 
   public boolean isCronSupported(ZeppelinConfiguration config) {

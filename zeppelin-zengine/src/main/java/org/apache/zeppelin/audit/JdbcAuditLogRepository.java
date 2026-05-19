@@ -34,11 +34,13 @@ import java.sql.Timestamp;
 import java.util.Date;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -61,6 +63,9 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
   private ExecutorService executorService;
   private final ConcurrentMap<String, String> activeRunIds = new ConcurrentHashMap<>();
   private final AtomicLong runSequence = new AtomicLong(1);
+  private final AtomicLong droppedTasks = new AtomicLong(0);
+  private final AtomicBoolean inactiveSaveWarned = new AtomicBoolean(false);
+  private volatile boolean started;
 
   public JdbcAuditLogRepository(String jdbcUrl, String jdbcUser, String jdbcPassword, int maxPoolSize) {
     this(jdbcUrl, jdbcUser, jdbcPassword, maxPoolSize, null);
@@ -94,21 +99,36 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
               return t;
             }
           },
-          new ThreadPoolExecutor.DiscardPolicy()  // 队列满时丢弃新任务，不影响主流程
+          (r, executor) -> {
+            long dropped = droppedTasks.incrementAndGet();
+            if (dropped == 1 || dropped % 100 == 0) {
+              LOGGER.warn("Audit log writer queue is full, dropped audit log task. "
+                      + "droppedCount={}, activeThreads={}, poolSize={}, queuedTasks={}/{}",
+                  dropped, executor.getActiveCount(), executor.getPoolSize(),
+                  executor.getQueue().size(), AUDIT_QUEUE_SIZE);
+            }
+          }
       );
+      this.started = true;
 
       LOGGER.info("JdbcAuditLogRepository initialized with URL: {}, maxPoolSize: {}",
           jdbcUrl, this.maxPoolSize);
+      executorService.execute(this::checkJdbcConnection);
     } catch (Exception e) {
       LOGGER.error("Failed to initialize JdbcAuditLogRepository", e);
-      // 初始化失败时降级为不工作，但不抛出异常
       close();
+      throw new IllegalStateException("Failed to initialize JdbcAuditLogRepository", e);
     }
   }
 
   @Override
   public void save(Paragraph paragraph, Job.Status before, Job.Status after) {
-    if (executorService == null || executorService.isShutdown()) {
+    if (!started || executorService == null || executorService.isShutdown()) {
+      if (inactiveSaveWarned.compareAndSet(false, true)) {
+        LOGGER.warn("Audit log repository is not active, skip audit log. "
+            + "taskId={}, before={}, after={}", paragraph != null ? paragraph.getId() : null,
+            before, after);
+      }
       return;
     }
     if (after == Job.Status.READY) {
@@ -117,13 +137,18 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
     Date eventTime = new Date();
     AuditLog auditLog = buildAuditLog(paragraph, after, eventTime);
     // 异步保存，不阻塞任务执行
-    executorService.submit(() -> {
-      try {
-        saveInternal(auditLog);
-      } catch (Exception e) {
-        LOGGER.error("Failed to save audit log", e);
-      }
-    });
+    try {
+      executorService.execute(() -> {
+        try {
+          saveInternal(auditLog);
+        } catch (Exception e) {
+          LOGGER.error("Failed to save audit log", e);
+        }
+      });
+    } catch (RejectedExecutionException e) {
+      LOGGER.warn("Audit log writer rejected task. taskId={}, runId={}, status={}",
+          auditLog.getTaskId(), auditLog.getRunId(), auditLog.getStatus(), e);
+    }
   }
 
   /**
@@ -135,6 +160,28 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
       return DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPassword);
     } else {
       return DriverManager.getConnection(jdbcUrl);
+    }
+  }
+
+  private void checkJdbcConnection() {
+    try (Connection conn = getConnection()) {
+      boolean valid = true;
+      try {
+        valid = conn.isValid(5);
+      } catch (AbstractMethodError e) {
+        LOGGER.debug("JDBC connection validation is not supported, skip isValid check", e);
+      } catch (SQLException e) {
+        LOGGER.warn("Audit log JDBC connection validation failed for URL: {}", jdbcUrl, e);
+        return;
+      }
+      if (valid) {
+        LOGGER.info("Audit log JDBC connection check succeeded for URL: {}", jdbcUrl);
+      } else {
+        LOGGER.warn("Audit log JDBC connection check returned invalid for URL: {}", jdbcUrl);
+      }
+    } catch (SQLException e) {
+      LOGGER.error("Audit log JDBC connection check failed for URL: {}. "
+          + "Audit writer remains active and future writes will retry per event.", jdbcUrl, e);
     }
   }
 
@@ -436,6 +483,7 @@ public class JdbcAuditLogRepository implements AuditLogRepository {
 
   @Override
   public void close() {
+    started = false;
     if (executorService != null && !executorService.isShutdown()) {
       executorService.shutdown();
       try {

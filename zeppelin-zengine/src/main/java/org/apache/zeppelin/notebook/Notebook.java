@@ -34,10 +34,15 @@ import java.util.stream.Stream;
 import javax.inject.Inject;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.zeppelin.conf.ZeppelinConfiguration;
 import org.apache.zeppelin.conf.ZeppelinConfiguration.ConfVars;
 import org.apache.zeppelin.display.AngularObject;
 import org.apache.zeppelin.display.AngularObjectRegistry;
+import org.apache.zeppelin.audit.AuditJobListener;
+import org.apache.zeppelin.audit.AuditLogRepository;
+import org.apache.zeppelin.audit.AuditLoggerFactory;
+import org.apache.zeppelin.audit.NoopAuditLogRepository;
 import org.apache.zeppelin.interpreter.Interpreter;
 import org.apache.zeppelin.interpreter.InterpreterFactory;
 import org.apache.zeppelin.interpreter.InterpreterGroup;
@@ -78,6 +83,7 @@ public class Notebook {
   private SearchService noteSearchService;
   private List<NoteEventListener> noteEventListeners = new ArrayList<>();
   private Credentials credentials;
+  private AuditLogRepository auditLogRepository;
 
   /**
    * Main constructor \w manual Dependency Injection
@@ -174,7 +180,7 @@ public class Notebook {
     if (null != noteEventListener) {
       this.noteEventListeners.add(noteEventListener);
     }
-    this.paragraphJobListener = (ParagraphJobListener) noteEventListener;
+    this.paragraphJobListener = createParagraphJobListener(noteEventListener);
   }
 
   public NoteManager getNoteManager() {
@@ -707,8 +713,55 @@ public class Notebook {
   }
 
   public void close() {
+    closeAuditLogRepository();
     this.notebookRepo.close();
     this.noteSearchService.close();
+  }
+
+  private ParagraphJobListener createParagraphJobListener(NoteEventListener noteEventListener) {
+    ParagraphJobListener delegate = (ParagraphJobListener) noteEventListener;
+    boolean auditEnabled = conf.getBoolean(ZeppelinConfiguration.ConfVars.ZEPPELIN_AUDIT_ENABLED);
+    String storageType = conf.getString(ZeppelinConfiguration.ConfVars.ZEPPELIN_AUDIT_STORAGE_TYPE);
+    String jdbcUrl = conf.getString(ZeppelinConfiguration.ConfVars.ZEPPELIN_AUDIT_JDBC_URL);
+    String clusterName = conf.getString(ZeppelinConfiguration.ConfVars.ZEPPELIN_AUDIT_CLUSTER_NAME);
+    int maxPoolSize = conf.getInt(ZeppelinConfiguration.ConfVars.ZEPPELIN_AUDIT_JDBC_MAX_POOL_SIZE);
+
+    LOGGER.warn("Audit log bootstrap: enabled={}, storageType={}, jdbcUrlConfigured={}, "
+            + "clusterName={}, maxPoolSize={}", auditEnabled, storageType,
+        !StringUtils.isBlank(jdbcUrl), clusterName, maxPoolSize);
+
+    if (!auditEnabled) {
+      LOGGER.info("Audit log is disabled by configuration");
+      return delegate;
+    }
+
+    try {
+      LOGGER.warn("Initializing audit log in Notebook...");
+      auditLogRepository = AuditLoggerFactory.createRepository(conf);
+      if (auditLogRepository instanceof NoopAuditLogRepository) {
+        LOGGER.warn("Audit log is enabled but repository is NoopAuditLogRepository. "
+            + "Check zeppelin.audit.storage.type and JDBC configuration.");
+      }
+      LOGGER.warn("Audit log initialized successfully with repository: {}",
+          auditLogRepository.getClass().getSimpleName());
+      return new AuditJobListener(delegate, auditLogRepository);
+    } catch (Exception e) {
+      LOGGER.error("Failed to initialize audit log, audit functionality will be disabled", e);
+      closeAuditLogRepository();
+      return delegate;
+    }
+  }
+
+  private void closeAuditLogRepository() {
+    if (auditLogRepository != null) {
+      try {
+        auditLogRepository.close();
+      } catch (Exception e) {
+        LOGGER.warn("Failed to close audit log repository", e);
+      } finally {
+        auditLogRepository = null;
+      }
+    }
   }
 
   public void addNotebookEventListener(NoteEventListener listener) {

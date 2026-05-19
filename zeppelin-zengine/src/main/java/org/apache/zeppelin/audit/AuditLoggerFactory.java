@@ -56,11 +56,22 @@ public class AuditLoggerFactory {
         return new NoopAuditLogRepository();
       }
 
-      LOGGER.info("Creating JdbcAuditLogRepository with URL: {}", jdbcUrl);
+      LOGGER.info("Creating JdbcAuditLogRepository with URL: {}, clusterName: {}, maxPoolSize: {}",
+          jdbcUrl, clusterName, maxPoolSize);
       JdbcAuditLogRepository repo =
           new JdbcAuditLogRepository(jdbcUrl, jdbcUser, jdbcPassword, maxPoolSize, clusterName);
-      repo.init();
-      return repo;
+      try {
+        repo.init();
+        return repo;
+      } catch (RuntimeException e) {
+        LOGGER.error("Failed to create JdbcAuditLogRepository, using NoopAuditLogRepository", e);
+        try {
+          repo.close();
+        } catch (Exception closeException) {
+          LOGGER.warn("Failed to close JdbcAuditLogRepository after init failure", closeException);
+        }
+        return new NoopAuditLogRepository();
+      }
     }
 
     LOGGER.warn("Unknown audit storage type: {}, using NoopAuditLogRepository", storageType);
