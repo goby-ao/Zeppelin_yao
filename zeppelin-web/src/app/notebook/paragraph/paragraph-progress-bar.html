@@ -13,10 +13,21 @@ limitations under the License.
 -->
 
 <div id="{{paragraph.id}}_runControl" class="runControl">
-  <div id="{{paragraph.id}}_progress" class="progress" ng-if="paragraph.status=='RUNNING'">
-      <div ng-if="getProgress()>0 && getProgress()<100 && paragraph.status=='RUNNING'"
-        class="progress-bar" role="progressbar" style="width:{{getProgress()}}%;"></div>
-      <div ng-if="(getProgress()<=0 || getProgress()>=100) && (paragraph.status=='RUNNING' )"
-          class="progress-bar progress-bar-striped active" role="progressbar" style="width:100%;"></div>
+  <div id="{{paragraph.id}}_progress"
+       class="progress"
+       ng-class="{'is-cancelling': cancelUiState === 'cancelling'}"
+       ng-if="paragraph.status=='RUNNING' || cancelUiState === 'cancelling'">
+      <div ng-if="(cancelUiState === 'cancelling' ? frozenProgress : getProgress())>0 &&
+                  (cancelUiState === 'cancelling' ? frozenProgress : getProgress())<100 &&
+                  cancelUiState !== 'aborted'"
+           class="progress-bar"
+           role="progressbar"
+           ng-style="{'width': ((cancelUiState === 'cancelling' ? frozenProgress : getProgress()) + '%')}"></div>
+      <div ng-if="((cancelUiState === 'cancelling' ? frozenProgress : getProgress())<=0 ||
+                   (cancelUiState === 'cancelling' ? frozenProgress : getProgress())>=100) &&
+                  cancelUiState !== 'aborted'"
+           class="progress-bar progress-bar-striped active"
+           role="progressbar"
+           style="width:100%;"></div>
   </div>
 </div>

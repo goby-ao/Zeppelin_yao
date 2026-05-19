@@ -35,26 +35,59 @@ limitations under the License.
       </ul>
     </span>
   </span>
-  <span>
-    {{paragraph.status}}
-  </span>
-
-  <span ng-if="paragraph.status === 'RUNNING' && paragraph.executor !== 'SPELL'">
-    {{getProgress()}}%
+  <span class="paragraph-control-status" aria-live="polite">
+    <span ng-if="cancelUiState !== 'cancelling' && cancelUiState !== 'aborted'">
+      {{paragraph.status}}
+    </span>
+    <span ng-if="cancelUiState === 'cancelling'" class="cancel-status-text">
+      {{cancelUiText.CANCELLING}}
+    </span>
+    <span ng-if="cancelUiState === 'aborted'" class="cancel-status-text aborted">
+      {{cancelUiText.ABORTED}}
+    </span>
+    <span class="paragraph-control-progress"
+          ng-if="paragraph.status === 'RUNNING' &&
+                 paragraph.executor !== 'SPELL' &&
+                 cancelUiState !== 'cancelling' &&
+                 cancelUiState !== 'aborted'">
+      {{getProgress()}} %
+    </span>
   </span>
 
   <!-- Run / Cancel button -->
-  <span ng-if="!revisionView">
+  <span class="paragraph-control-actions" ng-if="!revisionView">
     <span class="icon-control-play" style="cursor:pointer;color:#3071A9"
           tooltip-placement="top" uib-tooltip="Run this paragraph (Shift+Enter)"
           ng-click="runParagraphFromButton(getEditorValue())"
           ng-class="{'item-disable' : isNoteRunning}"
-          ng-show="paragraph.status!='RUNNING' && paragraph.status!='PENDING' && paragraph.config.enabled"></span>
-    <span class="icon-control-pause" style="cursor:pointer;color:#CD5C5C"
-          tooltip-placement="top" uib-tooltip="Cancel (Ctrl+{{ (isMac ? 'Option' : 'Alt') }}+C)"
-          ng-click="cancelParagraph(paragraph)"
-          ng-class="{'item-disable' : paragraph.status!='RUNNING'}"
-          ng-show="paragraph.status=='RUNNING' || paragraph.status=='PENDING'"></span>
+          ng-show="paragraph.status!='RUNNING' &&
+                   paragraph.status!='PENDING' &&
+                   cancelUiState !== 'cancelling' &&
+                   paragraph.config.enabled"></span>
+    <span class="paragraph-cancel-btn-wrapper"
+          ng-if="(paragraph.status=='RUNNING' || paragraph.status=='PENDING') && cancelUiState !== 'aborted'">
+      <span class="paragraph-cancel-btn"
+            role="button"
+            tabindex="0"
+            ng-class="{
+              'is-cancelling': cancelUiState === 'cancelling',
+              'is-pending-blocked': cancelPendingBlocked,
+              'item-disable': (paragraph.status!='RUNNING' || cancelPendingBlocked) && cancelUiState !== 'cancelling'
+            }"
+            ng-click="canCancelParagraph(paragraph) && cancelParagraph(paragraph)"
+            tooltip-placement="top"
+            uib-tooltip="{{getCancelTooltip(paragraph)}}"
+            aria-label="Cancel paragraph"
+            ng-attr-aria-busy="{{ cancelUiState === 'cancelling' ? 'true' : undefined }}"
+            ng-attr-aria-disabled="{{ (cancelUiState === 'cancelling' || cancelPendingBlocked) ? 'true' : undefined }}">
+        <span class="icon-control-pause cancel-icon-pause"
+              ng-if="cancelUiState !== 'cancelling'"
+              style="color:#CD5C5C"></span>
+        <i class="fa fa-spinner fa-spin cancel-icon-spinner"
+           ng-if="cancelUiState === 'cancelling'"
+           style="color:#d97706"></i>
+      </span>
+    </span>
     <span class="{{paragraph.config.editorHide ? 'icon-size-fullscreen' : 'icon-size-actual'}}" style="cursor:pointer" tooltip-placement="top"
           uib-tooltip="{{(paragraph.config.editorHide ? 'Show' : 'Hide')}} editor (Ctrl+{{ (isMac ? 'Option' : 'Alt') }}+E)"
           ng-click="toggleEditor(paragraph)"></span>

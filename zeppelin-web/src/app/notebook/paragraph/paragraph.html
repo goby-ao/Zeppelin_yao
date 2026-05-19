@@ -49,6 +49,22 @@ limitations under the License.
     </div>
 
     <div ng-include src="'app/notebook/paragraph/paragraph-progress-bar.html'"></div>
+    <div class="paragraph-cancel-hint"
+         ng-if="cancelUiState === 'cancelling' && cancelHintLevel >= 1"
+         ng-class="{'level-stuck': cancelHintLevel >= 2}"
+         role="status">
+      <span ng-if="cancelHintLevel === 1">{{cancelUiText.SLOW_HINT}}</span>
+      <span ng-if="cancelHintLevel >= 2">{{cancelUiText.STUCK_HINT}}</span>
+      <button type="button"
+              class="paragraph-cancel-force-stop"
+              ng-click="cancelHintLevel >= 2 ? forceStopParagraph(paragraph) : resendCancelParagraph(paragraph, $event)"
+              ng-class="{'is-resent': cancelResendFeedback}">
+        {{cancelHintLevel >= 2 ? cancelUiText.FORCE_STOP : (cancelResendFeedback ? cancelUiText.RESEND_SENT : cancelUiText.RESEND_CANCEL)}}
+      </button>
+      <div class="paragraph-cancel-force-note" ng-if="cancelHintLevel >= 2">
+        {{cancelUiText.STUCK_HINT_TOOLTIP}}
+      </div>
+    </div>
     <div>
       <dynamic-forms
         id="paragraph.id"
@@ -80,6 +96,15 @@ limitations under the License.
          id="{{paragraph.id}}_executionTime"
          class="executionTime" ng-bind-html="getExecutionTime(paragraph)">
     </div>
+    <span class="paragraph-aborted-footer"
+          ng-if="cancelUiState === 'aborted' && getCancelFooterText()"
+          ng-class="{
+            'is-natural': cancelFinalStatus === cancelFinalStatusRef.FINISHED,
+            'is-error': cancelFinalStatus === cancelFinalStatusRef.ERROR,
+            'is-timeout': cancelFinalStatus === cancelFinalStatusRef.TIMEOUT
+          }">
+      · {{getCancelFooterText()}}{{getCancelDurationText()}}
+    </span>
     <div ng-if = "paragraph.status === 'RUNNING'" class = "paragraphFooterElapsed">
       <div id="{{paragraph.id}}_elapsedTime"
            class="elapsedTime" ng-bind-html="getElapsedTime(paragraph)">

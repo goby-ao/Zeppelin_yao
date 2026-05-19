@@ -209,6 +209,17 @@
   text-align: right;
   font-size: 12px;
   padding: 4px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.paragraph .control > span {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.paragraph .control .navbar-right {
+  float: none !important;
 }
 
 .paragraph .control li {
@@ -574,4 +585,240 @@ table.table-striped {
 
 .network-labels {
   margin: 0.2em;
+}
+
+/* ============================================================
+ * Cancel interaction - three-stage UI state
+ * Added for branch-0.9 Cancel UX improvement.
+ * ============================================================ */
+
+.paragraph-cancel-btn-wrapper {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.paragraph-cancel-btn {
+  display: inline-block;
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 3px;
+  line-height: 22px;
+  text-align: center;
+  -webkit-transition: background-color 180ms ease, -webkit-transform 80ms ease-out;
+  transition: background-color 180ms ease, transform 80ms ease-out;
+  position: relative;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.paragraph-cancel-btn:hover {
+  background-color: rgba(239, 68, 68, 0.12);
+}
+
+.paragraph-cancel-btn:active {
+  -webkit-transform: scale(0.92);
+  transform: scale(0.92);
+}
+
+.paragraph-cancel-btn.is-cancelling {
+  background-color: #fef3c7;
+  cursor: progress;
+  pointer-events: none;
+}
+
+.paragraph-cancel-btn.is-pending-blocked {
+  background-color: rgba(128, 128, 128, 0.08);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.paragraph-cancel-btn.is-pending-blocked:hover {
+  background-color: rgba(128, 128, 128, 0.12);
+}
+
+.paragraph-cancel-btn.is-cancelling:after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  margin-top: -9px;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.28);
+  -webkit-animation: cancelRipple 500ms ease-out;
+  animation: cancelRipple 500ms ease-out;
+}
+
+.cancel-icon-pause,
+.cancel-icon-spinner {
+  display: inline-block;
+  margin-left: 0 !important;
+  vertical-align: middle;
+}
+
+.cancel-icon-spinner {
+  font-size: 14px;
+}
+
+.cancel-status-text {
+  font-weight: bold;
+  color: #d97706;
+  -webkit-animation: cancelPulse 1.2s ease-in-out infinite;
+  animation: cancelPulse 1.2s ease-in-out infinite;
+}
+
+.paragraph-control-status {
+  min-width: 104px;
+  text-align: right;
+  vertical-align: middle;
+}
+
+.paragraph-control-progress {
+  display: inline-block;
+  min-width: 34px;
+  margin-left: 6px !important;
+  text-align: left;
+}
+
+.paragraph-control-actions {
+  min-width: 112px;
+  text-align: right;
+  vertical-align: middle;
+}
+
+.paragraph-control-actions > span {
+  vertical-align: middle;
+}
+
+.cancel-status-text.aborted {
+  color: #9ca3af;
+  -webkit-animation: none;
+  animation: none;
+}
+
+@-webkit-keyframes cancelPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@keyframes cancelPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@-webkit-keyframes cancelRipple {
+  0% {
+    opacity: 0.9;
+    -webkit-transform: scale(0);
+    transform: scale(0);
+  }
+  100% {
+    opacity: 0;
+    -webkit-transform: scale(3);
+    transform: scale(3);
+  }
+}
+
+@keyframes cancelRipple {
+  0% {
+    opacity: 0.9;
+    -webkit-transform: scale(0);
+    transform: scale(0);
+  }
+  100% {
+    opacity: 0;
+    -webkit-transform: scale(3);
+    transform: scale(3);
+  }
+}
+
+.progress.is-cancelling .progress-bar {
+  background-color: #f59e0b !important;
+  background-image: -webkit-linear-gradient(45deg, #f59e0b 25%, #fbbf24 25%, #fbbf24 50%,
+                                            #f59e0b 50%, #f59e0b 75%, #fbbf24 75%, #fbbf24) !important;
+  background-image: linear-gradient(45deg, #f59e0b 25%, #fbbf24 25%, #fbbf24 50%,
+                                    #f59e0b 50%, #f59e0b 75%, #fbbf24 75%, #fbbf24) !important;
+  -webkit-animation-duration: 2.2s !important;
+  animation-duration: 2.2s !important;
+  -webkit-transition: background-color 400ms ease;
+  transition: background-color 400ms ease;
+}
+
+.paragraph-cancel-hint {
+  position: relative;
+  z-index: 1;
+  clear: both;
+  margin: 10px 38px 12px 38px;
+  padding: 7px 12px;
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 3px;
+  color: #92400e;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.paragraph-cancel-hint.level-stuck {
+  background-color: #fee2e2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.paragraph-cancel-force-stop {
+  margin-left: 8px;
+  color: #b91c1c;
+  background: none;
+  border: none;
+  padding: 1px 3px;
+  border-radius: 3px;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 12px;
+  -webkit-transition: background-color 120ms ease, color 120ms ease, -webkit-transform 80ms ease-out;
+  transition: background-color 120ms ease, color 120ms ease, transform 80ms ease-out;
+}
+
+.paragraph-cancel-force-stop:hover {
+  color: #7f1d1d;
+  background-color: rgba(185, 28, 28, 0.08);
+}
+
+.paragraph-cancel-force-stop:active {
+  -webkit-transform: scale(0.94);
+  transform: scale(0.94);
+}
+
+.paragraph-cancel-force-stop.is-resent {
+  color: #92400e;
+  background-color: #fde68a;
+  text-decoration: none;
+}
+
+.paragraph-cancel-force-note {
+  display: block;
+  margin-top: 4px;
+  color: #7f1d1d;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.paragraph-aborted-footer {
+  color: #6b7280;
+}
+
+.paragraph-aborted-footer.is-natural {
+  color: #92400e;
+}
+
+.paragraph-aborted-footer.is-error {
+  color: #b91c1c;
+}
+
+.paragraph-aborted-footer.is-timeout {
+  color: #b91c1c;
+  font-weight: 600;
 }

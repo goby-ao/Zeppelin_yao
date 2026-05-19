@@ -26,6 +26,29 @@ const ParagraphExecutor = {
   NONE: '', /** meaning `DONE` */
 };
 
+const CANCEL_UI_TEXT = {
+  CANCELLING: '取消中...',
+  ABORTED: '已终止',
+  SLOW_HINT: '正在向解释器发送取消请求，Hive / Spark 任务可能需要等待 YARN 响应。',
+  STUCK_HINT: '取消耗时较长，解释器可能卡住。可重启解释器释放当前任务。',
+  STUCK_HINT_TOOLTIP: '会重启当前解释器，所有会话变量都会丢失。',
+  PENDING_BLOCK_TOOLTIP: '任务刚提交，5 秒后可终止',
+  RESEND_CANCEL: '重新发送终止',
+  RESEND_SENT: '已重新发送',
+  FORCE_STOP: '强制终止',
+  ABORTED_FOOTER: '用户已取消',
+  ABORTED_FOOTER_ABORT: '用户已取消',
+  ABORTED_FOOTER_FINISHED: '已请求取消，但任务自然完成',
+  ABORTED_FOOTER_ERROR: '已请求取消，任务以错误结束',
+  ABORTED_FOOTER_TIMEOUT: '取消超时，解释器可能无响应，请手动重启解释器。',
+};
+const CANCEL_SLOW_HINT_MS = 7500;
+const CANCEL_STUCK_HINT_MS = 37500;
+const CANCEL_MAX_WAIT_MS = 150000;
+const CANCEL_RESEND_FEEDBACK_MS = 800;
+const CANCEL_PENDING_BLOCK_MS = 5000;
+const MIN_CANCELLING_MS = 400;
+
 angular.module('zeppelinWebApp').controller('ParagraphCtrl', ParagraphCtrl);
 
 function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $location,
@@ -46,6 +69,27 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   $scope.cursorPosition = null;
   $scope.diffMatchPatch = new DiffMatchPatch();
   $scope.isNoteRunning = false;
+  $scope.cancelUiState = 'idle';
+  $scope.cancelHintLevel = 0;
+  $scope.cancelUiText = CANCEL_UI_TEXT;
+  $scope.cancelStartedAt = null;
+  $scope.cancelDurationMs = null;
+  $scope.cancelFinalStatus = null;
+  $scope.cancelResendFeedback = false;
+  $scope.cancelPendingBlocked = false;
+  $scope.cancelFinalStatusRef = {
+    ABORT: ParagraphStatus.ABORT,
+    FINISHED: ParagraphStatus.FINISHED,
+    ERROR: ParagraphStatus.ERROR,
+    TIMEOUT: 'TIMEOUT',
+  };
+  $scope.frozenProgress = null;
+
+  let cancelSlowHintTimer = null;
+  let cancelStuckHintTimer = null;
+  let cancelMaxWaitTimer = null;
+  let cancelResendFeedbackTimer = null;
+  let cancelPendingBlockTimer = null;
 
   // transactional info for spell execution
   $scope.spellTransaction = {
@@ -275,10 +319,223 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     return isParagraphRunning(paragraph);
   };
 
+  $scope.canCancelParagraph = function(paragraph) {
+    return $scope.cancelUiState === 'idle' && !isPendingCancelBlocked(paragraph);
+  };
+
+  $scope.getCancelTooltip = function(paragraph) {
+    if (isPendingCancelBlocked(paragraph)) {
+      return CANCEL_UI_TEXT.PENDING_BLOCK_TOOLTIP;
+    }
+    if ($scope.cancelUiState === 'cancelling') {
+      return CANCEL_UI_TEXT.CANCELLING;
+    }
+    return 'Cancel (Ctrl+' + ($rootScope.isMac ? 'Option' : 'Alt') + '+C)';
+  };
+
   $scope.cancelParagraph = function(paragraph) {
+    if ($scope.cancelUiState === 'cancelling' || isPendingCancelBlocked(paragraph)) {
+      return;
+    }
     console.log('Cancel %o', paragraph.id);
+    const frozenProgress = (typeof paragraph.progress === 'number') ? paragraph.progress : $scope.getProgress();
+
+    $scope.cancelUiState = 'cancelling';
+    $scope.cancelHintLevel = 0;
+    $scope.cancelStartedAt = Date.now();
+    $scope.frozenProgress = frozenProgress || 0;
+
+    cancelSlowHintTimer = $timeout(function() {
+      if ($scope.cancelUiState === 'cancelling') {
+        $scope.cancelHintLevel = 1;
+      }
+    }, CANCEL_SLOW_HINT_MS);
+
+    cancelStuckHintTimer = $timeout(function() {
+      if ($scope.cancelUiState === 'cancelling') {
+        $scope.cancelHintLevel = 2;
+      }
+    }, CANCEL_STUCK_HINT_MS);
+
+    cancelMaxWaitTimer = $timeout(function() {
+      if ($scope.cancelUiState === 'cancelling') {
+        console.warn('Cancel timed out after 150s for paragraph %o', paragraph.id);
+        resetCancelUi('aborted', 'TIMEOUT');
+      }
+    }, CANCEL_MAX_WAIT_MS);
+
     websocketMsgSrv.cancelParagraphRun(paragraph.id);
   };
+
+  $scope.resendCancelParagraph = function(paragraph, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if ($scope.cancelUiState !== 'cancelling') {
+      return;
+    }
+
+    console.warn('Cancel re-issued for paragraph %o', paragraph.id);
+    websocketMsgSrv.cancelParagraphRun(paragraph.id);
+
+    $scope.cancelResendFeedback = true;
+    if (cancelResendFeedbackTimer) {
+      $timeout.cancel(cancelResendFeedbackTimer);
+    }
+    cancelResendFeedbackTimer = $timeout(function() {
+      $scope.cancelResendFeedback = false;
+      cancelResendFeedbackTimer = null;
+    }, CANCEL_RESEND_FEEDBACK_MS);
+  };
+
+  $scope.forceStopParagraph = function(paragraph) {
+    if ($scope.cancelHintLevel >= 2) {
+      const confirmed = $window.confirm(
+        '强制终止会重启当前解释器，所有会话变量都会丢失。\n\n确认继续？'
+      );
+      if (!confirmed) {
+        return;
+      }
+
+      const settingId = getInterpreterBindingId(paragraph);
+      if (settingId) {
+        const noteId = getCurrentNoteId();
+        $http.put(baseUrlSrv.getRestApiBase() + '/interpreter/setting/restart/' + settingId, {
+          noteId: noteId,
+        })
+          .then(function() {
+            console.log('Interpreter setting %s restart requested for note %s', settingId, noteId);
+          })
+          .catch(function(err) {
+            console.error('Failed to restart interpreter setting', err);
+          });
+      } else {
+        console.warn('Force-stop fallback: no setting id resolvable, resending CANCEL_PARAGRAPH');
+        websocketMsgSrv.cancelParagraphRun(paragraph.id);
+      }
+    } else {
+      console.warn('Force-stop re-issued for paragraph %o', paragraph.id);
+      websocketMsgSrv.cancelParagraphRun(paragraph.id);
+    }
+  };
+
+  function resetCancelUi(finalState, finalStatus) {
+    if (cancelSlowHintTimer) {
+      $timeout.cancel(cancelSlowHintTimer);
+      cancelSlowHintTimer = null;
+    }
+    if (cancelStuckHintTimer) {
+      $timeout.cancel(cancelStuckHintTimer);
+      cancelStuckHintTimer = null;
+    }
+    if (cancelMaxWaitTimer) {
+      $timeout.cancel(cancelMaxWaitTimer);
+      cancelMaxWaitTimer = null;
+    }
+    if (cancelResendFeedbackTimer) {
+      $timeout.cancel(cancelResendFeedbackTimer);
+      cancelResendFeedbackTimer = null;
+    }
+    if (cancelPendingBlockTimer) {
+      $timeout.cancel(cancelPendingBlockTimer);
+      cancelPendingBlockTimer = null;
+    }
+
+    if (finalState === 'aborted' && $scope.cancelStartedAt) {
+      $scope.cancelDurationMs = Date.now() - $scope.cancelStartedAt;
+      $scope.cancelFinalStatus = finalStatus || ParagraphStatus.ABORT;
+    } else {
+      $scope.cancelStartedAt = null;
+      $scope.cancelDurationMs = null;
+      $scope.cancelFinalStatus = null;
+    }
+    $scope.cancelUiState = finalState;
+    $scope.cancelHintLevel = 0;
+    $scope.cancelResendFeedback = false;
+    $scope.cancelPendingBlocked = false;
+    $scope.frozenProgress = null;
+  }
+
+  function isPendingCancelBlocked(paragraph) {
+    return $scope.cancelPendingBlocked &&
+      paragraph &&
+      (paragraph.status === ParagraphStatus.PENDING || paragraph.status === ParagraphStatus.RUNNING);
+  }
+
+  function startPendingCancelBlock() {
+    clearPendingCancelBlock();
+    $scope.cancelPendingBlocked = true;
+    cancelPendingBlockTimer = $timeout(function() {
+      $scope.cancelPendingBlocked = false;
+      cancelPendingBlockTimer = null;
+    }, CANCEL_PENDING_BLOCK_MS);
+  }
+
+  function clearPendingCancelBlock() {
+    $scope.cancelPendingBlocked = false;
+    if (cancelPendingBlockTimer) {
+      $timeout.cancel(cancelPendingBlockTimer);
+      cancelPendingBlockTimer = null;
+    }
+  }
+
+  function applyPendingCancelBlock(newStatus, oldStatus) {
+    if (newStatus === ParagraphStatus.PENDING && oldStatus !== ParagraphStatus.PENDING) {
+      startPendingCancelBlock();
+    } else if (newStatus !== ParagraphStatus.PENDING && newStatus !== ParagraphStatus.RUNNING) {
+      clearPendingCancelBlock();
+    }
+  }
+
+  function applyCancelUiTransition(newStatus) {
+    if ($scope.cancelUiState === 'cancelling' &&
+        (newStatus === ParagraphStatus.ABORT ||
+         newStatus === ParagraphStatus.FINISHED ||
+         newStatus === ParagraphStatus.ERROR)) {
+      const elapsed = $scope.cancelStartedAt ? (Date.now() - $scope.cancelStartedAt) : MIN_CANCELLING_MS;
+      const remain = Math.max(0, MIN_CANCELLING_MS - elapsed);
+      $timeout(function() {
+        resetCancelUi('aborted', newStatus);
+      }, remain);
+    } else if ($scope.cancelUiState === 'aborted' &&
+               (newStatus === ParagraphStatus.RUNNING || newStatus === ParagraphStatus.PENDING)) {
+      resetCancelUi('idle', null);
+    }
+  }
+
+  function getCurrentNoteId() {
+    if ($scope.parentNote && $scope.parentNote.id) {
+      return $scope.parentNote.id;
+    }
+    if ($route.current && $route.current.pathParams && $route.current.pathParams.noteId) {
+      return $route.current.pathParams.noteId;
+    }
+    return $routeParams.noteId;
+  }
+
+  function getInterpreterBindingId(paragraph) {
+    let scope = $scope;
+    while (scope && !scope.interpreterBindings) {
+      scope = scope.$parent;
+    }
+    const bindings = (scope && scope.interpreterBindings) || [];
+    const paragraphText = (paragraph && paragraph.text) ? paragraph.text : $scope.getEditorValue();
+    const magic = getParagraphMagic(paragraphText);
+    const name = magic ? magic.replace(/^%/, '') : (bindings[0] ? bindings[0].name : '');
+    const baseName = name ? name.split('.')[0] : '';
+
+    for (let i = 0; i < bindings.length; i++) {
+      const binding = bindings[i];
+      if (!binding) {
+        continue;
+      }
+      if (binding.name === name || binding.name === baseName) {
+        return binding.id;
+      }
+    }
+    return null;
+  }
 
   $scope.propagateSpellResult = function(paragraphId, paragraphTitle,
                                          paragraphText, paragraphResults,
@@ -1265,6 +1522,35 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     return desc;
   };
 
+  $scope.getCancelFooterText = function() {
+    switch ($scope.cancelFinalStatus) {
+      case ParagraphStatus.ABORT:
+        return CANCEL_UI_TEXT.ABORTED_FOOTER_ABORT;
+      case ParagraphStatus.FINISHED:
+        return CANCEL_UI_TEXT.ABORTED_FOOTER_FINISHED;
+      case ParagraphStatus.ERROR:
+        return CANCEL_UI_TEXT.ABORTED_FOOTER_ERROR;
+      case 'TIMEOUT':
+        return CANCEL_UI_TEXT.ABORTED_FOOTER_TIMEOUT;
+      default:
+        return '';
+    }
+  };
+
+  $scope.getCancelDurationText = function() {
+    if (!$scope.cancelDurationMs) {
+      return '';
+    }
+    const s = Math.round($scope.cancelDurationMs / 1000);
+    if (s < 60) {
+      return ' · 耗时 ' + s + ' 秒';
+    }
+    if (s < 3600) {
+      return ' · 耗时 ' + Math.floor(s / 60) + ' 分 ' + (s % 60) + ' 秒';
+    }
+    return ' · 耗时 ' + Math.floor(s / 3600) + ' 小时 ' + Math.floor((s % 3600) / 60) + ' 分';
+  };
+
   $scope.getElapsedTime = function(paragraph) {
     return 'Started ' + moment(paragraph.dateStarted).fromNow() + '.';
   };
@@ -1504,7 +1790,10 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     $scope.paragraph.jobName = newPara.jobName;
     $scope.paragraph.title = newPara.title;
     $scope.paragraph.lineNumbers = newPara.lineNumbers;
+    const oldStatus = $scope.paragraph.status;
     $scope.paragraph.status = newPara.status;
+    applyPendingCancelBlock(newPara.status, oldStatus);
+    applyCancelUiTransition(newPara.status);
     $scope.paragraph.fontSize = newPara.fontSize;
     if (newPara.status !== ParagraphStatus.RUNNING) {
       $scope.paragraph.results = newPara.results;
@@ -1632,7 +1921,10 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
 
   $scope.$on('updateStatus', function(event, data) {
     if (data.id === $scope.paragraph.id) {
+      const oldStatus = $scope.paragraph.status;
       $scope.paragraph.status = data.status;
+      applyPendingCancelBlock(data.status, oldStatus);
+      applyCancelUiTransition(data.status);
     }
   });
 
@@ -1939,6 +2231,24 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   $scope.$on('checkOccurrences', function() {
     if (searchRanges.length > 0) {
       $scope.$emit('occurrencesExists', searchRanges.length);
+    }
+  });
+
+  $scope.$on('$destroy', function() {
+    if (cancelSlowHintTimer) {
+      $timeout.cancel(cancelSlowHintTimer);
+    }
+    if (cancelStuckHintTimer) {
+      $timeout.cancel(cancelStuckHintTimer);
+    }
+    if (cancelMaxWaitTimer) {
+      $timeout.cancel(cancelMaxWaitTimer);
+    }
+    if (cancelResendFeedbackTimer) {
+      $timeout.cancel(cancelResendFeedbackTimer);
+    }
+    if (cancelPendingBlockTimer) {
+      $timeout.cancel(cancelPendingBlockTimer);
     }
   });
 }
