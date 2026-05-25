@@ -258,7 +258,11 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   });
 
   $scope.exportNote = function() {
-    let jsonContent = JSON.stringify($scope.note, null, 2);
+    let noteToExport = angular.copy($scope.note);
+    angular.forEach(noteToExport.paragraphs, function(paragraph) {
+      paragraph.results = null;
+    });
+    let jsonContent = JSON.stringify(noteToExport, null, 2);
     if (jsonContent.length > limit) {
       BootstrapDialog.confirm({
         closable: true,
