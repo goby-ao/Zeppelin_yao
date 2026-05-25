@@ -109,6 +109,7 @@ export default class TableVisualization extends Visualization {
       fastWatch: true,
       treeRowHeaderAlwaysVisible: false,
       exporterExcelFilename: 'myFile.xlsx',
+      enableCellEdit: false,
 
       columnDefs: columnNames.map((colName, index) => {
         const self = this;
@@ -116,6 +117,7 @@ export default class TableVisualization extends Visualization {
           displayName: colName,
           name: colName + index,
           type: DefaultTableColumnType,
+          enableCellEdit: false,
           cellTemplate: `
             <div ng-if="!grid.getCellValue(row, col).startsWith('%html')"
                  class="ui-grid-cell-contents"><span>{{grid.getCellValue(row, col)}}</span></div>
@@ -123,19 +125,6 @@ export default class TableVisualization extends Visualization {
                  ng-bind-html="grid.getCellValue(row, col).split('%html')[1]"
                  class="ui-grid-cell-contents">
             </div>`,
-          editableCellTemplate:
-            `<div>
-               <form
-                 name="inputForm">
-                 <textarea
-                   class="ui-grid-zeppelin-special-textarea"
-                   type="INPUT_TYPE"
-                   ng-class="'colt' + col.uid"
-                   ui-grid-editor
-                   ng-model="MODEL_COL_FIELD" />
-               </form>
-             </div>
-             `,
           minWidth: this.getColumnMinWidth(colName),
           width: '*',
           sortingAlgorithm: function(a, b, row1, row2, sortType, gridCol) {
@@ -333,10 +322,6 @@ export default class TableVisualization extends Visualization {
     const self = this; // for closure
     const scope = this.getScope();
 
-    // --- 新增：获取 $rootScope 和开关状态 ---
-    const $rootScope = scope.$root;
-    const enableCopy = ($rootScope.disableCopyEnabled === false); // 如果 disableCopyEnabled 是 true, enableCopy 就是 false
-
     // set gridApi for this elem
     const gridApiId = this.getGridApiId();
     const gridOptions = this.createGridOptions(tableData, onRegisterApiCallback, config);
@@ -374,22 +359,10 @@ export default class TableVisualization extends Visualization {
       gridApi.colResizable.on.columnSizeChanged(scope, () => {
         self.persistConfigWithGridState(self.config);
       });
-      gridApi.edit.on.beginCellEdit(scope, function(rowEntity, colDef, triggerEvent) {
-        let textArea = triggerEvent.currentTarget.children[1].children[0].children[0];
-        textArea.style.height = textArea.scrollHeight + 'px';
-        textArea.addEventListener('keydown', function() {
-          let elem = this;
-          setTimeout(function() {
-            elem.style.height = 'auto';
-            elem.style.height = elem.scrollHeight + 'px';
-          });
-        }, 0);
-      });
 
       // add copy to clipboard by yao
       gridApi.selection.on.rowSelectionChanged(scope, function(row) {
-        console.log(row);
-        if (!enableCopy) { // 检查开关
+        if (!self.isCopyEnabled()) {
           return;
         }
 
@@ -398,7 +371,6 @@ export default class TableVisualization extends Visualization {
             delete row.entity[key];
           }
         });
-        console.log(Object.values(row.entity).join('\n'));
         let aux = document.createElement('input');
         aux.setAttribute('value', Object.values(row.entity).join('\t'));
         document.body.appendChild(aux);
@@ -408,8 +380,7 @@ export default class TableVisualization extends Visualization {
       });
 
       gridApi.selection.on.rowSelectionChangedBatch(scope, function(rows) {
-        console.log(rows);
-        if (!enableCopy) { // 检查开关
+        if (!self.isCopyEnabled()) {
           return;
         }
 
@@ -460,7 +431,6 @@ export default class TableVisualization extends Visualization {
       // create, compile and append grid elem
       gridElem = angular.element(
         `<div id="${gridElemId}" ui-grid="${gridElemId}"
-              ui-grid-edit ui-grid-row-edit
               ui-grid-pagination
               ui-grid-selection
               ui-grid-cellNav ui-grid-pinning
@@ -605,7 +575,16 @@ export default class TableVisualization extends Visualization {
     };
   }
 
+  isCopyEnabled() {
+    const scope = this.getScope();
+    return !scope || !scope.$root || scope.$root.disableCopyEnabled === false;
+  }
+
   copyStringToClipboard(copyString) {
+    if (!this.isCopyEnabled()) {
+      return;
+    }
+
     const strToClipboard = document.createElement('textarea');
     strToClipboard.value = copyString;
     document.body.appendChild(strToClipboard);

@@ -53,8 +53,16 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.management.remote.JMXServiceURL;
 import javax.servlet.DispatcherType;
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.shiro.web.env.EnvironmentLoaderListener;
 import org.apache.shiro.web.servlet.ShiroFilter;
@@ -610,12 +618,72 @@ public class ZeppelinServer extends ResourceConfig {
     webApp.addServlet(new ServletHolder(setupServlet(webApp, conf)), "/*");
     contexts.addHandler(webApp);
 
+    webApp.addFilter(new FilterHolder(StaticCacheControlFilter.class), "/*",
+        EnumSet.allOf(DispatcherType.class));
     webApp.addFilter(new FilterHolder(CorsFilter.class), "/*", EnumSet.allOf(DispatcherType.class));
 
     webApp.setInitParameter(
         "org.eclipse.jetty.servlet.Default.dirAllowed",
         Boolean.toString(conf.getBoolean(ConfVars.ZEPPELIN_SERVER_DEFAULT_DIR_ALLOWED)));
     return webApp;
+  }
+
+  public static class StaticCacheControlFilter implements Filter {
+    private static final String NO_CACHE = "no-cache, max-age=0, must-revalidate";
+    private static final String TEMPLATE_CACHE = "max-age=300, must-revalidate";
+    private static final String FINGERPRINTED_STATIC_CACHE =
+        "public, max-age=31536000, immutable";
+
+    @Override
+    public void init(FilterConfig filterConfig) {}
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+        throws IOException, ServletException {
+      if (request instanceof HttpServletRequest && response instanceof HttpServletResponse) {
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
+        HttpServletResponse httpResponse = (HttpServletResponse) response;
+        applyCacheControl(httpRequest.getRequestURI(), httpRequest.getContextPath(), httpResponse);
+      }
+      chain.doFilter(request, response);
+    }
+
+    @Override
+    public void destroy() {}
+
+    private void applyCacheControl(
+        String requestUri, String contextPath, HttpServletResponse response) {
+      String path = requestUri;
+      if (!StringUtils.isBlank(contextPath) && path.startsWith(contextPath)) {
+        path = path.substring(contextPath.length());
+      }
+      if (StringUtils.isBlank(path)) {
+        path = "/";
+      }
+
+      if (isIndexPage(path)) {
+        response.setHeader("Cache-Control", NO_CACHE);
+        response.setHeader("Pragma", "no-cache");
+        response.setDateHeader("Expires", 0);
+      } else if (isHtmlTemplate(path)) {
+        response.setHeader("Cache-Control", TEMPLATE_CACHE);
+      } else if (isFingerprintedStaticResource(path)) {
+        response.setHeader("Cache-Control", FINGERPRINTED_STATIC_CACHE);
+      }
+    }
+
+    private boolean isIndexPage(String path) {
+      return "/".equals(path) || path.endsWith("/index.html");
+    }
+
+    private boolean isHtmlTemplate(String path) {
+      return path.endsWith(".html");
+    }
+
+    private boolean isFingerprintedStaticResource(String path) {
+      return path.matches(".*[.-][0-9a-fA-F]{8,}\\."
+          + "(js|css|map|eot|svg|ttf|woff|woff2|png|jpg|jpeg|gif|ico)$");
+    }
   }
 
   private static DefaultServlet setupServlet(
