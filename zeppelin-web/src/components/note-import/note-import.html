@@ -21,15 +21,15 @@ limitations under the License.
       <div class="modal-header modal-header-import">
         <button type="button" class="close" data-dismiss="modal"
                 ng-click="noteImportCtrl.resetFlags()">&times;</button>
-        <h4 class="modal-title">Import New Note</h4>
+        <h4 class="modal-title">导入新笔记</h4>
       </div>
 
       <!-- modal-body -->
       <div class="modal-body modal-body-import">
         <div class="form-group">
-          <label for="noteImportName">Import As</label>
+          <label for="noteImportName">导入为</label>
           <input class="form-control note-name-input" id="noteImportName"
-                 placeholder="Insert Note Name" type="text"
+                 placeholder="请输入笔记名称" type="text"
                  ng-model="note.noteImportName" />
         </div>
 
@@ -37,12 +37,12 @@ limitations under the License.
           <div class="alert alert-danger">{{note.errorText}}</div>
         </div>
 
-        <label>JSON file size cannot exceed {{maxLimit}} MB</label>
+        <label>JSON 文件大小不能超过 {{maxLimit}} MB</label>
 
         <div class="form-group slide-left import-btn-image-group" ng-show="note.step1">
           <div class="import-btn-image">
             <a class="fa fa-cloud-upload import-file-upload" ng-click="uploadFile()">
-              <p class="modal-body-import-desc">Select JSON File/IPYNB File </p>
+              <p class="modal-body-import-desc">选择 JSON/IPYNB 文件</p>
             </a>
             <div style="display: none">
               <input class="form-control note-name-input" id="noteImportFile"
@@ -52,7 +52,7 @@ limitations under the License.
           </div>
           <div class="import-btn-image">
             <a href="javascript:void(0);" ng-click="uploadURL()" class="fa fa-link">
-              <p class="modal-body-import-desc">Add from URL</p>
+              <p class="modal-body-import-desc">从 URL 添加</p>
             </a>
           </div>
         </div>
@@ -60,7 +60,7 @@ limitations under the License.
         <div class="form-group slide-right" ng-show="note.step2">
 
           <label for="noteImportUrl">URL</label>
-          <input placeholder="Note URL" type="text" class="form-control" id="noteImportUrl"
+          <input placeholder="笔记 URL" type="text" class="form-control" id="noteImportUrl"
                  ng-model="note.importUrl" />
         </div>
 
@@ -68,11 +68,11 @@ limitations under the License.
       <div class="modal-footer modal-footer-import" ng-show="note.step2">
         <button type="button" id="importBackButton"
                 class="btn btn-default"
-                ng-click="noteImportCtrl.importBack()">Back
+                ng-click="noteImportCtrl.importBack()">返回
         </button>
         <button type="button" id="importNoteButton"
                 class="btn btn-default"
-                ng-click="noteImportCtrl.importNote()">Import Note
+                ng-click="noteImportCtrl.importNote()">导入笔记
         </button>
       </div>
     </div>

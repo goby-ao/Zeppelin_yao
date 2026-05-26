@@ -37,7 +37,7 @@ limitations under the License.
   </span>
   <span class="paragraph-control-status" aria-live="polite">
     <span ng-if="cancelUiState !== 'cancelling' && cancelUiState !== 'aborted'">
-      {{paragraph.status}}
+      {{paragraph.status | statusI18n}}
     </span>
     <span ng-if="cancelUiState === 'cancelling'" class="cancel-status-text">
       {{cancelUiText.CANCELLING}}
@@ -57,7 +57,7 @@ limitations under the License.
   <!-- Run / Cancel button -->
   <span class="paragraph-control-actions" ng-if="!revisionView">
     <span class="icon-control-play" style="cursor:pointer;color:#3071A9"
-          tooltip-placement="top" uib-tooltip="Run this paragraph (Shift+Enter)"
+          tooltip-placement="top" uib-tooltip="运行当前代码块 (Shift+Enter)"
           ng-click="runParagraphFromButton(getEditorValue())"
           ng-class="{'item-disable' : isNoteRunning}"
           ng-show="paragraph.status!='RUNNING' &&
@@ -77,7 +77,7 @@ limitations under the License.
             ng-click="canCancelParagraph(paragraph) && cancelParagraph(paragraph)"
             tooltip-placement="top"
             uib-tooltip="{{getCancelTooltip(paragraph)}}"
-            aria-label="Cancel paragraph"
+            aria-label="终止代码块"
             ng-attr-aria-busy="{{ cancelUiState === 'cancelling' ? 'true' : undefined }}"
             ng-attr-aria-disabled="{{ (cancelUiState === 'cancelling' || cancelPendingBlocked) ? 'true' : undefined }}">
         <span class="icon-control-pause cancel-icon-pause"
@@ -89,10 +89,10 @@ limitations under the License.
       </span>
     </span>
     <span class="{{paragraph.config.editorHide ? 'icon-size-fullscreen' : 'icon-size-actual'}}" style="cursor:pointer" tooltip-placement="top"
-          uib-tooltip="{{(paragraph.config.editorHide ? 'Show' : 'Hide')}} editor (Ctrl+{{ (isMac ? 'Option' : 'Alt') }}+E)"
+          uib-tooltip="{{(paragraph.config.editorHide ? '显示' : '隐藏')}}编辑器 (Ctrl+{{ (isMac ? 'Option' : 'Alt') }}+E)"
           ng-click="toggleEditor(paragraph)"></span>
     <span class="{{paragraph.config.tableHide ? 'icon-notebook' : 'icon-book-open'}}" style="cursor:pointer" tooltip-placement="top"
-          uib-tooltip="{{(paragraph.config.tableHide ? 'Show' : 'Hide')}} output (Ctrl+{{ (isMac ? 'Option' : 'Alt') }}+O)"
+          uib-tooltip="{{(paragraph.config.tableHide ? '显示' : '隐藏')}}输出 (Ctrl+{{ (isMac ? 'Option' : 'Alt') }}+O)"
           ng-click="toggleOutput(paragraph)"></span>
     <span class="dropdown navbar-right">
       <span class="icon-settings" style="cursor:pointer"
@@ -115,11 +115,11 @@ limitations under the License.
         <li style="padding-top:8px"
             ng-if="paragraph.config.runOnSelectionChange == true || paragraph.config.runOnSelectionChange == false">
           <span ng-if="paragraph.config.runOnSelectionChange == true" class="fa fa-toggle-on shortcut-icon" style="padding:3px 8px 8px 20px"></span>
-          <span ng-if="paragraph.config.runOnSelectionChange == false" class="fa fa-toggle-off shortcut-icon" style="padding:3px 8px 8px 20px"></span>Run on selection change
+          <span ng-if="paragraph.config.runOnSelectionChange == false" class="fa fa-toggle-off shortcut-icon" style="padding:3px 8px 8px 20px"></span>选择变化时自动运行
           <form style="display:inline; float:right">
             <input type="checkbox"
                    style="width:16px; margin-right:20px"
-                   tooltip-placement="top" uib-tooltip="Even if you uncheck this, still can run the paragraph by pressing Enter"
+                   tooltip-placement="top" uib-tooltip="关闭后仍可按 Enter 运行代码块"
                    ng-checked="{{paragraph.config.runOnSelectionChange}}"
                    ng-click="turnOnAutoRun(paragraph)"/>
           </form>
@@ -131,7 +131,7 @@ limitations under the License.
                     class="selectpicker"
                     ng-change="changeColWidth(paragraph, paragraph.config.colWidth)"
                     ng-options="col for col in colWidthOption"></select>
-            Width
+            宽度
           </a>
         </li>
         <li>
@@ -141,28 +141,28 @@ limitations under the License.
                   class="selectpicker"
                   ng-change="changeFontSize(paragraph, paragraph.config.fontSize)"
                   ng-options="s for s in fontSizeOption"></select>
-             Font size
+             字号
           </a>
         </li>
         <li>
           <a ng-click="moveUp(paragraph)" ng-hide="$first" ng-class="{'item-disable' : isNoteRunning}">
             <span class="icon-arrow-up shortcut-icon"></span>
             <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+K</span>
-            Move up
+            上移
           </a>
         </li>
         <li>
           <a ng-click="moveDown(paragraph)" ng-hide="$last" ng-class="{'item-disable' : isNoteRunning}">
             <span class="icon-arrow-down shortcut-icon"></span>
             <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+J</span>
-            Move down
+            下移
           </a>
         </li>
         <li>
           <a ng-click="insertNew('below')" ng-class="{'item-disable' : isNoteRunning}">
             <span class="icon-plus shortcut-icon"></span>
             <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+B</span>
-            Insert new
+            新增代码块
           </a>
         </li>
         <li>
@@ -171,7 +171,7 @@ limitations under the License.
                   style="position: relative; transform: rotate(-90deg); left: -4px;">
             </span>
             <span class="shortcut-keys">Ctrl+Shift+Enter</span>
-            Run all above
+            运行上方全部代码块
           </a>
         </li>
         <li>
@@ -180,14 +180,14 @@ limitations under the License.
                   style="position: relative; transform: rotate(-90deg); left: -4px;">
             </span>
             <span class="shortcut-keys">Ctrl+Shift+Enter</span>
-             Run all below
+             运行下方全部代码块
           </a>
         </li>
         <li>
           <a ng-click="copyParagraph(getEditorValue())" ng-class="{'item-disable' : isNoteRunning}">
             <span class="fa fa-copy shortcut-icon"></span>
             <span class="shortcut-keys">Ctrl+Shift+C</span>
-            Clone paragraph
+            克隆代码块
           </a>
         </li>
         <li>
@@ -195,44 +195,44 @@ limitations under the License.
           <a ng-click="hideTitle(paragraph)"
              ng-show="paragraph.config.title"><span class="fa fa-font shortcut-icon"></span>
             <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+T</span>
-            Hide title
+            隐藏标题
           </a>
           <a ng-click="showTitle(paragraph)"
              ng-show="!paragraph.config.title"><span class="fa fa-font shortcut-icon"></span>
             <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+T</span>
-            Show title
+            显示标题
           </a>
         </li>
         <li>
           <a ng-click="hideLineNumbers(paragraph)"
              ng-show="paragraph.config.lineNumbers"><span class="fa fa-list-ol shortcut-icon"></span>
             <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+M</span>
-            Hide line numbers
+            隐藏行号
           </a>
           <a ng-click="showLineNumbers(paragraph)"
              ng-show="!paragraph.config.lineNumbers"><span class="fa fa-list-ol shortcut-icon"></span>
             <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+M</span>
-            Show line numbers
+            显示行号
           </a>
         </li>
         <li>
           <a ng-click="toggleEnableDisable(paragraph)" ng-class="{'item-disable' : isNoteRunning}">
             <span class="icon-control-play shortcut-icon"></span>
             <span class="shortcut-keys">Ctrl+ {{ isMac ? 'Option' : 'Alt'}}+R</span>
-            {{paragraph.config.enabled ? "Disable" : "Enable"}} run
+            {{paragraph.config.enabled ? "禁用" : "启用"}}运行
           </a>
         </li>
         <li>
           <a ng-click="goToSingleParagraph()"><span class="icon-share-alt shortcut-icon"></span>
             <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+W</span>
-            Link this paragraph
+            链接到当前代码块
           </a>
         </li>
         <li>
           <a ng-click="clearParagraphOutput(paragraph)" ng-class="{'item-disable' : isNoteRunning}">
             <span class="fa fa-eraser shortcut-icon"></span>
             <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+L</span>
-            Clear output
+            清空输出
           </a>
         </li>
         <li>
@@ -240,7 +240,7 @@ limitations under the License.
           <a ng-click="removeParagraph(paragraph)" ng-if="note.paragraphs.length > 1" ng-class="{'item-disable' : isNoteRunning}">
             <span class="fa fa-times shortcut-icon"></span>
             <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+D</span>
-            Remove
+            删除
           </a>
         </li>
       </ul>

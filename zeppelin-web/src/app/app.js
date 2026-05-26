@@ -58,6 +58,15 @@ const requiredModules = [
   'ui.grid.saveState',
 ];
 
+const STATUS_I18N_TEXT = {
+  READY: '就绪',
+  PENDING: '等待中',
+  RUNNING: '运行中',
+  FINISHED: '已完成',
+  ABORT: '已终止',
+  ERROR: '失败',
+};
+
 // headroom should not be used for CI, since we have to execute some integration tests.
 // otherwise, they will fail.
 if (!process.env.BUILD_CI) {
@@ -71,6 +80,11 @@ let zeppelinWebApp = angular.module('zeppelinWebApp', requiredModules)
       if (!!text) {
         return text.replace(/\n/g, '<br />');
       }
+    };
+  })
+  .filter('statusI18n', function() {
+    return function(status) {
+      return STATUS_I18N_TEXT[status] || status;
     };
   })
   .config(function($httpProvider, $routeProvider, ngToastProvider) {

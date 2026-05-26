@@ -18,14 +18,14 @@ limitations under the License.
     <div id="{{$ctrl.getNoteId()}}_control" class="control">
       <span ng-bind="$ctrl.lastExecuteTime()"></span>
       <span>
-        <span ng-bind="$ctrl.isRunning() ? 'RUNNING' : 'READY'"></span>
+        <span ng-bind="($ctrl.isRunning() ? 'RUNNING' : 'READY') | statusI18n"></span>
       </span>
 
       <span ng-if="$ctrl.isRunning()" ng-bind="$ctrl.getProgress()"></span>
 
       <span
         class="job-control-btn" tooltip-placement="left"
-        uib-tooltip-html="!$ctrl.isRunning() ? 'Start All Paragraphs' : 'Stop All Paragraphs'"
+        uib-tooltip-html="!$ctrl.isRunning() ? '运行全部代码块' : '终止全部代码块'"
         ng-click="!$ctrl.isRunning() ? $ctrl.runJob() : $ctrl.stopJob()"
         ng-class="!$ctrl.isRunning() ? 'icon-control-play' : 'icon-control-pause'"
         ng-style="{'color': $ctrl.isRunning() ? '#CD5C5C' : '#3071A9'}">
@@ -61,10 +61,9 @@ limitations under the License.
         <i ng-style="{'color': $ctrl.getJobColorByStatus(paragraph.status)}"
            ng-class="$ctrl.getJobIconByStatus(paragraph.status)"
            tooltip-placement="top-left"
-           uib-tooltip="{{paragraph.name}} is {{paragraph.status}}">
+           uib-tooltip="{{paragraph.name}}：{{paragraph.status | statusI18n}}">
         </i>
       </a>
     </span>
   </div>
 </div>
-

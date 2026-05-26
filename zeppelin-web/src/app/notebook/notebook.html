@@ -25,15 +25,15 @@ limitations under the License.
   <!-- settings -->
   <div ng-if="showSetting" class="setting">
     <div>
-      <h4>Settings</h4>
+      <h4>设置</h4>
     </div>
     <hr />
     <div>
-      <h5>Interpreter binding</h5>
+      <h5>解释器绑定</h5>
       <p>
-        Clicking the restart icon before the interpreter can restart interpreter associated with this note when your interpreter is isolated per note. <br />
-        Drag and drop to reorder interpreters. The first interpreter on the list becomes default. <br />
-        To create/remove interpreters, go to <a href="#/interpreter">Interpreter</a> menu.
+        当解释器按笔记隔离时，点击重启图标可以重启当前笔记关联的解释器。<br />
+        拖拽可以调整解释器顺序，列表中的第一个解释器会作为默认解释器。<br />
+        如需创建或删除解释器，请进入 <a href="#/interpreter">解释器</a> 菜单。
       </p>
 
       <div class="interpreterSettings"
@@ -41,7 +41,7 @@ limitations under the License.
         <div data-ng-repeat="item in interpreterBindings" as-sortable-item>
           <div>
             <a ng-click="restartInterpreter(item)"
-               uib-tooltip="Restart">
+               uib-tooltip="重启">
               <span class="glyphicon glyphicon-refresh btn-md"></span>
             </a>&nbsp
             <div as-sortable-item-handle
@@ -54,7 +54,7 @@ limitations under the License.
                   %<span ng-show="!$parent.$first || $first">{{item.name}}</span
                   ><span ng-show="(!$parent.$first || $first) && !$first">.</span
                   ><span ng-show="!$first">{{intp.name}}</span>
-                  <span ng-show="$parent.$first && $first">(default)</span>
+                  <span ng-show="$parent.$first && $first">(默认)</span>
                 </span>
               </small>
             </div>
@@ -64,8 +64,8 @@ limitations under the License.
     </div>
     <br />
     <div>
-      <button class="btn btn-primary" ng-click="saveSetting()">Save</button>
-      <button class="btn btn-default" ng-click="closeSetting()">Cancel</button>
+      <button class="btn btn-primary" ng-click="saveSetting()">保存</button>
+      <button class="btn btn-default" ng-click="closeSetting()">取消</button>
     </div>
   </div>
 
@@ -110,8 +110,8 @@ limitations under the License.
     </div>
     <br />
     <div>
-      <button class="btn btn-primary" ng-click="savePermissions()">Save</button>
-      <button class="btn btn-default" ng-click="closePermissions()">Cancel</button>
+      <button class="btn btn-primary" ng-click="savePermissions()">保存</button>
+      <button class="btn btn-default" ng-click="closePermissions()">取消</button>
     </div>
   </div>
 
@@ -122,7 +122,7 @@ limitations under the License.
           <input type="text"
                  pu-elastic-input
                  style="min-width: 400px; max-width: 80%;"
-                 placeholder="Untitled form"
+                 placeholder="未命名表单"
                  ng-model="note.config.noteFormTitle"
                  ng-if="input.showEditor"
                  ng-escape="input.showEditor = false; note.config.noteFormTitle = oldTitle;"

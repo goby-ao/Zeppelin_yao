@@ -16,13 +16,13 @@ limitations under the License.
     <div class="row">
       <div class="col-md-12">
         <h3 class="new_h3">
-          Job
+          任务
         </h3>
       </div>
     </div>
     <div class="row">
       <div class="col-md-12">
-        You can monitor the status of notebook and navigate to note or paragraph.
+        可以查看笔记任务状态，并跳转到对应笔记或代码块。
       </div>
     </div>
   </div>
@@ -37,7 +37,7 @@ limitations under the License.
           <!-- search tool: input -->
           <div class="input-group search-input">
             <input class="form-control btn-xs"
-                   placeholder="&#xf002 Search jobs..."
+                   placeholder="&#xf002 搜索任务..."
                    type="text"
                    ng-model="filterConfig.noteNameFilterValue"
                    ng-model-options="{ updateOn: 'default blur', debounce: { 'default': 300, 'blur': 0 } }"
@@ -48,7 +48,7 @@ limitations under the License.
           <div class="btn btn-default dropdown-toggle"
                data-toggle="dropdown">
             <span>
-              <span class="dropdown-text-desc">Interpreter: </span>
+              <span class="dropdown-text-desc">解释器: </span>
               <span class="dropdown-text-value">{{filterValueToName(filterConfig.interpreterFilterValue)}}</span>
               <span class="caret" style="margin-top: 8px; float: right;"></span>
               <span style="clear: both;"></span>
@@ -70,7 +70,7 @@ limitations under the License.
           <!-- search tool: date dropdown -->
           <div class="date-sort-button btn btn-default dropdown-toggle" data-toggle="dropdown">
             <span>
-              <span class="dropdown-text-desc">Sort: </span>
+              <span class="dropdown-text-desc">排序: </span>
               <span class="dropdown-text-value">{{sorter.currentDateSorter}}</span>
               <span class="caret" style="margin-top: 8px; float: right;"></span>
               <span style="clear: both;"></span>
@@ -85,7 +85,7 @@ limitations under the License.
           </ul>
         </span>
         <span class="job-counter">
-          <span class="job-counter-label">Total: </span>
+          <span class="job-counter-label">总数: </span>
           <span class="job-counter-value">{{filteredJobs.length}}</span>
         </span>
       </div>
@@ -98,7 +98,7 @@ limitations under the License.
           <i class="job-desc-icon"
              ng-style="{'color': getJobColorByStatus(jobStatus)}"
              ng-class="getJobIconByStatus(jobStatus)" ></i>
-          {{jobStatus}}
+          {{jobStatus | statusI18n}}
         </span>
       </span>
     </div>
@@ -113,7 +113,7 @@ limitations under the License.
   <div ng-if="!isFilterLoaded" class="paragraph-col">
     <div class="job-space box job-margin text-center">
       <i style="color: blue" class="fa fa-spinner spinAnimation"></i>
-      Loading...
+      加载中...
     </div>
   </div>
   <div ng-if="filteredJobs.length > 0"
@@ -125,7 +125,7 @@ limitations under the License.
   </div>
   <div ng-if="isFilterLoaded === false && filteredJobs.length <= 0"
        class="paragraph-col">
-    <div class="job-space box job-margin text-center">No Job found</div>
+    <div class="job-space box job-margin text-center">未找到任务</div>
   </div>
 
   <!-- pagination -->

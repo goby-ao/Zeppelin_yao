@@ -28,13 +28,13 @@ limitations under the License.
               ng-click="noteCreateCtrl.getInterpreterSettings()" data-path="{{node.id}}"
               style="font-size: 12px; margin-left: 5px; margin-right: 5px;"
               ng-show="showFolderButton" class="fa fa-plus"
-              uib-tooltip="Create new note"
+              uib-tooltip="新建笔记"
               tooltip-placement="{{calculateTooltipPlacement(node)}}">
             </i>
           </div>
           <div ng-if="node.id === navbar.TRASH_FOLDER_ID">
             <i style="font-size: 12px; margin-right: 2px; margin-left: 10px;" class="fa fa-trash-o"></i>
-            <span>Trash</span>
+            <span>回收站</span>
           </div>
         </a>
       </div>
