@@ -12,11 +12,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-<div id="{{paragraph.id}}_runControl" class="runControl">
+<div id="{{paragraph.id}}_runControl"
+     class="runControl"
+     ng-if="paragraph.status=='RUNNING' ||
+            (cancelUiState === 'cancelling' &&
+             (paragraph.status === 'RUNNING' || paragraph.status === 'PENDING'))">
   <div id="{{paragraph.id}}_progress"
        class="progress"
-       ng-class="{'is-cancelling': cancelUiState === 'cancelling'}"
-       ng-if="paragraph.status=='RUNNING' || cancelUiState === 'cancelling'">
+       ng-class="{'zp-is-cancelling': cancelUiState === 'cancelling'}">
       <div ng-if="(cancelUiState === 'cancelling' ? frozenProgress : getProgress())>0 &&
                   (cancelUiState === 'cancelling' ? frozenProgress : getProgress())<100 &&
                   cancelUiState !== 'aborted'"

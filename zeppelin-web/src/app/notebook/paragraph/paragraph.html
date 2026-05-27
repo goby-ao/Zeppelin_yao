@@ -13,7 +13,10 @@ limitations under the License.
 -->
 
 <div id="{{paragraph.id}}_container"
-     ng-class="{'paragraph': !asIframe, 'paragraphAsIframe': asIframe}">
+     ng-class="{'paragraph': !asIframe, 'paragraphAsIframe': asIframe}"
+     data-status="{{paragraph.status}}"
+     data-editor-mode="{{paragraph.config.editorMode | lowercase}}"
+     data-paragraph-magic="{{paragraph.text | limitTo:48 | lowercase}}">
 
   <div ng-if="paragraph.config.title"
        id="{{paragraph.id}}_title"
@@ -35,8 +38,13 @@ limitations under the License.
     </div>
   </div>
 
+  <div ng-include src="'app/notebook/paragraph/paragraph-control.html'"></div>
+
   <div>
-    <div ng-if="!paragraph.config.editorHide && !viewOnly" style="margin-bottom:3px;">
+    <div ng-if="!paragraph.config.editorHide && !viewOnly" class="zp-paragraph-editor-shell">
+      <span class="zp-interpreter-chip" ng-if="paragraph.config.editorMode">
+        {{paragraph.config.editorMode.replace('ace/mode/', '') | uppercase}}
+      </span>
       <code-editor
         paragraph-id="paragraph.id"
         paragraph-context="paragraph"
@@ -49,19 +57,21 @@ limitations under the License.
     </div>
 
     <div ng-include src="'app/notebook/paragraph/paragraph-progress-bar.html'"></div>
-    <div class="paragraph-cancel-hint"
-         ng-if="cancelUiState === 'cancelling' && cancelHintLevel >= 1"
-         ng-class="{'level-stuck': cancelHintLevel >= 2}"
+    <div class="zp-cancel-hint"
+         ng-if="cancelUiState === 'cancelling' &&
+                (paragraph.status === 'RUNNING' || paragraph.status === 'PENDING') &&
+                cancelHintLevel >= 1"
+         ng-class="{'zp-level-stuck': cancelHintLevel >= 2}"
          role="status">
       <span ng-if="cancelHintLevel === 1">{{cancelUiText.SLOW_HINT}}</span>
       <span ng-if="cancelHintLevel >= 2">{{cancelUiText.STUCK_HINT}}</span>
       <button type="button"
-              class="paragraph-cancel-force-stop"
+              class="zp-cancel-force-stop"
               ng-click="cancelHintLevel >= 2 ? forceStopParagraph(paragraph) : resendCancelParagraph(paragraph, $event)"
-              ng-class="{'is-resent': cancelResendFeedback}">
+              ng-class="{'zp-is-resent': cancelResendFeedback}">
         {{cancelHintLevel >= 2 ? cancelUiText.FORCE_STOP : (cancelResendFeedback ? cancelUiText.RESEND_SENT : cancelUiText.RESEND_CANCEL)}}
       </button>
-      <div class="paragraph-cancel-force-note" ng-if="cancelHintLevel >= 2">
+      <div class="zp-cancel-force-note" ng-if="cancelHintLevel >= 2">
         {{cancelUiText.STUCK_HINT_TOOLTIP}}
       </div>
     </div>
@@ -89,19 +99,17 @@ limitations under the License.
     </div>
   </div>
 
-  <div ng-include src="'app/notebook/paragraph/paragraph-control.html'"></div>
-
   <div ng-if="!asIframe" class="paragraphFooter">
     <div ng-show="!paragraph.config.tableHide && !viewOnly"
          id="{{paragraph.id}}_executionTime"
          class="executionTime" ng-bind-html="getExecutionTime(paragraph)">
     </div>
-    <span class="paragraph-aborted-footer"
+    <span class="zp-aborted-footer"
           ng-if="cancelUiState === 'aborted' && getCancelFooterText()"
           ng-class="{
-            'is-natural': cancelFinalStatus === cancelFinalStatusRef.FINISHED,
-            'is-error': cancelFinalStatus === cancelFinalStatusRef.ERROR,
-            'is-timeout': cancelFinalStatus === cancelFinalStatusRef.TIMEOUT
+            'zp-is-natural': cancelFinalStatus === cancelFinalStatusRef.FINISHED,
+            'zp-is-error': cancelFinalStatus === cancelFinalStatusRef.ERROR,
+            'zp-is-timeout': cancelFinalStatus === cancelFinalStatusRef.TIMEOUT
           }">
       · {{getCancelFooterText()}}{{getCancelDurationText()}}
     </span>

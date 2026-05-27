@@ -22,12 +22,14 @@
  }
 .ui-grid-pager-panel {
   vertical-align: middle;
-  background-color: #f3f3f3;
+  background-color: #f8fafc;
 }
 
 .ui-grid-footer-info {
-  padding: 5px;
-  background-color: #f3f3f3;
+  padding: 8px 12px;
+  background-color: #f8fafc;
+  color: #475569;
+  font-size: 12px;
 }
 
 .ui-grid-menu {
@@ -36,14 +38,18 @@
 
 /** disable alternative color for even lows in a table */
 .ui-grid-row:nth-child(even) .ui-grid-cell {
-  background-color: white !important;
+  background-color: #ffffff !important;
 }
 
 /** support `height: auto` for cells */
 .ui-grid-viewport .ui-grid-cell-contents {
   word-wrap: break-word;
   white-space: pre-wrap !important;
-  border-bottom: 1px solid #e8e8e8;
+  border-bottom: 1px solid #e5edf7;
+  padding: 8px 12px;
+  color: #1f2937;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 input[class *=coltuiGrid] {
@@ -65,3 +71,40 @@ input[class *=coltuiGrid] {
   align-content: stretch;
 }
 
+.ui-grid {
+  border: 0;
+  color: #1f2937;
+}
+
+.ui-grid-header {
+  border-bottom: 1px solid #dbe4ef;
+}
+
+.ui-grid-header-cell {
+  border-color: #dbe4ef;
+  background-color: #f8fafc;
+}
+
+.ui-grid-header-cell .ui-grid-cell-contents {
+  padding: 10px 12px;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.ui-grid-cell {
+  border-color: #e5edf7;
+}
+
+.ui-grid-row:hover .ui-grid-cell {
+  background-color: #f8fbff !important;
+}
+
+.ui-grid-row.ui-grid-row-selected > [ui-grid-row] > .ui-grid-cell {
+  background-color: #eff6ff !important;
+}
+
+.ui-grid-render-container-body .ui-grid-viewport {
+  overflow-anchor: none;
+}

@@ -47,7 +47,6 @@ const CANCEL_STUCK_HINT_MS = 37500;
 const CANCEL_MAX_WAIT_MS = 150000;
 const CANCEL_RESEND_FEEDBACK_MS = 800;
 const CANCEL_PENDING_BLOCK_MS = 5000;
-const MIN_CANCELLING_MS = 400;
 
 angular.module('zeppelinWebApp').controller('ParagraphCtrl', ParagraphCtrl);
 
@@ -215,6 +214,10 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
 
     if (!config.fontSize) {
       config.fontSize = 9;
+    }
+
+    if (config.lineNumbers === undefined) {
+      config.lineNumbers = true;
     }
 
     if (config.enabled === undefined) {
@@ -481,23 +484,24 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   }
 
   function applyPendingCancelBlock(newStatus, oldStatus) {
-    if (newStatus === ParagraphStatus.PENDING && oldStatus !== ParagraphStatus.PENDING) {
+    if ((newStatus === ParagraphStatus.PENDING || newStatus === ParagraphStatus.RUNNING) &&
+        oldStatus !== ParagraphStatus.PENDING &&
+        oldStatus !== ParagraphStatus.RUNNING) {
       startPendingCancelBlock();
     } else if (newStatus !== ParagraphStatus.PENDING && newStatus !== ParagraphStatus.RUNNING) {
       clearPendingCancelBlock();
     }
   }
 
+  function isTerminalParagraphStatus(status) {
+    return status === ParagraphStatus.ABORT ||
+      status === ParagraphStatus.FINISHED ||
+      status === ParagraphStatus.ERROR;
+  }
+
   function applyCancelUiTransition(newStatus) {
-    if ($scope.cancelUiState === 'cancelling' &&
-        (newStatus === ParagraphStatus.ABORT ||
-         newStatus === ParagraphStatus.FINISHED ||
-         newStatus === ParagraphStatus.ERROR)) {
-      const elapsed = $scope.cancelStartedAt ? (Date.now() - $scope.cancelStartedAt) : MIN_CANCELLING_MS;
-      const remain = Math.max(0, MIN_CANCELLING_MS - elapsed);
-      $timeout(function() {
-        resetCancelUi('aborted', newStatus);
-      }, remain);
+    if (isTerminalParagraphStatus(newStatus)) {
+      resetCancelUi('idle', null);
     } else if ($scope.cancelUiState === 'aborted' &&
                (newStatus === ParagraphStatus.RUNNING || newStatus === ParagraphStatus.PENDING)) {
       resetCancelUi('idle', null);
@@ -1852,6 +1856,14 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   };
 
   /** $scope.$on */
+
+  $scope.$watch(function() {
+    return $scope.paragraph && $scope.paragraph.status;
+  }, function(newStatus) {
+    if (isTerminalParagraphStatus(newStatus)) {
+      resetCancelUi('idle', null);
+    }
+  });
 
   $scope.$on('runParagraphUsingSpell', function(event, data) {
     const oldPara = $scope.paragraph;

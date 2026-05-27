@@ -64,9 +64,9 @@ function WebsocketEventFactory($rootScope, $websocket, $location, baseUrlSrv, sa
     let op = payload.op;
     let data = payload.data;
     let msgId = payload.msgId;
-    const uniqueClientId = msgId ? msgId.split('-')[0] : undefined;
+    const receivedClientId = msgId ? msgId.split('-')[0] : undefined;
     const msgIdSeqReceived = msgId ? parseInt(msgId.split('-')[1]) : undefined;
-    const isResponseForRequestFromThisClient = uniqueClientId === uniqueClientId;
+    const isResponseForRequestFromThisClient = receivedClientId === uniqueClientId;
 
     if (op === 'NOTE') {
       $rootScope.$broadcast('setNoteContent', data.note);
@@ -120,11 +120,13 @@ function WebsocketEventFactory($rootScope, $websocket, $location, baseUrlSrv, sa
         buttons: btn,
       });
     } else if (op === 'PARAGRAPH') {
-      if (isResponseForRequestFromThisClient &&
+      const paragraphStatus = data && data.paragraph ? data.paragraph.status : undefined;
+      if (paragraphStatus === 'PENDING' &&
+          isResponseForRequestFromThisClient &&
           lastMsgIdSeqSent > msgIdSeqReceived
       ) {
-        // paragraph is already updated by short circuit.
-        console.log('PARAPGRAPH is already updated by shortcircuit');
+        // PENDING is already updated by short circuit; terminal statuses must still be delivered.
+        console.log('PARAGRAPH PENDING is already updated by short circuit');
       } else {
         $rootScope.$broadcast('updateParagraph', data);
       }

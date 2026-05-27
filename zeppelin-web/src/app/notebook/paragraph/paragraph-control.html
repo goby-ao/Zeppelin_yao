@@ -12,8 +12,84 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-<div id="{{paragraph.id}}_control" class="control" ng-show="!asIframe">
-  <span>
+<div id="{{paragraph.id}}_control" class="control zp-paragraph-toolbar zp-toolbar" ng-show="!asIframe">
+  <!-- Run / Cancel button -->
+  <span class="zp-toolbar-item zp-main-action zp-run-action is-primary" style="cursor:pointer"
+        ng-if="!revisionView"
+        data-status="{{paragraph.status}}"
+        role="button"
+        tabindex="0"
+        ng-class="{
+          'is-running': paragraph.status === 'RUNNING',
+          'is-pending': paragraph.status === 'PENDING',
+          'zp-stop-action': paragraph.status === 'RUNNING',
+          'zp-cancel-btn': paragraph.status === 'RUNNING',
+          'zp-is-cancelling': cancelUiState === 'cancelling' &&
+                              (paragraph.status === 'RUNNING' || paragraph.status === 'PENDING'),
+          'zp-is-pending-blocked': cancelPendingBlocked,
+          'item-disable': (paragraph.status !== 'RUNNING' && isNoteRunning) ||
+                          paragraph.status === 'PENDING' ||
+                          (paragraph.status === 'RUNNING' && cancelPendingBlocked) ||
+                          (!paragraph.config.enabled && paragraph.status !== 'RUNNING') ||
+                          (cancelUiState === 'cancelling' &&
+                           (paragraph.status === 'RUNNING' || paragraph.status === 'PENDING') &&
+                           (paragraph.status !== 'RUNNING' || cancelPendingBlocked))
+        }"
+        ng-click="paragraph.status === 'RUNNING' ?
+                    (canCancelParagraph(paragraph) && cancelParagraph(paragraph)) :
+                    (paragraph.status !== 'PENDING' && paragraph.config.enabled && runParagraphFromButton(getEditorValue()))"
+        tooltip-placement="bottom"
+        uib-tooltip="{{paragraph.status === 'RUNNING' ? getCancelTooltip(paragraph) : 'Run this paragraph (Shift+Enter)'}}"
+        aria-label="{{paragraph.status === 'RUNNING' ? 'Cancel paragraph' : 'Run paragraph'}}"
+        ng-attr-aria-busy="{{ cancelUiState === 'cancelling' &&
+                              (paragraph.status === 'RUNNING' || paragraph.status === 'PENDING') ? 'true' : undefined }}"
+        ng-attr-aria-disabled="{{ (paragraph.status === 'PENDING' ||
+                                   (cancelUiState === 'cancelling' &&
+                                    (paragraph.status === 'RUNNING' || paragraph.status === 'PENDING')) ||
+                                   cancelPendingBlocked) ? 'true' : undefined }}">
+    <i class="fa"
+       ng-class="{
+         'fa-play': paragraph.status !== 'RUNNING' && paragraph.status !== 'PENDING',
+         'fa-clock-o': paragraph.status === 'PENDING',
+         'fa-stop zp-cancel-icon-stop': paragraph.status === 'RUNNING' && cancelUiState !== 'cancelling',
+         'fa-spinner fa-spin zp-cancel-icon-spinner': paragraph.status === 'RUNNING' && cancelUiState === 'cancelling'
+       }"></i>
+    <span class="zp-run-label" ng-if="paragraph.status !== 'RUNNING' && paragraph.status !== 'PENDING'">Run</span>
+    <span class="zp-run-label" ng-if="paragraph.status === 'RUNNING'">Stop</span>
+    <span class="zp-run-label" ng-if="paragraph.status === 'PENDING'">Queued</span>
+    <span class="zp-kbd"
+          ng-if="paragraph.status !== 'RUNNING' && paragraph.status !== 'PENDING'">⇧↵</span>
+  </span>
+
+  <span class="zp-toolbar-item zp-status-badge"
+        ng-if="paragraph.status === 'RUNNING' ||
+               paragraph.status === 'FINISHED' ||
+               paragraph.status === 'ERROR' ||
+               paragraph.status === 'ABORT' ||
+               (cancelUiState === 'cancelling' &&
+                (paragraph.status === 'RUNNING' || paragraph.status === 'PENDING'))"
+        ng-class="{
+          'zp-status-running': paragraph.status === 'RUNNING' &&
+                               !(cancelUiState === 'cancelling' &&
+                                 (paragraph.status === 'RUNNING' || paragraph.status === 'PENDING')),
+          'zp-status-cancelling': cancelUiState === 'cancelling' &&
+                                  (paragraph.status === 'RUNNING' || paragraph.status === 'PENDING'),
+          'zp-status-finished': paragraph.status === 'FINISHED',
+          'zp-status-error': paragraph.status === 'ERROR',
+          'zp-status-aborted': paragraph.status === 'ABORT'
+        }"
+        aria-live="polite">
+    <span ng-if="cancelUiState === 'cancelling' &&
+                 (paragraph.status === 'RUNNING' || paragraph.status === 'PENDING')">CANCELLING</span>
+    <span ng-if="!(cancelUiState === 'cancelling' &&
+                   (paragraph.status === 'RUNNING' || paragraph.status === 'PENDING')) &&
+                 paragraph.status === 'RUNNING'">RUNNING</span>
+    <span ng-if="paragraph.status === 'FINISHED'">FINISHED</span>
+    <span ng-if="paragraph.status === 'ERROR'">ERROR</span>
+    <span ng-if="paragraph.status === 'ABORT'">ABORTED</span>
+  </span>
+
+  <span class="zp-toolbar-job zp-toolbar-item">
     <span ng-show="paragraph.runtimeInfos.jobUrl.values.length == 1">
       <a href="{{paragraph.runtimeInfos.jobUrl.values[0].jobUrl}}" target="_blank" style="text-decoration: none;"
          tooltip-placement="top" uib-tooltip="{{paragraph.runtimeInfos.jobUrl.tooltip}}" >
@@ -35,74 +111,42 @@ limitations under the License.
       </ul>
     </span>
   </span>
-  <span class="paragraph-control-status" aria-live="polite">
-    <span ng-if="cancelUiState !== 'cancelling' && cancelUiState !== 'aborted'">
-      {{paragraph.status}}
-    </span>
-    <span ng-if="cancelUiState === 'cancelling'" class="cancel-status-text">
-      {{cancelUiText.CANCELLING}}
-    </span>
-    <span ng-if="cancelUiState === 'aborted'" class="cancel-status-text aborted">
-      {{cancelUiText.ABORTED}}
-    </span>
-    <span class="paragraph-control-progress"
-          ng-if="paragraph.status === 'RUNNING' &&
-                 paragraph.executor !== 'SPELL' &&
-                 cancelUiState !== 'cancelling' &&
-                 cancelUiState !== 'aborted'">
-      {{getProgress()}} %
-    </span>
-  </span>
 
-  <!-- Run / Cancel button -->
-  <span class="paragraph-control-actions" ng-if="!revisionView">
-    <span class="icon-control-play" style="cursor:pointer;color:#3071A9"
-          tooltip-placement="top" uib-tooltip="Run this paragraph (Shift+Enter)"
-          ng-click="runParagraphFromButton(getEditorValue())"
-          ng-class="{'item-disable' : isNoteRunning}"
-          ng-show="paragraph.status!='RUNNING' &&
-                   paragraph.status!='PENDING' &&
-                   cancelUiState !== 'cancelling' &&
-                   paragraph.config.enabled"></span>
-    <span class="paragraph-cancel-btn-wrapper"
-          ng-if="(paragraph.status=='RUNNING' || paragraph.status=='PENDING') && cancelUiState !== 'aborted'">
-      <span class="paragraph-cancel-btn"
-            role="button"
-            tabindex="0"
-            ng-class="{
-              'is-cancelling': cancelUiState === 'cancelling',
-              'is-pending-blocked': cancelPendingBlocked,
-              'item-disable': (paragraph.status!='RUNNING' || cancelPendingBlocked) && cancelUiState !== 'cancelling'
-            }"
-            ng-click="canCancelParagraph(paragraph) && cancelParagraph(paragraph)"
-            tooltip-placement="top"
-            uib-tooltip="{{getCancelTooltip(paragraph)}}"
-            aria-label="Cancel paragraph"
-            ng-attr-aria-busy="{{ cancelUiState === 'cancelling' ? 'true' : undefined }}"
-            ng-attr-aria-disabled="{{ (cancelUiState === 'cancelling' || cancelPendingBlocked) ? 'true' : undefined }}">
-        <span class="icon-control-pause cancel-icon-pause"
-              ng-if="cancelUiState !== 'cancelling'"
-              style="color:#CD5C5C"></span>
-        <i class="fa fa-spinner fa-spin cancel-icon-spinner"
-           ng-if="cancelUiState === 'cancelling'"
-           style="color:#d97706"></i>
-      </span>
-    </span>
-    <span class="{{paragraph.config.editorHide ? 'icon-size-fullscreen' : 'icon-size-actual'}}" style="cursor:pointer" tooltip-placement="top"
-          uib-tooltip="{{(paragraph.config.editorHide ? 'Show' : 'Hide')}} editor (Ctrl+{{ (isMac ? 'Option' : 'Alt') }}+E)"
-          ng-click="toggleEditor(paragraph)"></span>
-    <span class="{{paragraph.config.tableHide ? 'icon-notebook' : 'icon-book-open'}}" style="cursor:pointer" tooltip-placement="top"
-          uib-tooltip="{{(paragraph.config.tableHide ? 'Show' : 'Hide')}} output (Ctrl+{{ (isMac ? 'Option' : 'Alt') }}+O)"
-          ng-click="toggleOutput(paragraph)"></span>
-    <span class="dropdown navbar-right">
-      <span class="icon-settings" style="cursor:pointer"
-            data-toggle="dropdown"
-            type="button">
-      </span>
+  <span class="zp-toolbar-spacer"></span>
+  <span class="zp-chart-anchor"></span>
+  <span class="zp-toolbar-divider"></span>
 
-      <ul class="dropdown-menu dropdown-menu-right" role="menu" style="width:270px;z-index:1002">
-        <li ng-controller="clipboardCtrl" ng-click="$event.stopPropagation()" style="text-align:center;margin-top:4px;">
-          <a  ngclipboard
+  <span class="{{paragraph.config.editorHide ? 'icon-size-fullscreen' : 'icon-size-actual'}} zp-toolbar-item zp-toolbar-icon" style="cursor:pointer" tooltip-placement="bottom"
+        ng-if="!revisionView"
+        tooltip-append-to-body="true"
+        uib-tooltip="{{(paragraph.config.editorHide ? 'Show' : 'Hide')}} editor (Ctrl+{{ (isMac ? 'Option' : 'Alt') }}+E)"
+        ng-click="toggleEditor(paragraph)"></span>
+  <span class="{{paragraph.config.tableHide ? 'icon-notebook' : 'icon-book-open'}} zp-toolbar-item zp-toolbar-icon" style="cursor:pointer" tooltip-placement="bottom"
+        ng-if="!revisionView"
+        tooltip-append-to-body="true"
+        uib-tooltip="{{(paragraph.config.tableHide ? 'Show' : 'Hide')}} output (Ctrl+{{ (isMac ? 'Option' : 'Alt') }}+O)"
+        ng-click="toggleOutput(paragraph)"></span>
+  <span class="dropdown zp-toolbar-dropdown zp-toolbar-item"
+        ng-if="!revisionView"
+        uib-dropdown
+        dropdown-append-to-body="true">
+    <button class="zp-settings-trigger" style="cursor:pointer"
+            uib-dropdown-toggle
+            type="button"
+            tooltip-placement="bottom"
+            tooltip-append-to-body="true"
+            uib-tooltip="Paragraph settings">
+      <span class="icon-settings"></span>
+      <span class="fa fa-caret-down zp-toolbar-caret"></span>
+    </button>
+
+      <ul class="dropdown-menu dropdown-menu-right zp-paragraph-settings-menu"
+          uib-dropdown-menu
+          role="menu"
+          style="width:360px;">
+        <li class="zp-paragraph-id-item" ng-controller="clipboardCtrl" ng-click="$event.stopPropagation()">
+          <a class="zp-paragraph-id-copy"
+              ngclipboard
               ngclipboard-success="complete($event)"
               ngclipboard-error="clipError($event)"
               data-clipboard-text="{{paragraph.id}}"
@@ -244,6 +288,5 @@ limitations under the License.
           </a>
         </li>
       </ul>
-    </span>
   </span>
 </div>

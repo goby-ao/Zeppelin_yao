@@ -12,21 +12,132 @@
  * limitations under the License.
  */
 
-.result-chart-selector {
-  margin-bottom: 10px;
-  position: relative;
-  display: inline-block;
+.zp-result-chart-selector {
+  position: absolute;
+  top: 7px;
+  right: 268px;
+  z-index: 3;
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -ms-flex-align: center;
+  align-items: center;
+  height: 32px;
+  margin: 0;
   vertical-align: middle;
 }
 
-.result-chart-selector button {
-  width: 35px;
-  height: 30px;
+.zp-result-chart-selector .zp-viz-group {
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -ms-flex-align: center;
+  align-items: center;
+  height: 32px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-.result-chart-selector button svg {
-  width: 100%;
-  height: 100%;
+.zp-result-chart-selector .zp-viz-btn {
+  position: relative;
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -ms-flex-align: center;
+  align-items: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 0 1px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--zp-muted);
+  font-size: 16px;
+  line-height: 1;
+  -webkit-transition: background-color 120ms ease, color 120ms ease, -webkit-transform 80ms ease-out;
+  transition: background-color 120ms ease, color 120ms ease, transform 80ms ease-out;
+}
+
+.zp-result-chart-selector .zp-viz-btn:hover {
+  background: var(--zp-bg-hover);
+  color: var(--zp-primary);
+}
+
+.zp-result-chart-selector .zp-viz-btn.active,
+.zp-result-chart-selector .zp-viz-btn.active:hover,
+.zp-result-chart-selector .zp-viz-btn.active:focus {
+  background: transparent;
+  color: var(--zp-primary);
+  box-shadow: inset 0 -2px 0 var(--zp-primary);
+}
+
+.zp-result-chart-selector .zp-viz-btn svg {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+}
+
+.zp-result-settings-action {
+  position: absolute;
+  top: 7px;
+  right: 160px;
+  z-index: 3;
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -ms-flex-align: center;
+  align-items: center;
+  height: 32px;
+  margin: 0;
+  border-left: 1px solid var(--zp-border);
+  vertical-align: middle;
+}
+
+.zp-result-settings-action .btnText {
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -ms-flex-align: center;
+  align-items: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  min-width: 98px;
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--zp-primary);
+  font-size: 14px;
+  line-height: 1;
+  text-align: center;
+  text-decoration: none;
+}
+
+.zp-result-settings-action .btnText .fa {
+  margin-left: 6px;
+}
+
+.zp-result-settings-action .btnText:hover,
+.zp-result-settings-action .btnText:focus {
+  background: var(--zp-bg-hover);
+  color: var(--zp-primary);
+  text-decoration: none;
+}
+
+@media (max-width: 1279px) {
+  .zp-result-chart-selector,
+  .zp-result-settings-action {
+    position: static;
+    display: inline-block;
+    margin: 4px 12px 8px 12px;
+    vertical-align: middle;
+  }
+
+  .zp-result-settings-action {
+    padding-left: 18px;
+  }
 }
 
 .rotate90 {
