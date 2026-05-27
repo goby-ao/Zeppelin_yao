@@ -25,7 +25,7 @@ limitations under the License.
     <input type="text"
            pu-elastic-input
            style="min-width: 400px; max-width: 80%;"
-           placeholder="Untitled"
+           placeholder="未命名"
            ng-model="paragraph.title"
            ng-if="input.showEditor"
            ng-escape="input.showEditor = false; paragraph.title = oldTitle;"
@@ -34,7 +34,7 @@ limitations under the License.
            focus-if="input.showEditor" />
     <div ng-click="input.showEditor = !asIframe && !viewOnly && !revisionView; oldTitle = paragraph.title;"
          ng-show="!input.showEditor"
-         ng-bind-html="paragraph.title || 'Untitled'">
+         ng-bind-html="paragraph.title || '未命名'">
     </div>
   </div>
 

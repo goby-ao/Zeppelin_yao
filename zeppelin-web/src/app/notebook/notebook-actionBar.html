@@ -16,7 +16,7 @@ limitations under the License.
   <h3>
     <div class="notebook-actionBar-title"
          ng-controller="ElasticInputCtrl as input">
-      <input type="text" pu-elastic-input class="form-control-title-input" placeholder="New name"
+      <input type="text" pu-elastic-input class="form-control-title-input" placeholder="新名称"
              ng-if="input.showEditor" ng-model="input.value" ng-escape="input.showEditor = false" focus-if="input.showEditor"
              ng-blur="updateNoteName(input.value);input.showEditor = false;" ng-enter="updateNoteName(input.value);input.showEditor = false;" />
       <p class="form-control-title"
@@ -32,7 +32,7 @@ limitations under the License.
               class="btn btn-default btn-xs"
               ng-click="runAllParagraphs(note.id)"
               ng-class="{'disabled':isNoteRunning()}"
-              tooltip-placement="bottom" uib-tooltip="Run all paragraphs"
+              tooltip-placement="bottom" uib-tooltip="运行全部代码块"
               ng-disabled="revisionView">
         <i class="icon-control-play"></i>
       </button>
@@ -40,14 +40,14 @@ limitations under the License.
               class="btn btn-default btn-xs"
               ng-click="toggleAllEditor()"
               ng-hide="viewOnly"
-              tooltip-placement="bottom" uib-tooltip="Show/hide the code"
+              tooltip-placement="bottom" uib-tooltip="显示/隐藏代码"
               ng-disabled="revisionView">
         <i ng-class="editorToggled ?  'fa icon-size-fullscreen' :'fa icon-size-actual'"></i></button>
       <button type="button"
               class="btn btn-default btn-xs"
               ng-click="toggleAllTable()"
               ng-hide="viewOnly"
-              tooltip-placement="bottom" uib-tooltip="Show/hide the output"
+              tooltip-placement="bottom" uib-tooltip="显示/隐藏输出"
               ng-disabled="revisionView">
         <i ng-class="tableToggled ? 'fa icon-notebook' : 'fa icon-book-open'"></i>
       </button>
@@ -56,7 +56,7 @@ limitations under the License.
               ng-click="clearAllParagraphOutput(note.id)"
               ng-hide="viewOnly"
               ng-class="{'disabled':isNoteRunning()}"
-              tooltip-placement="bottom" uib-tooltip="Clear output"
+              tooltip-placement="bottom" uib-tooltip="清空输出"
               ng-disabled="revisionView">
         <i class="fa fa-eraser"></i>
       </button>
@@ -64,7 +64,7 @@ limitations under the License.
       <button type="button"
               class="btn btn-default btn-xs"
               ng-hide="viewOnly"
-              tooltip-placement="bottom" uib-tooltip="Clone this note" data-source-note-name="{{note.name}}"
+              tooltip-placement="bottom" uib-tooltip="克隆此笔记" data-source-note-name="{{note.name}}"
               data-toggle="modal" data-target="#noteCreateModal" data-clone="true"
               ng-disabled="revisionView">
         <i class="fa fa-copy"></i>
@@ -73,7 +73,7 @@ limitations under the License.
               class="btn btn-default btn-xs"
               ng-hide="viewOnly"
               ng-click="exportNote()"
-              tooltip-placement="bottom" uib-tooltip="Export this note (zpln)"
+              tooltip-placement="bottom" uib-tooltip="导出此笔记 (zpln)"
               ng-disabled="revisionView">
         <i class="fa fa-download"></i>
       </button>
@@ -81,7 +81,7 @@ limitations under the License.
               class="btn btn-default btn-xs"
               ng-hide="viewOnly"
               ng-click="exportNbformat()"
-              tooltip-placement="bottom" uib-tooltip="Export this note (ipynb)"
+              tooltip-placement="bottom" uib-tooltip="导出此笔记 (ipynb)"
               ng-disabled="revisionView">
         <i class="fa fa-download"></i>
       </button>
@@ -90,7 +90,7 @@ limitations under the License.
               class="btn btn-default btn-xs"
               ng-hide="viewOnly"
               ng-click="reloadNote()"
-              tooltip-placement="bottom" uib-tooltip="Reload from note file"
+              tooltip-placement="bottom" uib-tooltip="从笔记文件重新加载"
               ng-disabled="revisionView">
         <i class="fa fa-refresh"></i>
       </button>
@@ -101,7 +101,7 @@ limitations under the License.
               ng-if="ticket.principal && ticket.principal !== 'anonymous'"
               ng-hide="viewOnly || note.config.personalizedMode !== 'true'"
               ng-click="toggleNotePersonalizedMode()"
-              tooltip-placement="bottom" uib-tooltip="Switch to collaboration mode {{isOwner ? '' : '(owner can change)'}}"
+              tooltip-placement="bottom" uib-tooltip="切换到协作模式 {{isOwner ? '' : '(只有所有者可修改)'}}"
               ng-disabled="revisionView">
         <i class="fa fa-user"></i>
       </button>
@@ -111,7 +111,7 @@ limitations under the License.
               ng-if="ticket.principal && ticket.principal !== 'anonymous'"
               ng-hide="viewOnly || note.config.personalizedMode === 'true'"
               ng-click="toggleNotePersonalizedMode()"
-              tooltip-placement="bottom" uib-tooltip="Switch to personal mode {{isOwner ? '' : '(owner can change)'}}"
+              tooltip-placement="bottom" uib-tooltip="切换到个人模式 {{isOwner ? '' : '(只有所有者可修改)'}}"
               ng-disabled="revisionView">
         <i class="fa fa-users"></i>
       </button>
@@ -124,7 +124,7 @@ limitations under the License.
                 id="versionControlDropdown"
                 ng-hide="viewOnly"
                 data-toggle="dropdown"
-                tooltip-placement="bottom" uib-tooltip="Version control"
+                tooltip-placement="bottom" uib-tooltip="版本控制"
                 ng-disabled="revisionView">
           <i class="fa fa-file-code-o"></i>
         </button>
@@ -134,7 +134,7 @@ limitations under the License.
                 ng-hide="viewOnly"
                 ng-click="setNoteRevision()"
                 ng-disabled="!revisionView"
-                tooltip-placement="bottom" uib-tooltip="Set revision">
+                tooltip-placement="bottom" uib-tooltip="设置版本">
           <i class="fa fa-arrow-circle-o-right"></i>
         </button>
         <ul class="dropdown-menu" style="width:250px"
@@ -144,7 +144,7 @@ limitations under the License.
               <div>
                 <input type="text"
                        dropdown-input
-                       placeholder="commit message"
+                       placeholder="提交说明"
                        id="note.checkpoint.message"
                        style="width: 145px;"
                        ng-model="note.checkpoint.message"/>
@@ -155,7 +155,7 @@ limitations under the License.
                         style="margin-left: 4px;"
                         tooltip-append-to-body="true"
                         tooltip-class="revisionTooltip"
-                        tooltip-placement="bottom" uib-tooltip="Commit this note">Commit
+                        tooltip-placement="bottom" uib-tooltip="提交当前笔记">提交
                 </button>
               </div>
             </div>
@@ -164,7 +164,7 @@ limitations under the License.
         <button type="button"
                 class="btn btn-default btn-xs"
                 ng-click="toggleRevisionsComparator()"
-                tooltip-placement="bottom" uib-tooltip="Compare revisions">
+                tooltip-placement="bottom" uib-tooltip="比较版本">
           <i class="fa fa-exchange"></i>
         </button>
       </div>
@@ -194,7 +194,7 @@ limitations under the License.
 
     <span class="labelBtn btn-group" id="searchGroup" style="vertical-align:middle; display:inline-block;">
       <button type="button" class="btn btn-default btn-xs dropdown-toggle"
-              data-toggle="dropdown" tooltip-placement="bottom" uib-tooltip="Search code"
+              data-toggle="dropdown" tooltip-placement="bottom" uib-tooltip="搜索代码"
       ng-click="searchClicked()">
         <i class="fa fa-search"></i>
       </button>
@@ -202,7 +202,7 @@ limitations under the License.
           ng-style="{left : search.left}" style="width: 350px">
         <li>
           <div class="input-group input-group-sm search-group">
-            <span class="input-group-addon">Find</span>
+            <span class="input-group-addon">查找</span>
             <input type="text" class="form-control" id="findInput"
                    ng-class="{'no-match': !hasMatches() && search.searchText !== '',
                     'has-match': search.searchText !== ''}"
@@ -211,7 +211,7 @@ limitations under the License.
                    ng-model="search.searchText"  ng-trim="false"/>
             <span class="input-group-addon after-input" ng-show="search.searchText !== ''"
                   ng-class="{'no-match': !hasMatches() && search.searchText !== ''}">
-              {{search.currentOccurrence}} of {{search.occurrencesCount}}
+              {{search.currentOccurrence}} / {{search.occurrencesCount}}
             </span>
             <div class="input-group-btn">
               <button class="btn btn-default" ng-click="prevOccurrence()">
@@ -225,16 +225,16 @@ limitations under the License.
             </div>
           </div>
           <div class="input-group input-group-sm search-group">
-            <span class="input-group-addon" style="border-top-width: inherit">Replace</span>
+            <span class="input-group-addon" style="border-top-width: inherit">替换</span>
             <input type="text" class="form-control" ng-model="search.replaceText" ng-trim="false"
                    style="border-top-width: inherit"/>
             <div class="input-group-btn">
               <button class="btn btn-default" ng-click="replace()"
-                      style="border-top-width: inherit">Replace</button>
+                      style="border-top-width: inherit">替换</button>
             </div>
             <div class="input-group-btn">
               <button class="btn btn-default" ng-click="replaceAll()"
-                      style="border-top-width: inherit">All</button>
+                      style="border-top-width: inherit">全部</button>
             </div>
           </div>
         </li>
@@ -250,7 +250,7 @@ limitations under the License.
                 ng-click="removeNote(note.id)"
                 ng-hide="viewOnly"
                 ng-class="{'disabled':isNoteRunning()}"
-                tooltip-placement="bottom" uib-tooltip="Remove this note permanently"
+                tooltip-placement="bottom" uib-tooltip="永久删除此笔记"
                 ng-disabled="revisionView">
           <i class="icon-trash"></i>
         </button>
@@ -261,7 +261,7 @@ limitations under the License.
                 ng-click="moveNoteToTrash(note.id)"
                 ng-hide="viewOnly"
                 ng-class="{'disabled':isNoteRunning()}"
-                tooltip-placement="bottom" uib-tooltip="Move this note to trash"
+                tooltip-placement="bottom" uib-tooltip="移动此笔记到回收站"
                 ng-disabled="revisionView">
           <i class="icon-trash"></i>
         </button>
@@ -271,7 +271,7 @@ limitations under the License.
         <button type="button"
                 class="btn btn-default btn-xs"
                 ng-show="collaborativeMode"
-                tooltip-placement="bottom" uib-tooltip="Users who watch this note: {{collaborativeModeUsers.join(', ')}}"
+                tooltip-placement="bottom" uib-tooltip="正在查看此笔记的用户：{{collaborativeModeUsers.join(', ')}}"
                 style="background-color: rgba(0,151,255,0.36)">
           <i class="icon-eye"> {{collaborativeModeUsers.length}}</i>
         </button>
@@ -283,24 +283,24 @@ limitations under the License.
              type="button"
              data-toggle="dropdown"
              ng-class="{ 'btn-info' : note.config.cron, 'btn-danger' : note.info.cron, 'btn-default' : !note.config.cron}"
-             tooltip-placement="bottom" uib-tooltip="Run scheduler"
+             tooltip-placement="bottom" uib-tooltip="运行定时调度"
              ng-disabled="revisionView || isTrash(note)">
           <span class="fa fa-clock-o"></span> {{getCronOptionNameFromValue(note.config.cron)}}
         </div>
         <ul class="dropdown-menu" role="menu" style="width:300px">
           <li>
             <div class="cron-preset-container">
-              Run note with cron scheduler.
-              Either choose from preset or write your own <a href="https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-06.html" target="_blank">cron expression</a>.
+              使用 cron 定时运行笔记。
+              可以选择预设值，也可以填写自定义 <a href="https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/tutorial-lesson-06.html" target="_blank">cron 表达式</a>。
               <div>
-                <span>- Preset</span>
+                <span>- 预设</span>
                 <a class="cron-preset" ng-repeat="cr in cronOption"
                    type="button"
                    ng-click="setCronScheduler(cr.value)"
                    dropdown-input ng-class="{ 'selected' : cr.value == note.config.cron}">{{cr.name}}</a>
               </div>
               <div>
-                <span>- Cron expression</span>
+                <span>- Cron 表达式</span>
                 <input type="text"
                        ng-model="note.config.cron"
                        ng-change="setCronScheduler(note.config.cron)"
@@ -323,19 +323,19 @@ limitations under the License.
               type="button"
               data-toggle="modal"
               data-target="#shortcutModal"
-              tooltip-placement="bottom" uib-tooltip="List of shortcuts">
+              tooltip-placement="bottom" uib-tooltip="快捷键列表">
           <i class="fa fa-keyboard-o"></i>
         </span>
         <span class="setting-btn"
               type="button"
               ng-click="toggleSetting()"
-              tooltip-placement="bottom" uib-tooltip="Interpreter binding">
+              tooltip-placement="bottom" uib-tooltip="解释器绑定">
           <i class="fa fa-cog" ng-style="{color: showSetting ? '#3071A9' : 'black' }"></i>
         </span>
         <span class="setting-btn"
               type="button"
               ng-click="togglePermissions()"
-              tooltip-placement="bottom" uib-tooltip="Note permissions">
+              tooltip-placement="bottom" uib-tooltip="笔记权限">
           <i class="fa fa-lock" ng-style="{color: showPermissions ? '#3071A9' : 'black' }"></i>
         </span>
       </span>

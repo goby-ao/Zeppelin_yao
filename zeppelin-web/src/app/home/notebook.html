@@ -14,17 +14,17 @@ limitations under the License.
 <div ng-controller="HomeCtrl as home">
   <div class="row">
     <div class="col-md-4">
-      <h4>Notebook
+      <h4>笔记
         <i ng-class="isReloadingNotes ? 'fa fa-refresh fa-spin' : 'fa fa-refresh'"
            ng-style="!isReloadingNotes && {'cursor': 'pointer'}" style="font-size: 13px;"
            ng-click="reloadNoteList();"
-           tooltip-placement="bottom" uib-tooltip="Reload notes from storage">
+           tooltip-placement="bottom" uib-tooltip="从存储重新加载笔记">
          </i>
       </h4>
         <h5><a href="" data-toggle="modal" data-target="#noteImportModal" style="text-decoration: none;">
-           <i style="font-size: 15px;" class="fa fa-upload"></i> Import note</a></h5>
+           <i style="font-size: 15px;" class="fa fa-upload"></i> 导入笔记</a></h5>
          <h5 ng-controller="NoteCreateCtrl as noteCreateCtrl"><a href="" data-toggle="modal" data-target="#noteCreateModal" style="text-decoration: none;" ng-click="noteCreateCtrl.getInterpreterSettings();">
-           <i style="font-size: 15px;" class="icon-notebook"></i> Create new note</a></h5>
+           <i style="font-size: 15px;" class="icon-notebook"></i> 新建笔记</a></h5>
        <ul id="notebook-names">
          <li class="filter-names" ng-include="'components/note-name-filter/note-name-filter.html'"></li>
          <div ng-if="!query.q || query.q === ''" infinite-scroll="loadMoreNotes()">

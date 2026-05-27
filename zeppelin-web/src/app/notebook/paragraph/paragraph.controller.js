@@ -333,7 +333,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     if ($scope.cancelUiState === 'cancelling') {
       return CANCEL_UI_TEXT.CANCELLING;
     }
-    return 'Cancel (Ctrl+' + ($rootScope.isMac ? 'Option' : 'Alt') + '+C)';
+    return '终止 (Ctrl+' + ($rootScope.isMac ? 'Option' : 'Alt') + '+C)';
   };
 
   $scope.cancelParagraph = function(paragraph) {
@@ -1502,25 +1502,32 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     return moment().toISOString();
   };
 
+  function formatDurationMs(timeMs) {
+    if (timeMs < 1000) {
+      return '0 秒';
+    }
+    return moment.duration((timeMs / 1000), 'seconds').format('h [小时] m [分钟] s [秒]');
+  }
+
   $scope.getExecutionTime = function(pdata) {
     const end = pdata.dateFinished;
     const start = pdata.dateStarted;
     let timeMs = Date.parse(end) - Date.parse(start);
     if (isNaN(timeMs) || timeMs < 0) {
       if ($scope.isResultOutdated(pdata)) {
-        return 'outdated';
+        return '结果已过期';
       }
       return '';
     }
 
-    const durationFormat = moment.duration((timeMs / 1000), 'seconds').format('h [hrs] m [min] s [sec]');
-    const endFormat = moment(pdata.dateFinished).format('MMMM DD YYYY, h:mm:ss A');
+    const durationFormat = formatDurationMs(timeMs);
+    const endFormat = moment(pdata.dateFinished).format('YYYY-MM-DD HH:mm:ss');
 
-    let user = (pdata.user === undefined || pdata.user === null) ? 'anonymous' : pdata.user;
-    let desc = `Took ${durationFormat}. Last updated by ${user} at ${endFormat}.`;
+    let user = (pdata.user === undefined || pdata.user === null) ? '匿名用户' : pdata.user;
+    let desc = `耗时 ${durationFormat}。最后由 ${user} 更新于 ${endFormat}。`;
 
     if ($scope.isResultOutdated(pdata)) {
-      desc += ' (outdated)';
+      desc += '（结果已过期）';
     }
 
     return desc;
@@ -1556,7 +1563,11 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   };
 
   $scope.getElapsedTime = function(paragraph) {
-    return 'Started ' + moment(paragraph.dateStarted).fromNow() + '.';
+    const startedAt = Date.parse(paragraph.dateStarted);
+    if (isNaN(startedAt)) {
+      return '';
+    }
+    return '已运行 ' + formatDurationMs(Math.max(0, Date.now() - startedAt)) + '。';
   };
 
   $scope.isResultOutdated = function(pdata) {

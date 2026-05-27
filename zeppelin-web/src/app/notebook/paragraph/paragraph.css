@@ -247,6 +247,21 @@
   z-index: 10003;
 }
 
+.tooltip.zp-run-tooltip {
+  z-index: 10060;
+  margin-top: 4px;
+}
+
+.tooltip.zp-run-tooltip .tooltip-inner {
+  max-width: 320px !important;
+  padding: 8px 13px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
+}
+
 /*
   Paragraph Menu
 */

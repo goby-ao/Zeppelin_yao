@@ -34,7 +34,7 @@ limitations under the License.
             ng-click="switchApp()"
             ng-class="{'active' : !config.helium.activeApp}"
             class="btn btn-default btn-sm zp-viz-btn"
-            tooltip-placement="bottom" uib-tooltip="Interpreter App"><i class="fa fa-terminal"></i>
+            tooltip-placement="bottom" uib-tooltip="解释器应用"><i class="fa fa-terminal"></i>
     </button>
 
     <button type="button"
@@ -42,7 +42,7 @@ limitations under the License.
             ng-repeat="app in apps"
             ng-click="switchApp(app.id)"
             ng-class="{'active' : app.id == config.helium.activeApp}"
-            tooltip-placement="bottom" uib-tooltip="{{app.pkg.name ? app.pkg.name : 'Interpreter App'}}"
+            tooltip-placement="bottom" uib-tooltip="{{app.pkg.name ? app.pkg.name : '解释器应用'}}"
             ng-bind-html="app.pkg.icon">
     </button>
   </div>
@@ -82,13 +82,13 @@ limitations under the License.
   <button type="button" class="btn btn-default btn-sm"
           style="margin-left:10px;"
           ng-click="exportToDSV(',')"
-          uib-tooltip="Download Data as CSV" tooltip-placement="bottom">
+          uib-tooltip="下载 CSV 数据" tooltip-placement="bottom">
     <i class="fa fa-download"></i>
   </button>
   <button type="button" class="btn btn-default btn-sm dropdown-toggle caretBtn"
           data-toggle="dropdown" style="display:none">
     <span class="caret" style="margin: 0px;"></span>
-    <span class="sr-only">Toggle Dropdown</span>
+    <span class="sr-only">切换下拉菜单</span>
   </button>
   <!--<ul class="dropdown-menu" role="menu" style="min-width: 70px;">
     <li ng-click="exportToDSV(',')"><a>CSV</a></li>
@@ -100,7 +100,7 @@ limitations under the License.
    ng-if="$index === 0 && (type == 'TABLE' || type == 'NETWORK') && !config.helium.activeApp && !asIframe && !viewOnly"
    class="zp-result-settings-action">
   <a class="btnText" ng-click="toggleGraphSetting()"
-     tooltip-placement="bottom" uib-tooltip="Result settings">
-    settings <span ng-class="config.graph.optionOpen ? 'fa fa-caret-up' : 'fa fa-caret-down'"></span>
+     tooltip-placement="bottom" uib-tooltip="结果设置">
+    设置 <span ng-class="config.graph.optionOpen ? 'fa fa-caret-up' : 'fa fa-caret-down'"></span>
   </a>
 </span>

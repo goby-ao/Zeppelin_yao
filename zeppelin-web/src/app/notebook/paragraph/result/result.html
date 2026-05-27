@@ -39,7 +39,7 @@ limitations under the License.
       <div id="p{{id}}_network_header"
            ng-if="type == 'NETWORK' && graphMode == 'network' && networkNodes != null">
          <ul class="list-inline">
-           <li>Nodes <span class="badge">{{networkNodes.count}}</span>:</li>
+           <li>节点 <span class="badge">{{networkNodes.count}}</span>：</li>
            <li ng-repeat="(labelName, labelColor) in networkNodes.labels" style="padding: 0">
              <span style="background-color: {{labelColor}} !important;" class="label label-default network-badge">
                {{labelName}}
@@ -47,7 +47,7 @@ limitations under the License.
            </li>
          </ul>
          <ul class="list-inline">
-           <li ng-if="networkRelationships != null">Relationships <span class="badge">{{networkRelationships.count}}</span>:</li>
+           <li ng-if="networkRelationships != null">关系 <span class="badge">{{networkRelationships.count}}</span>：</li>
            <li ng-repeat="type in networkRelationships.types" style="padding: 0">
              <span class="label label-default network-badge">
                {{type}}
@@ -85,7 +85,7 @@ limitations under the License.
       <div class="fa fa-level-down scroll-paragraph-down"
            ng-show="showScrollDownIcon()"
            ng-click="scrollParagraphDown()"
-           uib-tooltip="Follow Output"></div>
+           uib-tooltip="跟随输出"></div>
       <div id="p{{id}}_text"
            style="max-height: {{config.graph.height}}px; overflow: auto"
            class="text plainTextContent"
@@ -93,7 +93,7 @@ limitations under the License.
       <div class="fa fa-chevron-up scroll-paragraph-up"
            ng-show="showScrollUpIcon()"
            ng-click="scrollParagraphUp()"
-           uib-tooltip="Scroll Top"></div>
+           uib-tooltip="回到顶部"></div>
     </div>
 
     <div id="p{{id}}_custom"
