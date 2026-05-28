@@ -41,7 +41,10 @@ limitations under the License.
   <div ng-include src="'app/notebook/paragraph/paragraph-control.html'"></div>
 
   <div>
-    <div ng-if="!paragraph.config.editorHide && !viewOnly" class="zp-paragraph-editor-shell">
+    <div ng-if="!paragraph.config.editorHide && !viewOnly"
+         class="zp-paragraph-editor-shell"
+         ng-class="{'zp-code-collapsible': shouldShowCodeCollapse(paragraph),
+                    'zp-code-collapsed': codeCollapsed && shouldShowCodeCollapse(paragraph)}">
       <span class="zp-interpreter-chip" ng-if="paragraph.config.editorMode">
         {{paragraph.config.editorMode.replace('ace/mode/', '') | uppercase}}
       </span>
@@ -54,6 +57,20 @@ limitations under the License.
         revision-view="revisionView"
         ng-click="onEditorClick()"
       ></code-editor>
+      <div class="zp-code-collapse-fade"
+           ng-if="codeCollapsed && shouldShowCodeCollapse(paragraph)"></div>
+      <button type="button"
+              class="zp-code-collapse-toggle"
+              ng-if="shouldShowCodeCollapse(paragraph)"
+              ng-click="toggleCodeCollapse($event)"
+              tooltip-placement="top"
+              uib-tooltip="{{codeCollapsed ? '展开完整代码' : '收起代码'}}"
+              aria-expanded="{{!codeCollapsed}}">
+        <i class="fa"
+           ng-class="codeCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+        <span>{{codeCollapsed ? '展开代码' : '收起代码'}}</span>
+        <span class="zp-code-line-count">{{getCodeLineCount(paragraph)}} 行</span>
+      </button>
     </div>
 
     <div ng-include src="'app/notebook/paragraph/paragraph-progress-bar.html'"></div>

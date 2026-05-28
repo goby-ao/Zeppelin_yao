@@ -58,10 +58,9 @@ WEB_PORT=9000 SERVER_PORT=18080 COREPACK_ENABLE_PROJECT_SPEC=0 npm run dev
 推荐使用已经验证过的代理脚本 `/tmp/zeppelin-online-proxy.js`。注意必须在 `zeppelin-web` 目录下执行，因为脚本通过 `process.cwd() + '/node_modules/http-proxy'` 加载依赖：
 
 ```bash
-cd /Users/yao/.codex/worktrees/4fa4/Zeppelin_yao/zeppelin-web
-source ~/.nvm/nvm.sh
-nvm use 12.22.12
-node /tmp/zeppelin-online-proxy.js
+/Users/yao/.nvm/versions/node/v12.22.12/bin/node /tmp/zeppelin-online-proxy.js
+
+# 这里有一份：/Users/yao/.codex/worktrees/4fa4/Zeppelin_yao/scripts/zeppelin-online-proxy.js
 ```
 
 如果不想占用当前终端，可以后台启动：

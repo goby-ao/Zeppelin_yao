@@ -19,27 +19,104 @@ limitations under the License.
       <div class="zeppelin2"></div>
     </div>
     <div style="margin-top: -380px;">
-      <h1 class="box-heading" id="welcome">
+      <h1 class="box-heading" id="welcome" style = "font-size: 24px">
         欢迎使用 Zeppelin 数据探索工具！
       </h1>
-      这是一个面向数据分析和开发的在线笔记工具。<br/>
-      你可以使用 SQL、Shell、Python 等代码，完成交互式查询、分析和协作。<br/>
-
+      这是一个面向数据分析和开发的在线笔记工具。你可以使用 SQL、Shell、Python 等代码，完成交互式查询、分析和协作。<br/>
+      <br/>
       <div class="row">
-        <div class="col-md-4" ng-if="ticket">
-          <h4>笔记
-            <i ng-class="isReloadingNotes ? 'fa fa-refresh fa-spin' : 'fa fa-refresh'"
-              ng-style="!isReloadingNotes && {'cursor': 'pointer'}" style="font-size: 13px;"
-              ng-click="reloadNoteList();"
-              tooltip-placement="bottom" uib-tooltip="从存储重新加载笔记">
-            </i>
-          </h4>
+        <div class="col-md-6 home-side-panel">
+          <div class="home-module">
+            <div class="home-module-header">
+              <h4>快速分析</h4>
+              <span>选择常用引擎快速开始</span>
+            </div>
+            <div class="quick-analysis-list">
+              <button type="button" class="quick-analysis-card quick-analysis-hive"
+                      ng-click="quickCreate('hive')">
+                <span class="quick-analysis-icon"><i class="fa fa-database"></i></span>
+                <span class="quick-analysis-content">
+                  <strong>新建 Hive 查询</strong>
+                  <small>默认绑定 %jdbc</small>
+                </span>
+                <i class="fa fa-angle-right quick-analysis-arrow"></i>
+              </button>
+              <button type="button" class="quick-analysis-card quick-analysis-spark"
+                      ng-click="quickCreate('spark')">
+                <span class="quick-analysis-icon"><i class="fa fa-bolt"></i></span>
+                <span class="quick-analysis-content">
+                  <strong>新建 Spark 分析</strong>
+                  <small>适合大规模计算与探索</small>
+                </span>
+                <i class="fa fa-angle-right quick-analysis-arrow"></i>
+              </button>
+              <button type="button" class="quick-analysis-card quick-analysis-python"
+                      ng-click="quickCreate('python')">
+                <span class="quick-analysis-icon"><i class="fa fa-code"></i></span>
+                <span class="quick-analysis-content">
+                  <strong>新建 Python 脚本</strong>
+                  <small>适合脚本处理与建模分析</small>
+                </span>
+                <i class="fa fa-angle-right quick-analysis-arrow"></i>
+              </button>
+              <button type="button" class="quick-analysis-card quick-analysis-shell"
+                      ng-click="quickCreate('shell')">
+                <span class="quick-analysis-icon"><i class="fa fa-terminal"></i></span>
+                <span class="quick-analysis-content">
+                  <strong>新建 Shell 脚本</strong>
+                  <small>适合命令与批处理脚本</small>
+                </span>
+                <i class="fa fa-angle-right quick-analysis-arrow"></i>
+              </button>
+            </div>
+          </div>
 
-          <div>
-            <h5><a href="" data-toggle="modal" data-target="#noteImportModal" style="text-decoration: none;">
-              <i style="font-size: 15px;" class="fa fa-upload"></i> 导入笔记</a></h5>
-            <h5 ng-controller="NoteCreateCtrl as noteCreateCtrl"><a href="" data-toggle="modal" data-target="#noteCreateModal" style="text-decoration: none;" ng-click="noteCreateCtrl.getInterpreterSettings()">
-              <i style="font-size: 15px;" class="icon-notebook"></i> 新建笔记</a></h5>
+          <div class="home-module">
+            <div class="home-module-header">
+              <h4>最近使用</h4>
+              <span>快速回到最近打开的笔记</span>
+            </div>
+            <ul class="recent-notes-list" ng-if="recentNotes.length > 0">
+              <li ng-repeat="recentNote in recentNotes track by recentNote.id">
+                <a href="#/notebook/{{recentNote.id}}">
+                  <span class="recent-note-icon"><i class="icon-doc"></i></span>
+                  <span class="recent-note-name">{{recentNote.name}}</span>
+                  <span class="recent-note-time">{{formatRecentTime(recentNote.time)}}</span>
+                </a>
+              </li>
+            </ul>
+            <div class="recent-notes-empty" ng-if="recentNotes.length === 0">
+              暂无最近使用的笔记
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 home-notes-panel" ng-if="ticket">
+          <div class="home-module home-notes-module">
+            <div class="home-module-header home-notes-header">
+              <h4>笔记</h4>
+              <button type="button" class="home-notes-refresh"
+                      ng-style="!isReloadingNotes && {'cursor': 'pointer'}"
+                      ng-click="reloadNoteList();"
+                      tooltip-placement="bottom"
+                      uib-tooltip="从存储重新加载笔记">
+                <i ng-class="isReloadingNotes ? 'fa fa-refresh fa-spin' : 'fa fa-refresh'"></i>
+              </button>
+            </div>
+
+            <div class="home-note-actions">
+              <a href="" class="home-note-action"
+                 data-toggle="modal"
+                 data-target="#noteImportModal">
+                <i class="fa fa-upload"></i> 导入笔记
+              </a>
+              <a href="" class="home-note-action"
+                 ng-controller="NoteCreateCtrl as noteCreateCtrl"
+                 data-toggle="modal"
+                 data-target="#noteCreateModal"
+                 ng-click="noteCreateCtrl.getInterpreterSettings()">
+                <i class="icon-notebook"></i> 新建笔记
+              </a>
+            </div>
             <ul id="notebook-names">
               <li class="filter-names" ng-include="'components/note-name-filter/note-name-filter.html'"></li>
               <li ng-repeat="note in home.notes.list | filter:query.q track by $index">
@@ -56,21 +133,6 @@ limitations under the License.
              </div>
             </ul>
           </div>
-        </div>
-        <div class="col-md-6">
-          <h4>帮助</h4>
-          查看 <a style="text-decoration: none;" target="_blank"
-                              href="http://zeppelin.apache.org/docs/{{zeppelinVersion}}/index.html">Zeppelin 文档</a>开始使用<br/>
-
-          <h4>Community</h4>
-          Please feel free to help us to improve Zeppelin, <br/>
-          Any contribution are welcome!<br/><br/>
-          <a style="text-decoration: none;" href="http://zeppelin.apache.org/community.html"
-             target="_blank"><i style="font-size: 15px;" class="fa fa-users"></i> Mailing list</a><br/>
-          <a style="text-decoration: none;" href="https://issues.apache.org/jira/browse/ZEPPELIN"
-             target="_blank"><i style="font-size: 15px;" class="fa fa-bug"></i> Issues tracking</a><br/>
-          <a style="text-decoration: none;" href="https://github.com/apache/zeppelin"
-             target="_blank"><i style="font-size: 20px;" class="fa fa-github"></i> Github</a>
         </div>
       </div>
     </div>

@@ -251,6 +251,113 @@ text.nodeLabel {
   pointer-events: none;
 }
 
+.zp-log-output {
+  position: relative;
+  margin: 1px 0 1px;
+  padding-left: 0;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border: 1px solid var(--zp-border);
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.zp-log-output-toolbar {
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-align: center;
+  align-items: center;
+  -ms-flex-pack: start;
+  justify-content: flex-start;
+  min-height: 26px;
+  padding: 3px 8px;
+  border-bottom: 1px solid #eef2f7;
+  background: #f8fafc;
+}
+
+.zp-log-output-title {
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -ms-flex-align: center;
+  align-items: center;
+  color: #475569;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.zp-log-output-title .fa {
+  margin-right: 5px;
+  color: #6b7280;
+  color: var(--zp-muted);
+  font-size: 11px;
+}
+
+.zp-log-output-toggle {
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -ms-flex-align: center;
+  align-items: center;
+  height: 20px;
+  margin-right: 8px;
+  padding: 0 7px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1f6feb;
+  color: var(--zp-primary);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.zp-log-output-toggle .fa {
+  margin-right: 4px;
+  font-size: 10px;
+}
+
+.zp-log-output-toggle:hover,
+.zp-log-output-toggle:focus {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.12);
+  outline: none;
+}
+
+.zp-log-output-toggle:active {
+  background: #dbeafe;
+}
+
+.zp-log-output-body {
+  position: relative;
+  background: #ffffff;
+}
+
+.zp-log-output .plainTextContent {
+  padding: 2px 9px;
+  color: #1f2937;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.zp-log-output.is-collapsed .plainTextContent {
+  overflow: hidden;
+}
+
+.zp-log-output-fade {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 28px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #ffffff 76%);
+}
+
 /* D3 Graph Configuration */
 marker {
   fill: #D3D3D3;

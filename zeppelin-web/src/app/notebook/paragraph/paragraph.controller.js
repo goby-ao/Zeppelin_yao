@@ -47,6 +47,7 @@ const CANCEL_STUCK_HINT_MS = 37500;
 const CANCEL_MAX_WAIT_MS = 150000;
 const CANCEL_RESEND_FEEDBACK_MS = 800;
 const CANCEL_PENDING_BLOCK_MS = 5000;
+const CODE_COLLAPSE_LINE_THRESHOLD = 40;
 
 angular.module('zeppelinWebApp').controller('ParagraphCtrl', ParagraphCtrl);
 
@@ -76,6 +77,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   $scope.cancelFinalStatus = null;
   $scope.cancelResendFeedback = false;
   $scope.cancelPendingBlocked = false;
+  $scope.codeCollapsed = false;
   $scope.cancelFinalStatusRef = {
     ABORT: ParagraphStatus.ABORT,
     FINISHED: ParagraphStatus.FINISHED,
@@ -89,6 +91,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   let cancelMaxWaitTimer = null;
   let cancelResendFeedbackTimer = null;
   let cancelPendingBlockTimer = null;
+  let codeCollapseInitialized = false;
 
   // transactional info for spell execution
   $scope.spellTransaction = {
@@ -325,6 +328,53 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   $scope.canCancelParagraph = function(paragraph) {
     return $scope.cancelUiState === 'idle' && !isPendingCancelBlocked(paragraph);
   };
+
+  function getCodeLineCount(paragraph) {
+    const text = paragraph && typeof paragraph.text === 'string' ? paragraph.text : '';
+    if (!text) {
+      return 1;
+    }
+    return text.split(/\r\n|\r|\n/).length;
+  }
+
+  function resizeEditorSoon() {
+    $timeout(function() {
+      if ($scope.editor) {
+        $scope.editor.resize();
+      }
+    }, 0);
+  }
+
+  $scope.getCodeLineCount = function(paragraph) {
+    return getCodeLineCount(paragraph);
+  };
+
+  $scope.shouldShowCodeCollapse = function(paragraph) {
+    return getCodeLineCount(paragraph) > CODE_COLLAPSE_LINE_THRESHOLD;
+  };
+
+  $scope.toggleCodeCollapse = function(event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    $scope.codeCollapsed = !$scope.codeCollapsed;
+    resizeEditorSoon();
+  };
+
+  $scope.$watch(function() {
+    return getCodeLineCount($scope.paragraph);
+  }, function(lineCount) {
+    if (lineCount > CODE_COLLAPSE_LINE_THRESHOLD && !codeCollapseInitialized) {
+      $scope.codeCollapsed = true;
+      codeCollapseInitialized = true;
+      resizeEditorSoon();
+    } else if (lineCount <= CODE_COLLAPSE_LINE_THRESHOLD) {
+      $scope.codeCollapsed = false;
+      codeCollapseInitialized = false;
+      resizeEditorSoon();
+    }
+  });
 
   $scope.getCancelTooltip = function(paragraph) {
     if (isPendingCancelBlocked(paragraph)) {

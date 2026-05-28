@@ -19,7 +19,7 @@ limitations under the License.
     ng-mouseover="onMouseOver()"
     id="p{{id}}_resize"
     ng-if="!config.helium.activeApp"
-    style="padding-bottom: 5px;"
+    style="padding-bottom: 0px;"
     resize='{"allowresize": "{{!asIframe && !viewOnly}}", "graphType": "{{type}}"}'
     resizable on-resize="resize(width, height);">
 
@@ -80,20 +80,42 @@ limitations under the License.
     </div>
 
     <div ng-if="type == 'TEXT'"
-         class="plainTextContainer"
+         class="plainTextContainer zp-log-output"
+         ng-class="{'is-collapsed': plainTextCollapsible && plainTextCollapsed}"
          ng-style="getPointerEvent()">
-      <div class="fa fa-level-down scroll-paragraph-down"
-           ng-show="showScrollDownIcon()"
-           ng-click="scrollParagraphDown()"
-           uib-tooltip="跟随输出"></div>
-      <div id="p{{id}}_text"
-           style="max-height: {{config.graph.height}}px; overflow: auto"
-           class="text plainTextContent"
-           ng-class="{'no-copy': $root.disableCopyEnabled}"></div>
-      <div class="fa fa-chevron-up scroll-paragraph-up"
-           ng-show="showScrollUpIcon()"
-           ng-click="scrollParagraphUp()"
-           uib-tooltip="回到顶部"></div>
+      <div class="zp-log-output-toolbar">
+        <button type="button"
+                class="zp-log-output-toggle"
+                ng-if="plainTextCollapsible"
+                ng-click="togglePlainTextOutput()"
+                ng-attr-aria-expanded="{{!plainTextCollapsed}}"
+                uib-tooltip="{{plainTextCollapsed ? '展开日志输出' : '收起日志输出'}}"
+                tooltip-placement="top">
+          <i class="fa"
+             ng-class="plainTextCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+          <span>{{plainTextCollapsed ? '展开日志' : '收起日志'}}</span>
+        </button>
+        <span class="zp-log-output-title">
+          <i class="fa fa-terminal"></i>
+          日志输出
+        </span>
+      </div>
+      <div class="zp-log-output-body">
+        <div class="fa fa-level-down scroll-paragraph-down"
+             ng-show="!plainTextCollapsed && showScrollDownIcon()"
+             ng-click="scrollParagraphDown()"
+             uib-tooltip="跟随输出"></div>
+        <div id="p{{id}}_text"
+             ng-style="getPlainTextOutputStyle()"
+             class="text plainTextContent"
+             ng-class="{'no-copy': $root.disableCopyEnabled}"></div>
+        <div class="zp-log-output-fade"
+             ng-if="plainTextCollapsible && plainTextCollapsed"></div>
+        <div class="fa fa-chevron-up scroll-paragraph-up"
+             ng-show="!plainTextCollapsed && showScrollUpIcon()"
+             ng-click="scrollParagraphUp()"
+             uib-tooltip="回到顶部"></div>
+      </div>
     </div>
 
     <div id="p{{id}}_custom"

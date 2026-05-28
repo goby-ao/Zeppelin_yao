@@ -12,9 +12,16 @@
  * limitations under the License.
  */
 
+import {
+  QUICK_NOTE_ROOT,
+  getQuickNoteBinding,
+} from '../quick-note.config';
+
 angular.module('zeppelinWebApp').controller('HomeCtrl', HomeCtrl);
 
-function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, arrayOrderingSrv,
+const RECENT_NOTES_KEY = 'zp_recent_notes';
+
+function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $location, arrayOrderingSrv,
                   ngToast, noteActionService, TRASH_FOLDER_ID) {
   'ngInject';
 
@@ -37,11 +44,94 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, arrayOrd
   $scope.isReloading = false;
   $scope.TRASH_FOLDER_ID = TRASH_FOLDER_ID;
   $scope.query = {q: ''};
+  $scope.recentNotes = readRecentNotes().slice(0, 7);
 
   $scope.initHome = function() {
     websocketMsgSrv.getHomeNote();
     vm.noteCustomHome = false;
   };
+
+  $scope.quickCreate = function(interpreter) {
+    let userName = getCurrentUserName();
+    let noteName = QUICK_NOTE_ROOT + '/' + userName + '/QuickNote_' + interpreter;
+    let existingNote = findNoteByPath(noteName);
+
+    if (existingNote && existingNote.id) {
+      $location.path('/notebook/' + existingNote.id);
+      return;
+    }
+
+    websocketMsgSrv.createNotebook(noteName, getDefaultInterpreterGroup(interpreter));
+  };
+
+  $scope.formatRecentTime = function(time) {
+    if (!time) {
+      return '';
+    }
+    let diff = Math.max(0, Date.now() - time);
+    let minute = 60 * 1000;
+    let hour = 60 * minute;
+    let day = 24 * hour;
+
+    if (diff < minute) {
+      return '刚刚';
+    }
+    if (diff < hour) {
+      return Math.floor(diff / minute) + '分钟前';
+    }
+    if (diff < day) {
+      return Math.floor(diff / hour) + '小时前';
+    }
+    if (diff < 7 * day) {
+      return Math.floor(diff / day) + '天前';
+    }
+    return new Date(time).toLocaleDateString();
+  };
+
+  function readRecentNotes() {
+    try {
+      let raw = window.localStorage.getItem(RECENT_NOTES_KEY);
+      let notes = raw ? angular.fromJson(raw) : [];
+      return angular.isArray(notes) ? notes : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function getCurrentUserName() {
+    let principal = $rootScope.ticket && $rootScope.ticket.principal
+      ? $rootScope.ticket.principal
+      : 'anonymous';
+    return principal.replace(/[\/\\]/g, '_');
+  }
+
+  function getDefaultInterpreterGroup(interpreter) {
+    return getQuickNoteBinding(interpreter);
+  }
+
+  function findNoteByPath(notePath) {
+    let candidates = [];
+    let normalizedNotePath = normalizeNotePath(notePath);
+    if (vm.notes && angular.isArray(vm.notes.flatList)) {
+      candidates = candidates.concat(vm.notes.flatList);
+    }
+    if ($rootScope.notes && angular.isArray($rootScope.notes.list)) {
+      candidates = candidates.concat($rootScope.notes.list);
+    }
+
+    for (let i = 0; i < candidates.length; i++) {
+      let note = candidates[i];
+      if (note && (normalizeNotePath(note.path) === normalizedNotePath ||
+          normalizeNotePath(note.name) === normalizedNotePath)) {
+        return note;
+      }
+    }
+    return null;
+  }
+
+  function normalizeNotePath(path) {
+    return path ? path.replace(/^\/+/, '') : '';
+  }
 
   $scope.reloadNoteList = function() {
     websocketMsgSrv.reloadAllNotesFromRepo();

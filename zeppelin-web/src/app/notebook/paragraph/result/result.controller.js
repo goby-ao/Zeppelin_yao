@@ -38,6 +38,22 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
                     uiGridConstants) {
   'ngInject';
 
+  function addResizeEvent(config) {
+    let scope = $scope;
+    while (scope && !angular.isFunction(scope.addEvent)) {
+      scope = scope.$parent;
+    }
+    if (scope && angular.isFunction(scope.addEvent)) {
+      scope.addEvent(config);
+      return;
+    }
+
+    angular.element(config.element).on(config.eventType, config.handler);
+    $scope.$on('$destroy', function() {
+      angular.element(config.element).off(config.eventType, config.handler);
+    });
+  }
+
   /**
    * Built-in visualizations
    */
@@ -126,6 +142,14 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
 
   // type
   $scope.type = null;
+  $scope.plainTextCollapsed = true;
+  $scope.plainTextCollapsible = false;
+  let plainTextCollapseInitialized = false;
+  let plainTextCollapseUserToggled = false;
+  let plainTextOutputData = '';
+  const PLAIN_TEXT_COLLAPSED_HEIGHT = 72;
+  const PLAIN_TEXT_EXPANDED_MIN_HEIGHT = 300;
+  const PLAIN_TEXT_COLLAPSE_LINE_THRESHOLD = 20;
 
   // Data of the result
   let data;
@@ -316,6 +340,11 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
     $scope.graphMode = config.graph.mode;
     $scope.config = angular.copy(config);
 
+    if ($scope.type === DefaultDisplayType.TEXT) {
+      plainTextOutputData = typeof data === 'string' ? data : '';
+      updatePlainTextCollapseState(paragraphRef, plainTextOutputData);
+    }
+
     // enable only when it is last result
     enableHelium = (index === paragraphRef.results.msg.length - 1);
 
@@ -398,6 +427,70 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
   $scope.isDefaultDisplay = function() {
     return DefaultDisplayType[$scope.type];
   };
+
+  $scope.togglePlainTextOutput = function() {
+    plainTextCollapseUserToggled = true;
+    $scope.plainTextCollapsed = !$scope.plainTextCollapsed;
+  };
+
+  $scope.getPlainTextOutputStyle = function() {
+    const collapsed = $scope.plainTextCollapsible && $scope.plainTextCollapsed;
+    const configuredHeight = parseInt(_.get($scope.config, 'graph.height',
+      PLAIN_TEXT_EXPANDED_MIN_HEIGHT), 10) || PLAIN_TEXT_EXPANDED_MIN_HEIGHT;
+    const height = collapsed
+      ? PLAIN_TEXT_COLLAPSED_HEIGHT
+      : Math.max(configuredHeight, PLAIN_TEXT_EXPANDED_MIN_HEIGHT);
+    return {
+      'max-height': height + 'px',
+      'overflow': collapsed ? 'hidden' : 'auto',
+    };
+  };
+
+  function countPlainTextLines(text) {
+    if (!text) {
+      return 0;
+    }
+    return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').length;
+  }
+
+  function hasNonTextSiblingResult(paragraphRef) {
+    const results = _.get(paragraphRef, 'results.msg', []);
+    for (let i = 0; i < results.length; i++) {
+      if (results[i] && results[i].type && results[i].type !== DefaultDisplayType.TEXT) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function updatePlainTextCollapseState(paragraphRef, text) {
+    const hasStructuredOutput = hasNonTextSiblingResult(paragraphRef);
+    const lineCount = countPlainTextLines(text);
+    $scope.plainTextCollapsible = hasStructuredOutput || lineCount > PLAIN_TEXT_COLLAPSE_LINE_THRESHOLD;
+
+    if (!$scope.plainTextCollapsible) {
+      $scope.plainTextCollapsed = false;
+      plainTextCollapseInitialized = true;
+      return;
+    }
+
+    if (!plainTextCollapseInitialized ||
+        (hasStructuredOutput && !plainTextCollapseUserToggled && !$scope.plainTextCollapsed)) {
+      $scope.plainTextCollapsed = hasStructuredOutput;
+      plainTextCollapseInitialized = true;
+    }
+  }
+
+  $scope.$watch(function() {
+    const results = _.get(paragraph, 'results.msg', []);
+    return results.map(function(result) {
+      return result && result.type;
+    }).join('|');
+  }, function() {
+    if ($scope.type === DefaultDisplayType.TEXT) {
+      updatePlainTextCollapseState(paragraph, plainTextOutputData);
+    }
+  });
 
   /**
    * Render multiple sub results for custom display
@@ -593,6 +686,8 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
 
   function appendTextOutput(data) {
     const elemId = getTextResultElemId($scope.id);
+    plainTextOutputData += data || '';
+    updatePlainTextCollapseState(paragraph, plainTextOutputData);
     textResultQueueForAppend.push(data);
 
     // if DOM is not loaded, just push data and return
@@ -699,7 +794,7 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
             eventID = builtInViz.instance.targetEl[0].id;
           }
 
-          $scope.addEvent({
+          addResizeEvent({
             eventID: eventID,
             eventType: 'resize',
             element: window,

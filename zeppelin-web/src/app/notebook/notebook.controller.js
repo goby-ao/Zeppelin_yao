@@ -15,8 +15,14 @@
 import moment from 'moment';
 
 import {isParagraphRunning} from './paragraph/paragraph.status';
+import {
+  QUICK_NOTE_ROOT,
+  getQuickNoteBinding,
+} from '../quick-note.config';
 
 angular.module('zeppelinWebApp').controller('NotebookCtrl', NotebookCtrl);
+
+const RECENT_NOTES_KEY = 'zp_recent_notes';
 
 function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
                       $http, websocketMsgSrv, baseUrlSrv, $timeout, saveAsService,
@@ -70,6 +76,7 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   $scope.paragraphWarningDialog = {};
 
   let connectedOnce = false;
+  let quickNoteBindingSaved = {};
   let isRevisionPath = function(path) {
     let pattern = new RegExp('^.*\/notebook\/[a-zA-Z0-9_]*\/revision\/[a-zA-Z0-9_]*');
     return pattern.test(path);
@@ -196,6 +203,84 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   };
 
   initNotebook();
+
+  function rememberOpenedNote(note) {
+    if (!note || !note.id) {
+      return;
+    }
+
+    try {
+      let raw = window.localStorage.getItem(RECENT_NOTES_KEY);
+      let notes = raw ? angular.fromJson(raw) : [];
+      if (!angular.isArray(notes)) {
+        notes = [];
+      }
+      notes = notes.filter(function(item) {
+        return item && item.id !== note.id;
+      });
+      notes.unshift({
+        id: note.id,
+        name: note.name || note.id,
+        time: Date.now(),
+      });
+      window.localStorage.setItem(RECENT_NOTES_KEY, angular.toJson(notes.slice(0, 20)));
+    } catch (e) {
+      // LocalStorage can be unavailable in private mode or restricted iframe contexts.
+    }
+  }
+
+  function normalizeQuickNotePath(path) {
+    return path ? path.replace(/^\/+/, '') : '';
+  }
+
+  function getQuickNoteInterpreterBinding(note) {
+    if (!note) {
+      return null;
+    }
+
+    let notePath = normalizeQuickNotePath(note.path || note.name);
+    let pathParts = notePath.split('/');
+    let noteName = pathParts[pathParts.length - 1];
+    let inQuickNoteRoot = pathParts.length >= 3 && pathParts[0] === QUICK_NOTE_ROOT;
+    if (!inQuickNoteRoot && noteName.indexOf('QuickNote_') !== 0) {
+      return null;
+    }
+
+    let match = noteName.match(/^QuickNote_(.+)$/);
+    if (!match) {
+      return null;
+    }
+
+    return getQuickNoteBinding(match[1]);
+  }
+
+  function filterQuickNoteInterpreterBindings(interpreterBindings) {
+    let quickNoteBinding = getQuickNoteInterpreterBinding($scope.note);
+    if (!quickNoteBinding || !angular.isArray(interpreterBindings)) {
+      return interpreterBindings;
+    }
+
+    let matchedBinding = null;
+    let filteredBindings = interpreterBindings.filter(function(setting) {
+      if (setting && (setting.id === quickNoteBinding || setting.name === quickNoteBinding)) {
+        matchedBinding = setting;
+        return true;
+      }
+      return false;
+    });
+
+    if (!matchedBinding) {
+      console.warn('Quick note interpreter binding %o not found, keeping original bindings', quickNoteBinding);
+      return interpreterBindings;
+    }
+
+    matchedBinding.selected = true;
+    if ($scope.note && $scope.note.id && quickNoteBindingSaved[$scope.note.id] !== matchedBinding.id) {
+      quickNoteBindingSaved[$scope.note.id] = matchedBinding.id;
+      websocketMsgSrv.saveInterpreterBindings($scope.note.id, [matchedBinding.id]);
+    }
+    return filteredBindings;
+  }
 
   $scope.focusParagraphOnClick = function(clickEvent) {
     if (!$scope.note) {
@@ -549,6 +634,12 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   };
 
   const initializeLookAndFeel = function() {
+    if (!$scope.note) {
+      return;
+    }
+    if (!$scope.note.config) {
+      $scope.note.config = {};
+    }
     if (!$scope.note.config.looknfeel) {
       $scope.note.config.looknfeel = 'default';
     } else {
@@ -646,7 +737,7 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   };
 
   $scope.$on('interpreterBindings', function(event, data) {
-    $scope.interpreterBindings = data.interpreterBindings;
+    $scope.interpreterBindings = filterQuickNoteInterpreterBindings(data.interpreterBindings);
     $scope.interpreterBindingsOrig = angular.copy($scope.interpreterBindings); // to check dirty
 
     let selected = false;
@@ -1506,9 +1597,11 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   $scope.$on('setNoteContent', function(event, note) {
     if (note === undefined) {
       $location.path('/');
+      return;
     }
 
     $scope.note = note;
+    rememberOpenedNote($scope.note);
 
     $scope.paragraphUrl = $routeParams.paragraphId;
     $scope.asIframe = $routeParams.asIframe;

@@ -249,15 +249,15 @@
 
 .tooltip.zp-run-tooltip {
   z-index: 10060;
-  margin-top: 4px;
+  margin-top: 1px;
 }
 
 .tooltip.zp-run-tooltip .tooltip-inner {
   max-width: 320px !important;
-  padding: 8px 13px;
+  padding: 4px 10px;
   border-radius: 6px;
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: 1.05;
   white-space: nowrap;
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
 }
@@ -771,12 +771,11 @@ table.table-striped {
   -ms-flex-align: center !important;
   align-items: center !important;
   gap: 10px !important;
-  height: 32px !important;
+  height: 26px !important;
   padding: 0 6px 0 14px !important;
-  border: 1px solid #2563eb !important;
   border-radius: 6px !important;
-  background: #ffffff !important;
-  color: #2563eb !important;
+  background: #22990f !important;
+  color: #ffffff !important;
   font-size: 13px !important;
   font-weight: 500 !important;
   letter-spacing: 0.1px;
@@ -785,9 +784,9 @@ table.table-striped {
   transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
 
-.paragraph .zp-toolbar .zp-run-action:hover {
+.paragraph .zp-toolbar .run-actionzp-:hover {
   border-color: #1d4ed8 !important;
-  background: #eff6ff !important;
+  background: #15803D!important;
 }
 
 .paragraph .zp-toolbar .zp-run-action:focus-visible {
@@ -800,8 +799,8 @@ table.table-striped {
 }
 
 .paragraph .zp-toolbar .zp-run-action .fa {
-  color: #2563eb !important;
-  font-size: 11px !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
 }
 
 .paragraph .zp-toolbar .zp-run-action .zp-run-label {
@@ -1326,23 +1325,19 @@ table.table-striped {
 
 .zp-paragraph-editor-shell {
   position: relative;
-  margin: 0 12px 6px 12px;
+  margin: 0 12px 1px 12px;
   padding: 12px 16px;
   overflow: hidden;
   border: 1px solid var(--zp-border);
-  border-radius: 8px;
+  border-radius: 5px;
   background: #ffffff;
   box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
   -webkit-transition: border-color .15s ease, box-shadow .15s ease;
   transition: border-color .15s ease, box-shadow .15s ease;
 }
 
-.zp-paragraph-editor-shell:focus-within {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59,130,246,.16),
-              0 1px 2px rgba(16,24,40,.04),
-              0 1px 3px rgba(16,24,40,.08);
-}
+.zp-paragraph-editor-shell:hover {  border-color: #D1D5DB;}
+.zp-paragraph-editor-shell:focus-within {  border-color: rgb(13 169 60 / 0.76);  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.10);}
 
 .zp-interpreter-chip {
   position: absolute;
@@ -1366,6 +1361,73 @@ table.table-striped {
 
 .zp-paragraph-editor-shell code-editor {
   display: block;
+}
+
+.zp-paragraph-editor-shell.zp-code-collapsible {
+  padding-bottom: 46px;
+}
+
+.zp-paragraph-editor-shell.zp-code-collapsed {
+  max-height: 280px;
+}
+
+.zp-paragraph-editor-shell.zp-code-collapsed code-editor,
+.paragraph .zp-paragraph-editor-shell.zp-code-collapsed .editor,
+.paragraph .zp-paragraph-editor-shell.zp-code-collapsed .ace_editor {
+  max-height: 218px;
+  overflow: hidden;
+}
+
+.zp-code-collapse-fade {
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 72px;
+  border-radius: 0 0 5px 5px;
+  background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.92) 45%, #ffffff 100%);
+  pointer-events: none;
+}
+
+.zp-code-collapse-toggle {
+  position: absolute;
+  z-index: 4;
+  bottom: 10px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.12);
+  cursor: pointer;
+  -webkit-transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+.zp-code-collapse-toggle:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.16);
+}
+
+.zp-code-collapse-toggle .fa {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.zp-code-line-count {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .zp-paragraph-editor-shell .editor,
@@ -1452,7 +1514,7 @@ table.table-striped {
 
 .paragraph[data-paragraph-magic^="%"] .zp-paragraph-editor-shell .ace_text-layer .ace_line:first-child .ace_keyword.ace_operator:first-child,
 .paragraph[data-paragraph-magic^="%"] .zp-paragraph-editor-shell .ace_text-layer .ace_line:first-child .ace_keyword.ace_operator:first-child + .ace_identifier {
-  color: #1c8802 !important;
+  color: #0F766E !important;
   font-weight: 600;
 }
 
