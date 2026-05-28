@@ -99,22 +99,30 @@ limitations under the License.
           <i class="fa fa-terminal"></i>
           日志输出
         </span>
+        <span class="zp-log-scroll-actions">
+          <button type="button"
+                  class="zp-log-scroll-btn"
+                  ng-show="!plainTextCollapsed && showScrollDownIcon()"
+                  ng-click="scrollParagraphDown()"
+                  uib-tooltip="跟随输出"
+                  tooltip-placement="top">
+            <i class="fa fa-level-down"></i>
+          </button>
+          <button type="button"
+                  class="zp-log-scroll-btn"
+                  ng-show="!plainTextCollapsed && showScrollUpIcon()"
+                  ng-click="scrollParagraphUp()"
+                  uib-tooltip="回到顶部"
+                  tooltip-placement="top">
+            <i class="fa fa-chevron-up"></i>
+          </button>
+        </span>
       </div>
       <div class="zp-log-output-body">
-        <div class="fa fa-level-down scroll-paragraph-down"
-             ng-show="!plainTextCollapsed && showScrollDownIcon()"
-             ng-click="scrollParagraphDown()"
-             uib-tooltip="跟随输出"></div>
         <div id="p{{id}}_text"
              ng-style="getPlainTextOutputStyle()"
              class="text plainTextContent"
              ng-class="{'no-copy': $root.disableCopyEnabled}"></div>
-        <div class="zp-log-output-fade"
-             ng-if="plainTextCollapsible && plainTextCollapsed"></div>
-        <div class="fa fa-chevron-up scroll-paragraph-up"
-             ng-show="!plainTextCollapsed && showScrollUpIcon()"
-             ng-click="scrollParagraphUp()"
-             uib-tooltip="回到顶部"></div>
       </div>
     </div>
 

@@ -333,30 +333,64 @@ text.nodeLabel {
   background: #dbeafe;
 }
 
+.zp-log-scroll-actions {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  gap: 4px;
+}
+
+.zp-log-scroll-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1f6feb;
+  color: var(--zp-primary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.zp-log-scroll-btn:hover {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.12);
+  outline: none;
+}
+
+.zp-log-scroll-btn:active {
+  background: #dbeafe;
+}
+
 .zp-log-output-body {
   position: relative;
   background: #ffffff;
 }
 
 .zp-log-output .plainTextContent {
-  padding: 2px 39px;
+  padding: 2px 10px 2px 39px;
   color: #1f2937;
   font-size: 11px;
   line-height: 1.35;
 }
 
-.zp-log-output.is-collapsed .plainTextContent {
+.zp-log-output.is-collapsed .zp-log-output-body {
+  height: 0;
   overflow: hidden;
 }
 
+.zp-log-output.is-collapsed .plainTextContent {
+  display: none;
+}
+
 .zp-log-output-fade {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 28px;
-  pointer-events: none;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #ffffff 76%);
+  display: none;
 }
 
 /* D3 Graph Configuration */

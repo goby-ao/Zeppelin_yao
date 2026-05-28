@@ -558,17 +558,9 @@ table.table-striped {
   border-top: 1px solid #ddd;
 }
 
-.scroll-paragraph-down {
-  position: absolute;
-  right: 10px;
-  cursor: pointer;
-}
-
+.scroll-paragraph-down,
 .scroll-paragraph-up {
-  bottom: 5px;
-  cursor: pointer;
-  position: absolute;
-  right: 15px;
+  /* Legacy selectors — scroll buttons now live in .zp-log-output-toolbar */
 }
 
 .appSuggestion {

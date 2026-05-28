@@ -148,7 +148,7 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
   let plainTextCollapseInitialized = false;
   let plainTextCollapseUserToggled = false;
   let plainTextOutputData = '';
-  const PLAIN_TEXT_COLLAPSED_HEIGHT = 72;
+  const PLAIN_TEXT_COLLAPSED_HEIGHT = 0;
   const PLAIN_TEXT_EXPANDED_MIN_HEIGHT = 300;
   const PLAIN_TEXT_COLLAPSE_LINE_THRESHOLD = 20;
   const PLAIN_TEXT_BOTTOM_THRESHOLD = 24;
