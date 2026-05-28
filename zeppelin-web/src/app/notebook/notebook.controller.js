@@ -57,6 +57,9 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   ];
 
   $scope.formatRevisionDate = function(date) {
+    if (!date) {
+      return '';
+    }
     return moment.unix(date).format('MMMM Do YYYY, h:mm a');
   };
 
@@ -77,6 +80,7 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
 
   let connectedOnce = false;
   let quickNoteBindingSaved = {};
+  let revisionHistoryRequested = false;
   let isRevisionPath = function(path) {
     let pattern = new RegExp('^.*\/notebook\/[a-zA-Z0-9_]*\/revision\/[a-zA-Z0-9_]*');
     return pattern.test(path);
@@ -175,6 +179,22 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     });
   };
 
+  const hasAuthenticatedTicket = function() {
+    return $rootScope.ticket &&
+      $rootScope.ticket.ticket &&
+      $rootScope.ticket.ticket !== 'anonymous' &&
+      $rootScope.ticket.principal &&
+      $rootScope.ticket.principal !== 'anonymous';
+  };
+
+  const requestRevisionHistory = function() {
+    if (revisionHistoryRequested || !hasAuthenticatedTicket()) {
+      return;
+    }
+    revisionHistoryRequested = true;
+    websocketMsgSrv.listRevisionHistory($routeParams.noteId);
+  };
+
   /** Init the new controller */
   const initNotebook = function() {
     noteVarShareService.clear();
@@ -183,7 +203,7 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     } else {
       websocketMsgSrv.getNote($routeParams.noteId);
     }
-    websocketMsgSrv.listRevisionHistory($routeParams.noteId);
+    requestRevisionHistory();
     let currentRoute = $route.current;
     if (currentRoute) {
       setTimeout(
@@ -203,6 +223,10 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   };
 
   initNotebook();
+
+  $scope.$on('loginSuccess', function() {
+    requestRevisionHistory();
+  });
 
   function rememberOpenedNote(note) {
     if (!note || !note.id) {
@@ -227,6 +251,13 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     } catch (e) {
       // LocalStorage can be unavailable in private mode or restricted iframe contexts.
     }
+  }
+
+  function isNoteForCurrentRoute(note) {
+    if (!$routeParams.noteId) {
+      return true;
+    }
+    return note && note.id && String(note.id) === String($routeParams.noteId);
   }
 
   function normalizeQuickNotePath(path) {
@@ -429,13 +460,14 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
 
   $scope.$on('listRevisionHistory', function(event, data) {
     console.debug('received list of revisions %o', data);
-    $scope.noteRevisions = data.revisionList;
+    $scope.noteRevisions = data && angular.isArray(data.revisionList) ? data.revisionList : [];
     if ($scope.noteRevisions) {
       if ($scope.noteRevisions.length === 0 || $scope.noteRevisions[0].id !== 'Head') {
+        const headTime = $scope.noteRevisions.length > 0 ? $scope.noteRevisions[0].time : null;
         $scope.noteRevisions.splice(0, 0, {
           id: 'Head',
           message: 'Head',
-          time: $scope.noteRevisions[0].time,
+          time: headTime,
         });
       }
       if ($routeParams.revisionId) {
@@ -1596,7 +1628,14 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
 
   $scope.$on('setNoteContent', function(event, note) {
     if (note === undefined) {
-      $location.path('/');
+      if (!$routeParams.noteId && !$scope.note) {
+        $location.path('/');
+      }
+      return;
+    }
+
+    if (!isNoteForCurrentRoute(note)) {
+      console.debug('Ignore NOTE for %s while route expects %s', note.id, $routeParams.noteId);
       return;
     }
 

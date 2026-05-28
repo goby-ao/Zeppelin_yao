@@ -103,6 +103,10 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
     websocketMsgSrv.getHomeNote();
   }
 
+  function isHomeRoute() {
+    return $location.path() === '/';
+  }
+
   function logout() {
     let logoutURL = baseUrlSrv.getRestApiBase() + '/login/logout';
 
@@ -235,7 +239,9 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
     $rootScope.ticket.screenUsername = $rootScope.ticket.principal;
     listConfigurations();
     loadNotes();
-    getHomeNote();
+    if (isHomeRoute()) {
+      getHomeNote();
+    }
 
     // 立即更新水印
     updateWatermark($rootScope.ticket.screenUsername);

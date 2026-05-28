@@ -144,12 +144,14 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
   $scope.type = null;
   $scope.plainTextCollapsed = true;
   $scope.plainTextCollapsible = false;
+  $scope.keepScrollDown = true;
   let plainTextCollapseInitialized = false;
   let plainTextCollapseUserToggled = false;
   let plainTextOutputData = '';
   const PLAIN_TEXT_COLLAPSED_HEIGHT = 72;
   const PLAIN_TEXT_EXPANDED_MIN_HEIGHT = 300;
   const PLAIN_TEXT_COLLAPSE_LINE_THRESHOLD = 20;
+  const PLAIN_TEXT_BOTTOM_THRESHOLD = 24;
 
   // Data of the result
   let data;
@@ -431,6 +433,10 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
   $scope.togglePlainTextOutput = function() {
     plainTextCollapseUserToggled = true;
     $scope.plainTextCollapsed = !$scope.plainTextCollapsed;
+    if (!$scope.plainTextCollapsed) {
+      $scope.keepScrollDown = true;
+      schedulePlainTextScrollToBottom();
+    }
   };
 
   $scope.getPlainTextOutputStyle = function() {
@@ -480,6 +486,84 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
       plainTextCollapseInitialized = true;
     }
   }
+
+  function isParagraphRunning() {
+    return paragraph && (
+      paragraph.status === ParagraphStatus.PENDING ||
+      paragraph.status === ParagraphStatus.RUNNING);
+  }
+
+  function getPlainTextElem() {
+    return angular.element(`#${getTextResultElemId($scope.id)}`);
+  }
+
+  function isPlainTextNearBottom(elem) {
+    if (!elem || !elem[0]) {
+      return true;
+    }
+    return elem[0].scrollHeight - elem[0].scrollTop - elem.innerHeight() <=
+      PLAIN_TEXT_BOTTOM_THRESHOLD;
+  }
+
+  function shouldFollowPlainTextOutput(elem) {
+    if ($scope.plainTextCollapsed) {
+      return false;
+    }
+    if ($scope.keepScrollDown) {
+      return true;
+    }
+    return isParagraphRunning() && isPlainTextNearBottom(elem);
+  }
+
+  function scrollPlainTextToBottom(elem) {
+    if (!elem || !elem[0]) {
+      return;
+    }
+    elem[0].scrollTop = elem[0].scrollHeight;
+  }
+
+  function schedulePlainTextScrollToBottom() {
+    $timeout(function() {
+      scrollPlainTextToBottom(getPlainTextElem());
+    }, 0, false);
+  }
+
+  function bindPlainTextScrollHandlers(elem) {
+    if (!elem || !elem.length || elem.data('zp-tail-scroll-bound')) {
+      return;
+    }
+    elem.data('zp-tail-scroll-bound', true);
+    elem.on('scroll mousewheel DOMMouseScroll', function() {
+      $scope.keepScrollDown = isPlainTextNearBottom(elem);
+    });
+    $scope.$on('$destroy', function() {
+      elem.off('scroll mousewheel DOMMouseScroll');
+    });
+  }
+
+  $scope.showScrollDownIcon = function() {
+    const elem = getPlainTextElem();
+    return elem[0] &&
+      elem[0].scrollHeight > elem.innerHeight() &&
+      !isPlainTextNearBottom(elem);
+  };
+
+  $scope.scrollParagraphDown = function() {
+    const elem = getPlainTextElem();
+    scrollPlainTextToBottom(elem);
+    $scope.keepScrollDown = true;
+  };
+
+  $scope.showScrollUpIcon = function() {
+    const elem = getPlainTextElem();
+    return elem[0] && elem[0].scrollTop !== 0;
+  };
+
+  $scope.scrollParagraphUp = function() {
+    const elem = getPlainTextElem();
+    elem.animate({scrollTop: 0}, 500);
+    $scope.keepScrollDown = false;
+  };
 
   $scope.$watch(function() {
     const results = _.get(paragraph, 'results.msg', []);
@@ -629,9 +713,10 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
           elem.html('');
         }
 
-        elem.bind('mousewheel', (e) => {
-          $scope.keepScrollDown = false;
-        });
+        bindPlainTextScrollHandlers(elem);
+        if (isParagraphRunning() && !$scope.plainTextCollapsed) {
+          schedulePlainTextScrollToBottom();
+        }
       },
       (error) => {
         elem.html(`${error.stack}`);
@@ -696,15 +781,16 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
     }
 
     const elem = angular.element(`#${elemId}`);
+    bindPlainTextScrollHandlers(elem);
+    const shouldScrollToBottom = shouldFollowPlainTextOutput(elem);
 
     // pop all stacked data and append to the DOM
     while (textResultQueueForAppend.length > 0) {
       const line = elem.html() + AnsiUpConverter.ansi_to_html(textResultQueueForAppend.pop());
       elem.html(checkAndReplaceCarriageReturn(line));
-      if ($scope.keepScrollDown) {
-        const doc = angular.element(`#${elemId}`);
-        doc[0].scrollTop = doc[0].scrollHeight;
-      }
+    }
+    if (shouldScrollToBottom) {
+      schedulePlainTextScrollToBottom();
     }
   }
 

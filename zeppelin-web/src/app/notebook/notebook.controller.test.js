@@ -2,6 +2,7 @@ describe('Controller: NotebookCtrl', function() {
   beforeEach(angular.mock.module('zeppelinWebApp'));
 
   let scope;
+  let rootScope;
 
   let websocketMsgSrvMock = {
     getNote: function() {},
@@ -17,6 +18,9 @@ describe('Controller: NotebookCtrl', function() {
       return 'http://localhost:8080';
     },
   };
+  let routeParamsMock = {
+    noteId: '1',
+  };
 
   let noteMock = {
     id: 1,
@@ -25,11 +29,13 @@ describe('Controller: NotebookCtrl', function() {
   };
 
   beforeEach(inject(function($controller, $rootScope) {
-    scope = $rootScope.$new();
+    rootScope = $rootScope;
+    scope = rootScope.$new();
     $controller('NotebookCtrl', {
       $scope: scope,
       websocketMsgSrv: websocketMsgSrvMock,
       baseUrlSrv: baseUrlSrvMock,
+      $routeParams: routeParamsMock,
     });
   }));
 
@@ -136,5 +142,36 @@ describe('Controller: NotebookCtrl', function() {
     scope.$broadcast('setNoteMenu');
     expect(websocketMsgSrvMock.getNote.calls.count()).toEqual(0);
     expect(websocketMsgSrvMock.listRevisionHistory.calls.count()).toEqual(0);
+  });
+
+  it('should handle empty revision history', function() {
+    scope.$broadcast('listRevisionHistory', {revisionList: []});
+
+    expect(scope.noteRevisions.length).toEqual(1);
+    expect(scope.noteRevisions[0].id).toEqual('Head');
+    expect(scope.noteRevisions[0].time).toEqual(null);
+  });
+
+  it('should request revision history after authenticated login', function() {
+    spyOn(websocketMsgSrvMock, 'listRevisionHistory');
+    rootScope.ticket = {
+      principal: 'user1',
+      ticket: 'ticket1',
+      roles: '[]',
+    };
+
+    scope.$broadcast('loginSuccess');
+
+    expect(websocketMsgSrvMock.listRevisionHistory.calls.count()).toEqual(1);
+  });
+
+  it('should ignore note content for a different route note id', function() {
+    scope.$broadcast('setNoteContent', {
+      id: '2',
+      name: 'home note',
+      config: {},
+    });
+
+    expect(scope.note).toBe(noteMock);
   });
 });
