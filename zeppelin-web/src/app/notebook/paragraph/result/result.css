@@ -302,6 +302,7 @@ text.nodeLabel {
   align-items: center;
   height: 20px;
   margin-right: 8px;
+  margin-left: 10px;
   padding: 0 7px;
   border: 1px solid #dbeafe;
   border-radius: 10px;
@@ -338,7 +339,7 @@ text.nodeLabel {
 }
 
 .zp-log-output .plainTextContent {
-  padding: 2px 9px;
+  padding: 2px 39px;
   color: #1f2937;
   font-size: 11px;
   line-height: 1.35;
