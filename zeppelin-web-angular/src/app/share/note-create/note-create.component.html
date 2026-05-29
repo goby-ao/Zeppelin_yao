@@ -10,35 +10,35 @@
   ~ limitations under the License.
   -->
 
-<form nz-form nzLayout="vertical">
-  <nz-form-item>
-    <nz-form-label>
-      <ng-container *ngIf="cloneNote;else importTpl">Clone Note</ng-container>
-      <ng-template #importTpl>Import As</ng-template>
-    </nz-form-label>
-    <nz-form-control>
-      <input nz-input [(ngModel)]="noteName" autofocus placeholder="Insert Note Name" name="noteName"/>
-    </nz-form-control>
-  </nz-form-item>
-  <nz-form-item *ngIf="!cloneNote">
-    <nz-form-label>Default Interpreter</nz-form-label>
-    <nz-form-control>
-      <nz-select [(ngModel)]="defaultInterpreter" name="defaultInterpreter" nzPlaceHolder="Insert Default Interpreter" nzShowSearch>
-        <nz-option *ngFor="let i of listOfInterpreter" [nzValue]="i.name" [nzLabel]="i.name"></nz-option>
-      </nz-select>
-    </nz-form-control>
-  </nz-form-item>
-  <nz-form-item>
-    <nz-form-control>
-      <nz-alert nzType="info" nzMessage="Use '/' to create folders. Example: /NoteDirA/Note1"></nz-alert>
-    </nz-form-control>
-  </nz-form-item>
-
-  <div class="modal-footer ant-modal-footer">
-    <button nz-button nzType="primary" (click)="createNote()">
-      <ng-container *ngIf="cloneNote;else importTpl">Clone</ng-container>
-      <ng-template #importTpl>Create</ng-template>
+<div class="note-create-body">
+  <form nz-form nzLayout="vertical">
+    <nz-form-item>
+      <nz-form-label>
+        <ng-container *ngIf="cloneNote; else createTpl">克隆为</ng-container>
+        <ng-template #createTpl>笔记名称</ng-template>
+      </nz-form-label>
+      <nz-form-control>
+        <input nz-input [(ngModel)]="noteName" autofocus placeholder="请输入笔记名称" name="noteName" nzSize="large"/>
+      </nz-form-control>
+    </nz-form-item>
+    <nz-form-item *ngIf="!cloneNote">
+      <nz-form-label>默认解释器</nz-form-label>
+      <nz-form-control>
+        <nz-select [(ngModel)]="defaultInterpreter" name="defaultInterpreter" nzPlaceHolder="选择默认解释器" nzShowSearch>
+          <nz-option *ngFor="let i of listOfInterpreter" [nzValue]="i.name" [nzLabel]="i.name"></nz-option>
+        </nz-select>
+      </nz-form-control>
+    </nz-form-item>
+    <div class="hint-text">
+      <i nz-icon nzType="info-circle" nzTheme="outline"></i>
+      使用 <code>/</code> 创建目录，例如：<code>/目录A/笔记1</code>
+    </div>
+  </form>
+  <div class="note-create-footer">
+    <button nz-button (click)="createNote()" nzType="primary" nzBlock>
+      <ng-container *ngIf="cloneNote; else createBtnTpl">克隆</ng-container>
+      <ng-template #createBtnTpl>创建</ng-template>
     </button>
   </div>
-</form>
+</div>
 

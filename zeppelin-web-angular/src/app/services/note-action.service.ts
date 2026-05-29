@@ -60,11 +60,13 @@ export class NoteActionService {
 
   createNote(path?: string) {
     this.nzModalService.create({
-      nzTitle: 'Create New Note',
+      nzTitle: '新建笔记',
       nzContent: NoteCreateComponent,
       nzComponentParams: { path },
-      nzWidth: '800px',
-      nzFooter: null
+      nzWidth: '480px',
+      nzFooter: null,
+      nzCentered: true,
+      nzClassName: 'note-create-modal'
     });
   }
 

@@ -14,7 +14,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit } from '@
 
 import { MessageListener, MessageListenersManager } from '@zeppelin/core';
 import { OP } from '@zeppelin/sdk';
-import { MessageService, TicketService } from '@zeppelin/services';
+import { MessageService, NoteActionService, TicketService } from '@zeppelin/services';
 
 @Component({
   selector: 'zeppelin-home',
@@ -30,6 +30,14 @@ export class HomeComponent extends MessageListenersManager implements OnInit {
     this.loading = true;
   }
 
+  importNote() {
+    this.noteActionService.importNote();
+  }
+
+  createNote() {
+    this.noteActionService.createNote();
+  }
+
   @MessageListener(OP.NOTES_INFO)
   getNotes() {
     this.loading = false;
@@ -39,6 +47,7 @@ export class HomeComponent extends MessageListenersManager implements OnInit {
   constructor(
     public ticketService: TicketService,
     public messageService: MessageService,
+    private noteActionService: NoteActionService,
     private cdr: ChangeDetectorRef
   ) {
     super(messageService);

@@ -16,6 +16,15 @@ import { CommonModule } from '@angular/common';
 import { NgModule } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
+import { IconDefinition } from '@ant-design/icons-angular';
+import {
+  CloseOutline,
+  ExclamationCircleOutline,
+  ExclamationOutline,
+  LockFill,
+  SyncOutline,
+  UnlockFill
+} from '@ant-design/icons-angular/icons';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCodeEditorModule } from 'ng-zorro-antd/code-editor';
 import { NzNoAnimationModule } from 'ng-zorro-antd/core';
@@ -23,7 +32,7 @@ import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
-import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzIconModule, NZ_ICONS } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzPopoverModule } from 'ng-zorro-antd/popover';
@@ -52,8 +61,18 @@ import { NotebookActionBarComponent } from './action-bar/action-bar.component';
 import { NoteFormBlockComponent } from './note-form-block/note-form-block.component';
 import { NotebookRoutingModule } from './notebook-routing.module';
 import { NotebookComponent } from './notebook.component';
+import { NotebookParagraphNavComponent } from './paragraph-nav/paragraph-nav.component';
 import { NotebookShareModule } from './share/share.module';
 import { NotebookSidebarComponent } from './sidebar/sidebar.component';
+
+const icons: IconDefinition[] = [
+  SyncOutline,
+  CloseOutline,
+  ExclamationOutline,
+  ExclamationCircleOutline,
+  LockFill,
+  UnlockFill
+];
 
 @NgModule({
   declarations: [
@@ -69,8 +88,10 @@ import { NotebookSidebarComponent } from './sidebar/sidebar.component';
     NotebookParagraphFooterComponent,
     NotebookParagraphControlComponent,
     NoteFormBlockComponent,
-    NotebookSidebarComponent
+    NotebookSidebarComponent,
+    NotebookParagraphNavComponent
   ],
+  providers: [{ provide: NZ_ICONS, useValue: icons }],
   imports: [
     CommonModule,
     PortalModule,

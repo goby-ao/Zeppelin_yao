@@ -58,6 +58,9 @@
         <div class="paragraph-inner" nz-row>
           <zeppelin-notebook-paragraph nz-col
                                       *ngFor="let p of note.paragraphs;let first = first; let last = last; index as i"
+                                      [attr.data-paragraph-id]="p.id"
+                                      [class.locked-paragraph]="p.id === lockedParagraphId"
+                                      [class.dimmed-paragraph]="lockedParagraphId && p.id !== lockedParagraphId"
                                       [nzSpan]="p.config.colWidth * 2"
                                       [select]="p.id === selectId"
                                       [scrolled]="p.id === scrolledId"
@@ -79,4 +82,12 @@
       </div>
     </div>
   </div>
+  <zeppelin-notebook-paragraph-nav
+    *ngIf="note.paragraphs"
+    [paragraphs]="note.paragraphs"
+    [lockedParagraphId]="lockedParagraphId"
+    (scrollToParagraph)="onNavScrollToParagraph($event)"
+    (lockParagraph)="onParagraphLocked($event)"
+    (unlockParagraph)="onParagraphUnlocked()">
+  </zeppelin-notebook-paragraph-nav>
 </div>

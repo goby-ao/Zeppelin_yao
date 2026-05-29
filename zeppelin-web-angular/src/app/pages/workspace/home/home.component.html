@@ -19,8 +19,14 @@
     You can make beautiful data-driven, interactive, collaborative document with SQL, code and even more!<br/>
   </div>
   <div nz-row class="more-info" [nzGutter]="48">
-    <div nz-col [nzSm]="24" [nzLg]="8">
-      <h3>Notebook <a class="refresh-note" nz-tooltip nzTitle="Reload notes from storage" (click)="reloadNoteList()"><i nz-icon nzType="sync" nzTheme="outline" [nzSpin]="loading"></i></a></h3>
+    <div nz-col [nzSm]="24" [nzLg]="12">
+      <div class="notebook-header">
+        <h3>Notebook <a class="refresh-note" nz-tooltip nzTitle="Reload notes from storage" (click)="reloadNoteList()"><i nz-icon nzType="sync" nzTheme="outline" [nzSpin]="loading"></i></a></h3>
+        <div class="notebook-header-actions">
+          <button class="btn-create" (click)="createNote()"><i nz-icon nzType="file-add" nzTheme="outline"></i> 新建笔记</button>
+          <button class="btn-import" (click)="importNote()"><i nz-icon nzType="upload" nzTheme="outline"></i> 导入</button>
+        </div>
+      </div>
       <zeppelin-node-list></zeppelin-node-list>
     </div>
     <div nz-col [nzSm]="24" [nzLg]="12">

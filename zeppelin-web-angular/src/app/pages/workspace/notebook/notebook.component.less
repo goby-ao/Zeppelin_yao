@@ -76,4 +76,42 @@
   .paragraph-area {
     padding: 0 5px;
   }
+
+  .paragraph-inner {
+    zeppelin-notebook-paragraph {
+      transition: opacity 0.3s ease;
+    }
+
+    .locked-paragraph {
+      position: relative;
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: #722ed1;
+        border-radius: 2px;
+        z-index: 10;
+      }
+
+      .paragraph {
+        box-shadow: 0 0 0 2px fade(#722ed1, 25%), @card-shadow;
+      }
+    }
+
+    .dimmed-paragraph {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    .nav-highlight {
+      .paragraph {
+        box-shadow: 0 0 0 3px fade(@primary-color, 40%), @card-shadow;
+        transition: box-shadow 0.3s ease;
+      }
+    }
+  }
 });

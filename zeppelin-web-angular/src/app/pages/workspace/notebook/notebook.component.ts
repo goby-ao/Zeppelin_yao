@@ -14,6 +14,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  HostListener,
   OnDestroy,
   OnInit,
   QueryList,
@@ -75,6 +76,8 @@ export class NotebookComponent extends MessageListenersManager implements OnInit
   sidebarWidth = 370;
   sidebarAnimationFrame = -1;
   isSidebarOpen = false;
+  lockedParagraphId: string | null = null;
+  private highlightTimer: ReturnType<typeof setTimeout> | null = null;
 
   @MessageListener(OP.NOTE)
   getNote(data: MessageReceiveDataTypeMap[OP.NOTE]) {
@@ -351,6 +354,80 @@ export class NotebookComponent extends MessageListenersManager implements OnInit
     });
   }
 
+  onParagraphLocked(id: string) {
+    this.lockedParagraphId = id;
+    this.cdr.markForCheck();
+  }
+
+  onParagraphUnlocked() {
+    this.lockedParagraphId = null;
+    this.cdr.markForCheck();
+  }
+
+  onNavScrollToParagraph(id: string) {
+    const el = document.querySelector(`[data-paragraph-id="${id}"]`) as HTMLElement;
+    if (!el) {
+      return;
+    }
+
+    const rect = el.getBoundingClientRect();
+    const absoluteTop = rect.top + window.pageYOffset;
+    const headerHeight = 110; // action bar height offset
+    const viewportHeight = window.innerHeight;
+    const centeredTop = absoluteTop - viewportHeight / 2 + rect.height / 2;
+
+    // If paragraph top is near the page top, scroll to just below the action bar
+    // so the run button row is visible. Otherwise center the paragraph.
+    let targetTop: number;
+    if (absoluteTop < viewportHeight) {
+      targetTop = Math.max(0, absoluteTop - headerHeight);
+    } else {
+      targetTop = Math.max(0, centeredTop);
+    }
+
+    window.scrollTo({ top: targetTop, behavior: 'smooth' });
+
+    if (this.highlightTimer) {
+      clearTimeout(this.highlightTimer);
+    }
+    this.highlightTimer = setTimeout(() => {
+      el.classList.add('nav-highlight');
+      this.highlightTimer = setTimeout(() => {
+        el.classList.remove('nav-highlight');
+        this.highlightTimer = null;
+      }, 1500);
+    }, 500);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey() {
+    if (this.lockedParagraphId) {
+      this.onParagraphUnlocked();
+    }
+  }
+
+  @HostListener('document:wheel', ['$event'])
+  onWheel(event: WheelEvent) {
+    if (!this.lockedParagraphId) {
+      return;
+    }
+    const lockedEl = document.querySelector(`[data-paragraph-id="${this.lockedParagraphId}"]`);
+    if (!lockedEl) {
+      return;
+    }
+    if (!lockedEl.contains(event.target as Node)) {
+      event.preventDefault();
+      const scrollables = lockedEl.querySelectorAll('.result-container, .ant-table-body, pre, .code-editor-wrapper');
+      for (let i = 0; i < scrollables.length; i++) {
+        const s = scrollables[i] as HTMLElement;
+        if (s.scrollHeight > s.clientHeight) {
+          s.scrollTop += event.deltaY;
+          break;
+        }
+      }
+    }
+  }
+
   constructor(
     private activatedRoute: ActivatedRoute,
     public messageService: MessageService,
@@ -410,6 +487,9 @@ export class NotebookComponent extends MessageListenersManager implements OnInit
   ngOnDestroy(): void {
     super.ngOnDestroy();
     this.killSaveTimer();
+    if (this.highlightTimer) {
+      clearTimeout(this.highlightTimer);
+    }
     this.saveNote();
     this.destroy$.next();
     this.destroy$.complete();
