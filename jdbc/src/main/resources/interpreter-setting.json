@@ -148,7 +148,7 @@
     "editor": {
       "language": "sql",
       "editOnDblClick": false,
-      "completionSupport": true
+      "completionSupport": false
     }
   }
 ]

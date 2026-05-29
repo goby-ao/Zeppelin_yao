@@ -167,7 +167,7 @@
       "language": "scala",
       "editOnDblClick": false,
       "completionKey": "TAB",
-      "completionSupport": true
+      "completionSupport": false
     }
   },
   {
@@ -208,7 +208,7 @@
       "language": "sql",
       "editOnDblClick": false,
       "completionKey": "TAB",
-      "completionSupport": true
+      "completionSupport": false
     }
   },
   {
@@ -242,7 +242,7 @@
       "language": "python",
       "editOnDblClick": false,
       "completionKey": "TAB",
-      "completionSupport": true
+      "completionSupport": false
     }
   },
   {
@@ -253,7 +253,7 @@
     "editor": {
       "language": "python",
       "editOnDblClick": false,
-      "completionSupport": true,
+      "completionSupport": false,
       "completionKey": "TAB"
     }
   },
@@ -307,7 +307,7 @@
     "editor": {
       "language": "r",
       "editOnDblClick": false,
-      "completionSupport": true,
+      "completionSupport": false,
       "completionKey": "TAB"
     }
   },
@@ -320,7 +320,7 @@
     "editor": {
       "language": "r",
       "editOnDblClick": false,
-      "completionSupport": true,
+      "completionSupport": false,
       "completionKey": "TAB"
     }
   },
