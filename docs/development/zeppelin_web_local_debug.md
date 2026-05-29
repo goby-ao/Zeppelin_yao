@@ -1,6 +1,8 @@
 # Zeppelin Web 本地联调
 
-本文记录 `zeppelin-web` 在本机预览 UI、通过本地反向代理连接线上 Zeppelin 后端的操作方式。
+本文记录 `zeppelin-web`（AngularJS 老前端）和 `zeppelin-web-angular`（Angular 8 新前端）在本机预览 UI、通过本地反向代理连接线上 Zeppelin 后端的操作方式。
+
+两个前端共用同一套后端代理链路，但构建工具和启动方式不同，分开说明。
 
 ## 目标链路
 
@@ -196,7 +198,7 @@ curl -x "" -sS -D - http://127.0.0.1:18080/mgwh/zeppelin/api/version -o -
 
 如果返回 `authentication failed, please login`，说明代理链路是通的，但当前终端请求没有浏览器登录态。浏览器里按正常登录流程继续即可。
 
-## 本地构建
+## 本地构建（zeppelin-web）
 
 正常构建使用 Node 12：
 
@@ -212,6 +214,90 @@ COREPACK_ENABLE_PROJECT_SPEC=0 yarn build:dist
 ```bash
 NODE_OPTIONS=--openssl-legacy-provider COREPACK_ENABLE_PROJECT_SPEC=0 yarn build:dist
 ```
+
+---
+
+# zeppelin-web-angular（Angular 8 新前端）
+
+## 前置条件
+
+1. **必须使用 Node 12**。项目基于 Angular 8.2.10 + TypeScript 3.5，Node 18/20/24 均会编译报错（OpenSSL 兼容、语法不支持等）。
+2. 上层目录 `/Users/yao/package.json` 有 `packageManager: pnpm@...` 配置，会污染 Corepack，所有命令都需要加 `COREPACK_ENABLE_PROJECT_SPEC=0`。
+
+## 安装依赖
+
+在 worktree 中 `node_modules` 可能不存在，需要先安装：
+
+```bash
+cd /Users/yao/.codex/worktrees/4fa4/Zeppelin_yao/zeppelin-web-angular
+source ~/.nvm/nvm.sh
+nvm use 12.22.12
+COREPACK_ENABLE_PROJECT_SPEC=0 npm install
+```
+
+如果依赖已存在则跳过此步。
+
+## 本地构建（zeppelin-web-angular）
+
+```bash
+cd /Users/yao/.codex/worktrees/4fa4/Zeppelin_yao/zeppelin-web-angular
+source ~/.nvm/nvm.sh
+nvm use 12.22.12
+COREPACK_ENABLE_PROJECT_SPEC=0 ./node_modules/.bin/ng build
+```
+
+也可以一步到位（安装依赖 + 构建）：
+
+```bash
+cd /Users/yao/.codex/worktrees/4fa4/Zeppelin_yao/zeppelin-web-angular
+source ~/.nvm/nvm.sh
+nvm use 12.22.12
+COREPACK_ENABLE_PROJECT_SPEC=0 npm install && COREPACK_ENABLE_PROJECT_SPEC=0 ./node_modules/.bin/ng build
+```
+
+构建产物输出到 `dist/` 目录。
+
+## 启动开发服务器（zeppelin-web-angular）
+
+```bash
+cd /Users/yao/.codex/worktrees/4fa4/Zeppelin_yao/zeppelin-web-angular
+source ~/.nvm/nvm.sh
+nvm use 12.22.12
+COREPACK_ENABLE_PROJECT_SPEC=0 ./node_modules/.bin/ng serve --proxy-config proxy.conf.js --extra-webpack-config webpack.partial.js
+```
+
+开发服务器默认端口 4200，支持热重载。代理配置在 `proxy.conf.js` 中。
+
+## 常见问题（zeppelin-web-angular）
+
+### ng 命令找不到
+
+确认 `node_modules` 已安装，且使用 `./node_modules/.bin/ng` 而非全局 `ng`。
+
+### TypeScript 编译报错
+
+- `Unexpected token '?'` 或 `Cannot find name 'import'`：说明用了 Node 18+，切回 Node 12。
+- `ERR_OSSL_EVP_UNSUPPORTED`：同上，Node 版本过高。
+
+### 图标不显示
+
+项目使用 ng-zorro-antd 的静态图标注册模式。如果新增组件用到了 `nz-icon`，需要在对应 module 的 `providers` 中注册图标：
+
+```typescript
+import { IconDefinition } from '@ant-design/icons-angular';
+import { NZ_ICONS } from 'ng-zorro-antd/icon';
+import { SyncOutline, LockFill } from '@ant-design/icons-angular/icons';
+
+const icons: IconDefinition[] = [SyncOutline, LockFill];
+
+@NgModule({
+  providers: [{ provide: NZ_ICONS, useValue: icons }],
+  // ...
+})
+export class MyModule {}
+```
+
+参考 `notebook.module.ts` 中的写法。
 
 ## 常见问题
 
