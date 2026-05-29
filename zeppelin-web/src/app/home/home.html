@@ -18,8 +18,8 @@ limitations under the License.
     <div class="zeppelin">
       <div class="zeppelin2"></div>
     </div>
-    <div style="margin-top: -380px;">
-      <h1 class="box-heading" id="welcome" style = "font-size: 24px">
+    <div>
+      <h1 class="box-heading" id="welcome" style="font-size: 24px">
         欢迎使用 Zeppelin 数据探索工具！
       </h1>
       你可以在一个笔记本中同时使用 <code>SQL</code>、<code>Shell</code>、<code>Python</code> 等代码，完成交互式查询、分析和协作。<br/>
@@ -28,7 +28,7 @@ limitations under the License.
         <div class="col-md-6 home-side-panel">
           <div class="home-module">
             <div class="home-module-header">
-              <h4>快速开始</h4>
+              <h4><i class="fa fa-rocket" style="margin-right: 8px; color: #3b82f6;"></i>快速开始</h4>
               <span>选择常用引擎快速开始</span>
             </div>
             <div class="quick-analysis-list">
@@ -37,7 +37,7 @@ limitations under the License.
                 <span class="quick-analysis-icon"><i class="fa fa-database"></i></span>
                 <span class="quick-analysis-content">
                   <strong>开始 Hive 查询</strong>
-                  <small>默认绑定 %jdbc</small>
+                  <small>适合数据查询与分析</small>
                 </span>
                 <i class="fa fa-angle-right quick-analysis-arrow"></i>
               </button>
@@ -71,9 +71,9 @@ limitations under the License.
             </div>
           </div>
 
-          <div class="home-module">
+          <div class="home-module home-recent-module">
             <div class="home-module-header">
-              <h4>最近使用</h4>
+              <h4><i class="fa fa-clock-o" style="margin-right: 8px; color: #3b82f6;"></i>最近使用</h4>
               <span>快速回到最近打开的笔记</span>
             </div>
             <ul class="recent-notes-list" ng-if="recentNotes.length > 0">
@@ -106,33 +106,41 @@ limitations under the License.
           </div>
         </div>
         <div class="col-md-6 home-notes-panel" ng-if="ticket">
-          <div class="home-module home-notes-module">
-            <div class="home-module-header home-notes-header">
-              <h4>笔记</h4>
-              <div class="home-notes-header-actions">
-                <a href="" class="home-note-action home-note-action-create"
-                   ng-controller="NoteCreateCtrl as noteCreateCtrl"
-                   data-toggle="modal"
-                   data-target="#noteCreateModal"
-                   ng-click="noteCreateCtrl.getInterpreterSettings()">
-                  <i class="icon-notebook"></i> 新建笔记
-                </a>
-                <a href="" class="home-note-action"
-                   data-toggle="modal"
-                   data-target="#noteImportModal">
-                  <i class="fa fa-upload"></i> 导入
-                </a>
-                <button type="button" class="home-notes-refresh"
-                        ng-style="!isReloadingNotes && {'cursor': 'pointer'}"
-                        ng-click="reloadNoteList();"
-                        tooltip-placement="bottom"
-                        uib-tooltip="从存储重新加载笔记">
-                  <i ng-class="isReloadingNotes ? 'fa fa-refresh fa-spin' : 'fa fa-refresh'"></i>
-                </button>
+          <!-- 操作按钮区 - 卡片外部右上角 -->
+          <div class="home-notes-top-actions">
+            <a href="" class="home-note-action home-note-action-create"
+               ng-controller="NoteCreateCtrl as noteCreateCtrl"
+               data-toggle="modal"
+               data-target="#noteCreateModal"
+               ng-click="noteCreateCtrl.getInterpreterSettings()">
+              <i class="fa fa-plus" style="color: white; font-size: 14px; margin-right: 10px; vertical-align: middle;"></i> 新建笔记
+            </a>
+            <a href="" class="home-note-action"
+               data-toggle="modal"
+               data-target="#noteImportModal">
+              <i class="fa fa-upload"></i> 导入
+            </a>
+            <button type="button" class="home-notes-refresh"
+                    ng-style="!isReloadingNotes && {'cursor': 'pointer'}"
+                    ng-click="reloadNoteList();"
+                    tooltip-placement="bottom"
+                    uib-tooltip="从存储重新加载笔记">
+              <i ng-class="isReloadingNotes ? 'fa fa-refresh fa-spin' : 'fa fa-refresh'"></i>
+            </button>
+          </div>
+          <!-- 笔记卡片 -->
+          <div class="home-notes-card">
+            <div class="home-notes-card-header">
+              <h4><i class="fa fa-book" style="margin-right: 8px; color: #3b82f6;"></i>笔记</h4>
+              <div class="home-notes-search">
+                <input type="text"
+                       class="note-name-query form-control"
+                       placeholder="&#xf002   按名称搜索笔记"
+                       ng-model="query.q"
+                       ng-model-options="{ updateOn: 'default blur', debounce: { 'default': 300, 'blur': 0 } }" />
               </div>
             </div>
-            <ul id="notebook-names">
-              <li class="filter-names" ng-include="'components/note-name-filter/note-name-filter.html'"></li>
+            <ul id="notebook-names" class="home-notes-list">
               <li ng-repeat="note in home.notes.list | filter:query.q track by $index">
                 <i style="font-size: 10px;" class="icon-doc"></i>
                 <a style="text-decoration: none;" href="#/notebook/{{note.id}}">{{noteName(note)}}</a>
@@ -144,7 +152,7 @@ limitations under the License.
               <div ng-if="query.q" infinite-scroll="loadMoreNotes()">
                 <li ng-repeat="node in home.notes.flatList | filter:query.q | orderBy:home.arrayOrderingSrv.noteFlatListOrdering | limitTo:home.numberOfNotesDisplayed track by $index"
                     ng-include src="'app/home/notebook-template.html'" ng-class="note_folder_renderer"></li>
-             </div>
+              </div>
             </ul>
           </div>
         </div>

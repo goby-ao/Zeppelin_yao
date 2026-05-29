@@ -25,6 +25,18 @@ body {
 
 .home {
   margin-bottom: 0px !important;
+  height: calc(100vh - 50px);
+  overflow: hidden;
+}
+
+.home .row {
+  height: calc(100vh - 180px);
+}
+
+.home-side-panel {
+  height: 100%;
+  overflow-y: auto;
+  max-width: 600px;
 }
 
 .home code {
@@ -66,14 +78,6 @@ body .navbar {
   margin-left: 2px;
   cursor: pointer;
   text-decoration: none;
-}
-
-.note-folder-item:hover .note-folder-item-actions {
-  display: inline-block;
-}
-
-.note-folder-item-actions {
-  display: none;
 }
 
 /* Css for the Notebook Dropdown */
@@ -134,6 +138,7 @@ body .navbar {
 
 #notebook-names {
   list-style: none;
+  padding-left: 8px;
 }
 
 #notebook-names > .filter-names {
@@ -267,17 +272,19 @@ body .navbar {
   font-size: 12px !important;
 }
 
-.home-side-panel {
-  max-width: 560px;
-}
-
 .home-module {
   margin-bottom: 22px;
   padding: 18px;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
+  border-radius: 7px;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
+}
+
+/* 最近使用模块 - 上移8px，高度减少5px */
+.home-recent-module {
+  margin-top: -3px;
+  margin-bottom: 12px;
 }
 
 .home-module-header {
@@ -316,9 +323,9 @@ body .navbar {
   -ms-flex-align: center;
   align-items: center;
   width: calc(50% - 10px);
-  min-height: 76px;
-  margin: 5px;
-  padding: 10px;
+  min-height: 61px;
+  margin: 4px;
+  padding: 8px;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #ffffff;
@@ -483,17 +490,21 @@ body .navbar {
   align-items: center;
   min-height: 30px;
   padding: 3px 10px;
-  border-radius: 7px;
+  margin: 0 6px;
+  border-radius: 6px;
   color: #1f2328;
   text-decoration: none;
   flex: 1;
   min-width: 0;
-  transition: background 140ms ease;
+  transition: all 150ms ease;
+  transform: scale(1);
 }
 
 .recent-note-link:hover,
 .recent-note-link:focus {
-  background: #f8fafc;
+  background: #eff6ff;
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
   text-decoration: none;
   outline: none;
 }
@@ -560,29 +571,197 @@ body .navbar {
 
 .home-notes-panel {
   max-width: 780px;
+  position: relative;
 }
 
-.home-notes-module {
-  padding: 18px;
-}
-
-.home-notes-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.home-notes-header-actions {
+/* 操作按钮区 - 绝对定位在右上角，不占据文档流高度 */
+.home-notes-top-actions {
+  position: absolute;
+  top: -45px;
+  right: 0;
   display: flex;
   align-items: center;
   gap: 8px;
+  z-index: 10;
 }
 
-.home-notes-header-actions .home-note-action {
-  padding: 4px 12px;
-  font-size: 12px;
-  min-height: 28px;
+.home-notes-top-actions .home-note-action {
+  padding: 6px 16px;
+  font-size: 13px;
+}
+
+.home-notes-top-actions .home-note-action-create {
+  padding: 6px 20px;
+}
+
+/* 笔记卡片 */
+.home-notes-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04), 0 4px 12px rgba(16, 24, 40, 0.06);
+  overflow: hidden;
+}
+
+/* 笔记卡片头部 */
+.home-notes-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 16px 12px;
+}
+
+.home-notes-card-header h4 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: #1f2328;
+}
+
+.home-notes-search {
+  width: 100%;
+}
+
+.home-notes-search .note-name-query {
+  width: 100%;
+  height: 32px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+/* 笔记列表 */
+.home-notes-list {
+  height: 500px;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+/* 列表项通用样式 */
+.note-folder-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 26px;
+  margin: 0 6px;
+  padding: 2px 10px;
+  border-radius: 6px;
+  color: #1f2328;
+  transition: all 150ms ease;
+  cursor: pointer;
+  transform: scale(1);
+}
+
+.note-folder-item:hover {
+  background: #eff6ff;
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+}
+
+/* 笔记名称链接 */
+.note-folder-item > a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  text-decoration: none;
+  flex: 1;
+  outline: none;
+}
+
+.note-folder-item > a:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.note-folder-item > a i {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.note-folder-item > a span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 笔记名称样式 */
+.note-folder-item > a.note-name {
+  color: #0c63d0;
+  font-size: 13px;
+}
+
+.note-folder-item > a.note-name:hover {
+  color: #1e3a5f;
+}
+
+.note-folder-item > a.note-name i {
+  color: #64748b;
+}
+
+/* 文件夹名称样式 */
+.note-folder-item > a.folder-name {
+  color: #1e3a5f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.note-folder-item > a.folder-name:hover {
+  color: #15304d;
+}
+
+.note-folder-item > a.folder-name i {
+  color: #4a90d9;
+}
+
+/* 操作按钮区域 */
+.note-folder-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.note-folder-item:hover .note-folder-item-actions {
+  opacity: 1;
+}
+
+/* 更多按钮 - 始终显示 */
+.note-action-more {
+  opacity: 0.5;
+}
+
+.note-folder-item:hover .note-action-more {
+  opacity: 0;
+}
+
+/* 悬停操作 - 悬停时显示 */
+.note-action-hover {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.note-folder-item-actions .notebook-list-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: #64748b;
+  font-size: 14px;
+  border-radius: 6px;
+  transition: all 120ms ease;
+}
+
+.note-folder-item-actions .notebook-list-btn:hover {
+  background: #e0e7ff;
+  color: #3b82f6;
+  color: #1f2328;
 }
 
 .home-notes-refresh {
@@ -597,10 +776,11 @@ body .navbar {
   margin: 0;
   padding: 0;
   border: 1px solid #e5e7eb;
-  border-radius: 7px;
+  border-radius: 8px;
   background: #ffffff;
   color: #64748b;
   font-size: 12px;
+  margin-right: 16px;
 }
 
 .home-notes-refresh:hover,
@@ -660,92 +840,7 @@ body .navbar {
   color: #fff;
 }
 
-.home-notes-module #notebook-names {
-  max-height: 670px;
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-  list-style: none;
-}
-
-.home-notes-module #notebook-names > div,
-.home-notes-module #notebook-names ul {
-  margin: 0;
-}
-
-.home-notes-module #notebook-names ul {
-  padding-left: 14px !important;
-}
-
-.home-notes-module #notebook-names > li,
-.home-notes-module #notebook-names div > li {
-  margin: 0;
-}
-
-.home-notes-module #notebook-names > .filter-names {
-  margin: 0 0 12px;
-  padding: 0;
-}
-
-.home-notes-module .note-name-query {
-  width: 100%;
-  height: 34px;
-  padding: 6px 10px;
-  border: 1px solid #d8dee7;
-  border-radius: 7px;
-  color: #1f2328;
-  font-size: 13px;
-  box-shadow: inset 0 1px 2px rgba(16, 24, 40, 0.04);
-}
-
-.home-notes-module .note-folder-item {
-  position: relative;
-  display: -ms-flexbox;
-  display: flex;
-  -ms-flex-align: center;
-  align-items: center;
-  min-height: 26px;
-  margin: 0;
-  padding: 2px 7px;
-  border-radius: 7px;
-  color: #1f2328;
-  -webkit-transition: background 120ms ease;
-  transition: background 120ms ease;
-}
-
-.home-notes-module .note-folder-item:hover {
-  background: #f8fafc;
-}
-
-.home-notes-module .note-folder-item > a {
-  min-width: 0;
-  overflow: hidden;
-  color: #4b6fa0;
-  font-size: 13px;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  -ms-flex: 1;
-  flex: 1;
-  text-decoration: none;
-}
-
-.home-notes-module .note-folder-item > a:hover {
-  color: #3b5b8a;
-}
-
-.home-notes-module .note-folder-item > a:focus {
-  outline: none;
-  color: #3b5b8a;
-}
-
-.home-notes-module .note-folder-item i.icon-doc,
-.home-notes-module .note-folder-item i.fa-folder,
-.home-notes-module .note-folder-item i.fa-folder-open,
-.home-notes-module .note-folder-item i.fa-trash-o {
-  margin-right: 7px;
-  color: #64748b;
-}
+/* 旧样式已移至新设计中 */
 
 .home-notes-module .note-folder-item-actions {
   margin-left: 8px;
@@ -806,16 +901,11 @@ body .navbar {
 }
 
 .zeppelin {
-  background: url('../assets/images/zepLogo.png') no-repeat right;
-  height: 380px;
-  opacity: 0.2;
+  display: none;
 }
 
 .zeppelin2 {
-  background: url('../assets/images/zepLogo.png') no-repeat right;
-  background-position-y: 12px;
-  height: 380px;
-  opacity: 0.2;
+  display: none;
 }
 
 .keys {
