@@ -290,6 +290,7 @@ module.exports = function makeWebpackConfig () {
       app.use('**/assets/', express.static(path.resolve(__dirname, './src/assets/')));
       app.use('**/fonts/', express.static(path.resolve(__dirname, './src/fonts/')));
       app.use('**/components/', express.static(path.resolve(__dirname, './src/components/')));
+      app.use('**/lib/', express.static(path.resolve(__dirname, './src/lib/')));
     },
     stats: 'minimal',
   };

@@ -276,7 +276,8 @@ module.exports = function(grunt) {
             '.htaccess',
             'assets/styles/**/*',
             'assets/images/**/*',
-            'WEB-INF/*'
+            'WEB-INF/*',
+            'lib/**/*'
           ]
         }, {
           // copy fonts
