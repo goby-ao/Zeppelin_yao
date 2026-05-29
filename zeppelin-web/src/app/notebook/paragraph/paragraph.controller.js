@@ -1115,10 +1115,12 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
       });
 
       let sqlKeywords = [
+        // ===== 基础 SQL 语法 =====
         'SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT', 'OFFSET',
         'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE', 'TRUNCATE',
         'CREATE', 'ALTER', 'DROP', 'TABLE', 'INDEX', 'VIEW', 'DATABASE', 'SCHEMA',
         'JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN', 'CROSS JOIN', 'OUTER JOIN',
+        'LEFT SEMI JOIN', 'LEFT ANTI JOIN',
         'ON', 'AS', 'AND', 'OR', 'NOT', 'IN', 'EXISTS', 'BETWEEN', 'LIKE', 'IS', 'NULL',
         'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
         'DISTINCT', 'ALL', 'ANY', 'SOME', 'UNION', 'UNION ALL', 'INTERSECT', 'EXCEPT',
@@ -1126,12 +1128,214 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'ASC', 'DESC', 'PRIMARY KEY', 'FOREIGN KEY', 'REFERENCES', 'CONSTRAINT', 'DEFAULT',
         'WITH', 'RECURSIVE', 'OVER', 'PARTITION BY', 'ROW', 'ROWS', 'PRECEDING', 'FOLLOWING',
         'UNBOUNDED', 'CURRENT ROW', 'RANGE', 'GROUPS',
-        'SHOW', 'DESCRIBE', 'EXPLAIN', 'USE', 'GRANT', 'REVOKE', 'COMMIT', 'ROLLBACK',
+        'SHOW', 'DESCRIBE', 'DESC', 'EXPLAIN', 'USE', 'GRANT', 'REVOKE', 'COMMIT', 'ROLLBACK',
         'BEGIN', 'START TRANSACTION', 'SAVEPOINT', 'BOOLEAN', 'TRUE', 'FALSE',
+
+        // ===== Hive 数据类型 =====
         'STRING', 'INT', 'BIGINT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'DATE', 'TIMESTAMP',
-        'VARCHAR', 'CHAR', 'TEXT', 'BLOB', 'ARRAY', 'MAP', 'STRUCT',
-        'LATERAL', 'PIVOT', 'UNPIVOT', 'TABLESAMPLE', 'FETCH', 'NEXT', 'ONLY',
-        'WINDOW', 'RANGE', 'ROWS', 'GROUPS', 'TIES', 'NO OTHERS',
+        'VARCHAR', 'CHAR', 'TEXT', 'BLOB', 'BINARY', 'BOOLEAN',
+        'ARRAY', 'MAP', 'STRUCT', 'UNIONTYPE',
+        'TINYINT', 'SMALLINT', 'INT', 'BIGINT', 'FLOAT', 'DOUBLE', 'DECIMAL',
+        'TIMESTAMP', 'DATE', 'INTERVAL', 'BINARY',
+
+        // ===== Hive DDL - 表操作 =====
+        'CREATE TABLE', 'CREATE EXTERNAL TABLE', 'CREATE TEMPORARY TABLE', 'CREATE MANAGED TABLE',
+        'DROP TABLE', 'DROP TABLE IF EXISTS',
+        'ALTER TABLE', 'ALTER TABLE RENAME TO', 'ALTER TABLE SET TBLPROPERTIES',
+        'ALTER TABLE ADD COLUMNS', 'ALTER TABLE REPLACE COLUMNS', 'ALTER TABLE CHANGE COLUMN',
+        'ALTER TABLE DROP COLUMN', 'ALTER TABLE SET SERDE', 'ALTER TABLE SET SERDEPROPERTIES',
+        'TRUNCATE TABLE', 'DESCRIBE TABLE', 'DESCRIBE FORMATTED', 'DESCRIBE EXTENDED',
+        'DESCRIBE DATABASE', 'DESCRIBE FUNCTION',
+        'SHOW TABLES', 'SHOW TABLES LIKE', 'SHOW TABLE EXTENDED',
+        'SHOW CREATE TABLE', 'SHOW COLUMNS', 'SHOW PARTITIONS', 'SHOW TABLE PROPERTIES',
+        'MSCK REPAIR TABLE', 'MSCK REPAIR TABLE ADD PARTITIONS', 'MSCK REPAIR TABLE DROP PARTITIONS',
+
+        // ===== Hive DDL - 数据库操作 =====
+        'CREATE DATABASE', 'CREATE DATABASE IF NOT EXISTS',
+        'DROP DATABASE', 'DROP DATABASE IF EXISTS',
+        'ALTER DATABASE', 'ALTER DATABASE SET DBPROPERTIES',
+        'SHOW DATABASES', 'SHOW DATABASES LIKE', 'USE DATABASE',
+
+        // ===== Hive DDL - 视图操作 =====
+        'CREATE VIEW', 'CREATE VIEW IF NOT EXISTS', 'CREATE TEMPORARY VIEW',
+        'DROP VIEW', 'DROP VIEW IF EXISTS', 'ALTER VIEW',
+        'SHOW VIEWS', 'SHOW VIEWS LIKE',
+
+        // ===== Hive DDL - 索引操作 =====
+        'CREATE INDEX', 'DROP INDEX', 'ALTER INDEX', 'SHOW INDEX',
+
+        // ===== Hive DDL - 函数操作 =====
+        'CREATE FUNCTION', 'CREATE TEMPORARY FUNCTION', 'CREATE TEMPORARY MACRO',
+        'DROP FUNCTION', 'DROP TEMPORARY FUNCTION', 'DROP TEMPORARY MACRO',
+        'SHOW FUNCTIONS', 'SHOW FUNCTIONS LIKE', 'DESCRIBE FUNCTION', 'DESCRIBE FUNCTION EXTENDED',
+
+        // ===== Hive DDL - 分区操作 =====
+        'PARTITIONED BY', 'PARTITIONED BY (', 'ADD PARTITION', 'DROP PARTITION',
+        'ALTER TABLE ADD PARTITION', 'ALTER TABLE DROP PARTITION',
+        'ALTER TABLE RENAME PARTITION', 'ALTER TABLE EXCHANGE PARTITION',
+        'ALTER TABLE RECOVER PARTITIONS',
+
+        // ===== Hive DDL - 分桶操作 =====
+        'CLUSTERED BY', 'SORTED BY', 'INTO BUCKETS', 'BUCKET',
+
+        // ===== Hive DDL - 存储格式 =====
+        'STORED AS', 'STORED BY', 'STORED AS TEXTFILE', 'STORED AS ORC', 'STORED AS PARQUET',
+        'STORED AS AVRO', 'STORED AS SEQUENCEFILE', 'STORED AS RCFILE', 'STORED AS JSONFILE',
+        'STORED AS INPUTFORMAT', 'STORED AS OUTPUTFORMAT',
+        'INPUTFORMAT', 'OUTPUTFORMAT',
+
+        // ===== Hive DDL - 行格式和序列化 =====
+        'ROW FORMAT', 'ROW FORMAT DELIMITED', 'ROW FORMAT SERDE',
+        'FIELDS TERMINATED BY', 'FIELDS ESCAPED BY',
+        'LINES TERMINATED BY', 'MAP KEYS TERMINATED BY',
+        'COLLECTION ITEMS TERMINATED BY', 'NULL DEFINED AS',
+        'SERDE', 'WITH SERDEPROPERTIES', 'SERDEPROPERTIES',
+
+        // ===== Hive DDL - 表属性 =====
+        'LOCATION', 'TBLPROPERTIES', 'TBLPROPERTIES (', 'COMMENT',
+
+        // ===== Hive DDL - 物化视图 =====
+        'CREATE MATERIALIZED VIEW', 'DROP MATERIALIZED VIEW', 'ALTER MATERIALIZED VIEW',
+        'SHOW MATERIALIZED VIEWS', 'REBUILD',
+
+        // ===== Hive DML - 数据操作 =====
+        'INSERT INTO', 'INSERT OVERWRITE', 'INSERT OVERWRITE TABLE', 'INSERT INTO TABLE',
+        'INSERT OVERWRITE DIRECTORY', 'INSERT INTO DIRECTORY',
+        'LOAD DATA', 'LOAD DATA LOCAL', 'LOAD DATA LOCAL INPATH', 'LOAD DATA INPATH',
+        'LOAD DATA OVERWRITE', 'INTO TABLE', 'OVERWRITE TABLE',
+
+        // ===== Hive DML - 查询语法 =====
+        'SORT BY', 'DISTRIBUTE BY', 'CLUSTER BY',
+        'LATERAL VIEW', 'LATERAL VIEW OUTER', 'LATERAL TABLE',
+        'TABLESAMPLE', 'TABLESAMPLE (BUCKET', 'TABLESAMPLE (PERCENT',
+        'WITH', 'CTE', 'RECURSIVE',
+
+        // ===== Hive DML - 事务操作 (ACID) =====
+        'UPDATE', 'DELETE FROM', 'MERGE INTO', 'USING',
+        'BEGIN TRANSACTION', 'COMMIT', 'ROLLBACK',
+        'INSERT', 'VALUES',
+
+        // ===== Hive DML - 导入导出 =====
+        'EXPORT TABLE', 'IMPORT TABLE', 'EXPORT DATABASE', 'IMPORT DATABASE',
+
+        // ===== Hive 查询提示 =====
+        '/*+ MAPJOIN', '/*+ BROADCASTJOIN', '/*+ STREAMTABLE',
+        '/*+ BUCKET', '/*+ SHUFFLE', '/*+ NOSHUFFLE',
+        '/*+ MERGE', '/*+ NO_MERGE', '/*+ INFER',
+        'SET', 'SET hive.', 'SET mapreduce.', 'SET yarn.',
+
+        // ===== Hive 窗口函数 =====
+        'ROW_NUMBER', 'RANK', 'DENSE_RANK', 'NTILE', 'LAG', 'LEAD',
+        'FIRST_VALUE', 'LAST_VALUE', 'NTH_VALUE',
+        'CUME_DIST', 'PERCENT_RANK', 'PERCENTILE_CONT', 'PERCENTILE_DISC',
+
+        // ===== Hive 聚合函数 =====
+        'COLLECT_SET', 'COLLECT_LIST', 'CONCAT_WS', 'GROUPING', 'GROUPING__ID',
+        'HISTOGRAM_NUMERIC', 'PERCENTILE', 'PERCENTILE_APPROX',
+        'STDDEV', 'STDDEV_POP', 'STDDEV_SAMP', 'VARIANCE', 'VAR_POP', 'VAR_SAMP',
+        'CORR', 'COVARIANCE', 'COVARIANCE_POP', 'COVARIANCE_SAMP',
+        'REGR_INTERCEPT', 'REGR_SLOPE', 'REGR_COUNT', 'REGR_R2',
+        'BIT_AND', 'BIT_OR', 'BIT_XOR',
+
+        // ===== Hive 日期函数 =====
+        'DATE_ADD', 'DATE_SUB', 'DATEDIFF', 'DATE_FORMAT',
+        'YEAR', 'MONTH', 'DAY', 'HOUR', 'MINUTE', 'SECOND',
+        'DAYOFWEEK', 'DAYOFYEAR', 'WEEKOFYEAR', 'QUARTER',
+        'FROM_UNIXTIME', 'UNIX_TIMESTAMP', 'TO_DATE', 'TO_UTC_TIMESTAMP', 'FROM_UTC_TIMESTAMP',
+        'CURRENT_DATE', 'CURRENT_TIMESTAMP', 'NOW', 'CURRENT_USER',
+        'ADD_MONTHS', 'LAST_DAY', 'NEXT_DAY', 'TRUNC', 'MONTHS_BETWEEN',
+        'MAKE_DATE', 'MAKE_TIMESTAMP', 'DATE', 'TIMESTAMP',
+
+        // ===== Hive 字符串函数 =====
+        'CONCAT', 'CONCAT_WS', 'SUBSTR', 'SUBSTRING', 'LENGTH', 'CHAR_LENGTH',
+        'UPPER', 'LOWER', 'UCASE', 'LCASE', 'TRIM', 'LTRIM', 'RTRIM',
+        'LPAD', 'RPAD', 'REPEAT', 'REVERSE', 'SPACE', 'SPLIT',
+        'INSTR', 'LOCATE', 'POSITION', 'STR_TO_MAP',
+        'REGEXP_EXTRACT', 'REGEXP_REPLACE', 'REGEXP',
+        'LIKE', 'RLIKE', 'NOT LIKE', 'NOT RLIKE',
+        'ENCODE', 'DECODE', 'BASE64', 'UNBASE64',
+        'SENTENCES', 'NGRAMS', 'CONTEXT_NGRAMS',
+        'LEVENSHTEIN', 'HAMMING_DISTANCE',
+
+        // ===== Hive 数学函数 =====
+        'ROUND', 'FLOOR', 'CEIL', 'CEILING', 'ABS', 'MOD', 'POWER', 'SQRT',
+        'LOG', 'LOG2', 'LOG10', 'LN', 'EXP', 'PMOD',
+        'RAND', 'RAND', 'SIGN', 'POSITIVE', 'NEGATIVE',
+        'E', 'PI', 'HEX', 'UNHEX', 'CONV',
+        'FACTORIAL', 'CBRT', 'DEGREES', 'RADIANS',
+
+        // ===== Hive 类型转换函数 =====
+        'CAST', 'CONVERT', 'BINARY',
+        'TYPEOF',
+
+        // ===== Hive 条件函数 =====
+        'IF', 'IFNULL', 'NVL', 'NVL2', 'DECODE', 'CASE WHEN',
+        'COALESCE', 'NULLIF', 'ASSERT_TRUE',
+        'ISNULL', 'ISNOTNULL',
+
+        // ===== Hive 集合函数 =====
+        'SIZE', 'MAP_KEYS', 'MAP_VALUES', 'ARRAY_CONTAINS',
+        'SORT_ARRAY', 'ARRAY_SORT', 'ARRAY_JOIN',
+        'ARRAY', 'MAP', 'STRUCT', 'NAMED_STRUCT',
+        'CREATE_UNION',
+
+        // ===== Hive JSON 函数 =====
+        'GET_JSON_OBJECT', 'JSON_TUPLE', 'TO_JSON', 'FROM_JSON',
+        'JSON_ARRAY', 'JSON_OBJECT', 'JSON_ARRAY_CONTAINS',
+
+        // ===== Hive URL 函数 =====
+        'PARSE_URL', 'PARSE_URL_TUPLE', 'URL_EXTRACT_PARAMETER',
+
+        // ===== Hive 表生成函数 =====
+        'EXPLODE', 'POSEXPLODE', 'INLINE', 'STACK',
+        'JSON_TUPLE', 'PARSE_URL_TUPLE',
+        'LATERAL VIEW', 'LATERAL VIEW OUTER',
+
+        // ===== Hive 其他函数 =====
+        'REFLECT', 'JAVA_METHOD', 'XPATH', 'XPATH_BOOLEAN',
+        'XPATH_FLOAT', 'XPATH_DOUBLE', 'XPATH_NUMBER', 'XPATH_SHORT',
+        'XPATH_INT', 'XPATH_LONG', 'XPATH_STRING',
+        'MASK', 'MASK_FIRST_N', 'MASK_LAST_N', 'MASK_HASH',
+        'CRC32', 'MD5', 'SHA1', 'SHA2', 'AES_ENCRYPT', 'AES_DECRYPT',
+        'VERSION', 'BUILD_USER', 'CURRENT_DATABASE',
+
+        // ===== Hive 索引操作 =====
+        'CREATE INDEX', 'DROP INDEX', 'ALTER INDEX', 'SHOW INDEX',
+        'WITH DEFERRED REBUILD',
+
+        // ===== Hive 权限操作 =====
+        'GRANT', 'REVOKE', 'SHOW GRANT', 'SHOW ROLE GRANT',
+        'CREATE ROLE', 'DROP ROLE', 'SHOW ROLES', 'SET ROLE',
+
+        // ===== Hive 资源操作 =====
+        'ADD JAR', 'ADD FILE', 'ADD ARCHIVE',
+        'LIST JAR', 'LIST FILE', 'LIST ARCHIVE',
+        'DELETE JAR', 'DELETE FILE', 'DELETE ARCHIVE',
+        'CREATE TEMPORARY FUNCTION',
+
+        // ===== Hive 锁操作 =====
+        'LOCK TABLE', 'UNLOCK TABLE', 'SHOW LOCKS', 'SHOW COMPACTIONS',
+
+        // ===== Hive 统计信息 =====
+        'ANALYZE TABLE', 'ANALYZE TABLE COMPUTE STATISTICS',
+        'ANALYZE TABLE COMPUTE STATISTICS FOR COLUMNS',
+        'ANALYZE TABLE COMPUTE STATISTICS FOR ALL COLUMNS',
+        'SHOW TABLE STATS', 'SHOW COLUMN STATS',
+
+        // ===== Hive 事务管理 =====
+        'BEGIN TRANSACTION', 'COMMIT', 'ROLLBACK',
+        'SHOW TRANSACTIONS', 'ABORT TRANSACTION',
+
+        // ===== Hive EXPLAIN =====
+        'EXPLAIN', 'EXPLAIN EXTENDED', 'EXPLAIN FORMATTED', 'EXPLAIN DEPENDENCY',
+        'EXPLAIN AUTHORIZATION', 'EXPLAIN ANALYZE',
+
+        // ===== Hive 常量 =====
+        'TRUE', 'FALSE', 'NULL', 'UNKNOWN',
+
+        // ===== 其他 SQL 关键字 =====
+        'PIVOT', 'UNPIVOT', 'FETCH', 'NEXT', 'ONLY',
+        'WINDOW', 'TIES', 'NO OTHERS',
         'IF', 'IFNULL', 'NVL', 'DECODE', 'GREATEST', 'LEAST',
         'CONCAT', 'SUBSTR', 'SUBSTRING', 'LENGTH', 'TRIM', 'UPPER', 'LOWER', 'REPLACE',
         'ROUND', 'FLOOR', 'CEIL', 'ABS', 'MOD', 'POWER', 'SQRT', 'LOG', 'LN', 'EXP',
