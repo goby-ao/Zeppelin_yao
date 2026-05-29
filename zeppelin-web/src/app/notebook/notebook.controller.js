@@ -188,11 +188,13 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   };
 
   const requestRevisionHistory = function() {
-    if (revisionHistoryRequested || !hasAuthenticatedTicket()) {
-      return;
-    }
-    revisionHistoryRequested = true;
-    websocketMsgSrv.listRevisionHistory($routeParams.noteId);
+    // 版本历史功能已禁用，减少打开笔记时的请求
+    return;
+    // if (revisionHistoryRequested || !hasAuthenticatedTicket()) {
+    //   return;
+    // }
+    // revisionHistoryRequested = true;
+    // websocketMsgSrv.listRevisionHistory($routeParams.noteId);
   };
 
   /** Init the new controller */
@@ -1654,8 +1656,8 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
 
     initializeLookAndFeel();
 
-    // open interpreter binding setting when there're none selected
-    getInterpreterBindings();
+    // interpreterBindings 延迟加载，不在打开笔记时阻塞
+    // 仅在打开设置面板时加载 (openSetting)
     getPermissions();
     let isPersonalized = $scope.note.config.personalizedMode;
     isPersonalized = isPersonalized === undefined ? 'false' : isPersonalized;
