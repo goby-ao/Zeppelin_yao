@@ -1114,6 +1114,102 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         }
       });
 
+      let sqlKeywords = [
+        'SELECT', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'HAVING', 'LIMIT', 'OFFSET',
+        'INSERT', 'INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE', 'TRUNCATE',
+        'CREATE', 'ALTER', 'DROP', 'TABLE', 'INDEX', 'VIEW', 'DATABASE', 'SCHEMA',
+        'JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN', 'CROSS JOIN', 'OUTER JOIN',
+        'ON', 'AS', 'AND', 'OR', 'NOT', 'IN', 'EXISTS', 'BETWEEN', 'LIKE', 'IS', 'NULL',
+        'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
+        'DISTINCT', 'ALL', 'ANY', 'SOME', 'UNION', 'UNION ALL', 'INTERSECT', 'EXCEPT',
+        'COUNT', 'SUM', 'AVG', 'MAX', 'MIN', 'COALESCE', 'NULLIF', 'CAST', 'CONVERT',
+        'ASC', 'DESC', 'PRIMARY KEY', 'FOREIGN KEY', 'REFERENCES', 'CONSTRAINT', 'DEFAULT',
+        'WITH', 'RECURSIVE', 'OVER', 'PARTITION BY', 'ROW', 'ROWS', 'PRECEDING', 'FOLLOWING',
+        'UNBOUNDED', 'CURRENT ROW', 'RANGE', 'GROUPS',
+        'SHOW', 'DESCRIBE', 'EXPLAIN', 'USE', 'GRANT', 'REVOKE', 'COMMIT', 'ROLLBACK',
+        'BEGIN', 'START TRANSACTION', 'SAVEPOINT', 'BOOLEAN', 'TRUE', 'FALSE',
+        'STRING', 'INT', 'BIGINT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'DATE', 'TIMESTAMP',
+        'VARCHAR', 'CHAR', 'TEXT', 'BLOB', 'ARRAY', 'MAP', 'STRUCT',
+        'LATERAL', 'PIVOT', 'UNPIVOT', 'TABLESAMPLE', 'FETCH', 'NEXT', 'ONLY',
+        'WINDOW', 'RANGE', 'ROWS', 'GROUPS', 'TIES', 'NO OTHERS',
+        'IF', 'IFNULL', 'NVL', 'DECODE', 'GREATEST', 'LEAST',
+        'CONCAT', 'SUBSTR', 'SUBSTRING', 'LENGTH', 'TRIM', 'UPPER', 'LOWER', 'REPLACE',
+        'ROUND', 'FLOOR', 'CEIL', 'ABS', 'MOD', 'POWER', 'SQRT', 'LOG', 'LN', 'EXP',
+        'DATE_ADD', 'DATE_SUB', 'DATEDIFF', 'DATE_FORMAT', 'YEAR', 'MONTH', 'DAY', 'HOUR',
+        'NOW', 'CURRENT_DATE', 'CURRENT_TIMESTAMP', 'UNIX_TIMESTAMP', 'FROM_UNIXTIME',
+        'ROW_NUMBER', 'RANK', 'DENSE_RANK', 'NTILE', 'LAG', 'LEAD', 'FIRST_VALUE', 'LAST_VALUE',
+        'COLLECT_SET', 'COLLECT_LIST', 'EXPLODE', 'POSEXPLODE', 'LATERAL VIEW',
+        'JSON_TUPLE', 'GET_JSON_OBJECT', 'PARSE_URL', 'REGEXP_EXTRACT', 'REGEXP_REPLACE',
+        'INSTR', 'LOCATE', 'LPAD', 'RPAD', 'REPEAT', 'REVERSE', 'SPACE', 'SPLIT',
+        'TO_DATE', 'TO_TIMESTAMP', 'FROM_UTC_TIMESTAMP', 'TO_UTC_TIMESTAMP',
+        'PERCENTILE', 'PERCENTILE_APPROX', 'STDDEV', 'VARIANCE', 'CORR', 'COVARIANCE',
+        'INSERT OVERWRITE', 'INSERT INTO', 'LOAD DATA', 'PARTITION',
+        'BUCKET', 'CLUSTERED BY', 'SORTED BY', 'INTO BUCKETS',
+        'STORED AS', 'ROW FORMAT', 'FIELDS TERMINATED BY', 'LINES TERMINATED BY',
+        'SERDE', 'WITH SERDEPROPERTIES', 'LOCATION', 'TBLPROPERTIES',
+        'EXTERNAL TABLE', 'MANAGED TABLE', 'TEMPORARY TABLE', 'MATERIALIZED VIEW',
+      ];
+
+      let shellKeywords = [
+        'cd', 'ls', 'pwd', 'mkdir', 'rm', 'cp', 'mv', 'chmod', 'chown', 'ln',
+        'cat', 'head', 'tail', 'less', 'more', 'wc', 'sort', 'uniq', 'cut', 'paste',
+        'grep', 'egrep', 'fgrep', 'sed', 'awk', 'find', 'xargs',
+        'echo', 'printf', 'read', 'test', 'exit', 'return', 'source', 'export',
+        'alias', 'unalias', 'history', 'jobs', 'bg', 'fg', 'kill', 'wait', 'trap',
+        'if', 'then', 'else', 'elif', 'fi', 'for', 'while', 'until', 'do', 'done',
+        'case', 'esac', 'function', 'select', 'in', 'time', 'nohup',
+        'ssh', 'scp', 'rsync', 'curl', 'wget', 'ping', 'telnet', 'netstat',
+        'tar', 'gzip', 'gunzip', 'zip', 'unzip', 'bzip2',
+        'ps', 'top', 'df', 'du', 'free', 'uptime', 'whoami', 'who', 'id',
+        'date', 'cal', 'bc', 'expr', 'basename', 'dirname', 'realpath',
+        '&&', '||', '|', '>>', '2>&1', '/dev/null',
+        'true', 'false', 'yes',
+        // Hadoop / HDFS
+        'hdfs', 'hadoop', 'hdfs dfs', 'hdfs dfs -ls', 'hdfs dfs -cat', 'hdfs dfs -put',
+        'hdfs dfs -get', 'hdfs dfs -cp', 'hdfs dfs -mv', 'hdfs dfs -rm', 'hdfs dfs -rm -r',
+        'hdfs dfs -mkdir', 'hdfs dfs -mkdir -p', 'hdfs dfs -touchz', 'hdfs dfs -stat',
+        'hdfs dfs -du', 'hdfs dfs -du -s', 'hdfs dfs -du -h', 'hdfs dfs -count',
+        'hdfs dfs -chmod', 'hdfs dfs -chown', 'hdfs dfs -expunge',
+        'hdfs dfs -getmerge', 'hdfs dfs -setrep', 'hdfs dfs -test',
+        'hdfs dfs -text', 'hdfs dfs -tail', 'hdfs dfs -checksum',
+        'hadoop fs', 'hadoop fs -ls', 'hadoop fs -cat', 'hadoop fs -put', 'hadoop fs -get',
+        'hadoop fs -rm', 'hadoop fs -rm -r', 'hadoop fs -mkdir',
+        'hadoop fs -du', 'hadoop fs -du -s', 'hadoop fs -count',
+        'hadoop jar', 'hadoop classpath', 'hadoop version',
+        'hdfs dfsadmin', 'hdfs dfsadmin -report', 'hdfs dfsadmin -safemode',
+        'yarn', 'yarn application', 'yarn application -list', 'yarn application -kill',
+        'yarn logs', 'mapred job', 'mapred job -list', 'mapred job -kill',
+        'beeline', 'hive', 'hive -e', 'hive -f', 'spark-submit', 'spark-shell', 'pyspark',
+      ];
+
+      let localCompleter = {
+        getCompletions: function(editor, session, pos, prefix, callback) {
+          if (!prefix) {
+            return callback(null, []);
+          }
+          let mode = session.getMode().$id || '';
+          let isSql = mode.indexOf('sql') !== -1 || mode.indexOf('hive') !== -1 ||
+                      mode.indexOf('pgsql') !== -1 || mode.indexOf('mysql') !== -1;
+          let isShell = mode.indexOf('sh') !== -1 || mode.indexOf('bash') !== -1 ||
+                        mode.indexOf('shell') !== -1;
+
+          if (!isSql && !isShell) {
+            return callback(null, []);
+          }
+
+          let keywords = isSql ? sqlKeywords : shellKeywords;
+          let lowerPrefix = prefix.toLowerCase();
+          let results = keywords
+            .filter(function(kw) {
+              return kw.toLowerCase().indexOf(lowerPrefix) === 0;
+            })
+            .map(function(kw) {
+              return {value: kw, meta: isSql ? 'keyword' : 'command', score: 100};
+            });
+          callback(null, results);
+        },
+      };
+
       let remoteCompleter = {
         getCompletions: function(editor, session, pos, prefix, callback) {
           let langTools = ace.require('ace/ext/language_tools');
@@ -1176,14 +1272,14 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         },
       };
 
-      langTools.setCompleters([remoteCompleter, langTools.keyWordCompleter, langTools.snippetCompleter,
+      langTools.setCompleters([remoteCompleter, localCompleter, langTools.keyWordCompleter, langTools.snippetCompleter,
         langTools.textCompleter]);
 
       $scope.editor.setOptions({
         fontSize: $scope.paragraph.config.fontSize + 'pt',
         enableBasicAutocompletion: true,
         enableSnippets: false,
-        enableLiveAutocompletion: false,
+        enableLiveAutocompletion: true,
       });
 
       $scope.editor.on('focus', function() {
@@ -2306,6 +2402,83 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
       $scope.$emit('occurrencesExists', searchRanges.length);
     }
   });
+
+  // SQL format support
+  $scope.isSqlMode = function(paragraph) {
+    if (!paragraph || !paragraph.config || !paragraph.config.editorMode) {
+      return false;
+    }
+    let mode = paragraph.config.editorMode;
+    return mode.indexOf('sql') !== -1 || mode.indexOf('hive') !== -1 ||
+           mode.indexOf('mysql') !== -1 || mode.indexOf('pgsql') !== -1;
+  };
+
+  $scope.formatSqlCode = function(paragraph) {
+    // 确保 sqlFormatter 可用
+    let sf = window.sqlFormatter ||
+      (typeof sqlFormatter !== 'undefined' ? sqlFormatter : null); // eslint-disable-line no-undef
+    if (!sf && !$scope._sqlFormatterLoading) {
+      $scope._sqlFormatterLoading = true;
+      let script = document.createElement('script');
+      script.src = 'lib/sql-formatter.min.js';
+      script.onload = function() {
+        $scope._sqlFormatterLoading = false;
+        $scope.formatSqlCode(paragraph);
+        $scope.$apply();
+      };
+      script.onerror = function() {
+        $scope._sqlFormatterLoading = false;
+      };
+      document.head.appendChild(script);
+      return;
+    }
+    if (!paragraph || !paragraph.text || !sf) {
+      return;
+    }
+    let magic = getParagraphMagic(paragraph.text).toLowerCase();
+    let lowerText = paragraph.text.toLowerCase();
+    let dialect = 'sql';
+    if (magic.indexOf('hive') !== -1 || magic.indexOf('jdbc') !== -1 || lowerText.indexOf('jdbc') !== -1) {
+      dialect = 'hive';
+    }
+    if (magic.indexOf('mysql') !== -1 || lowerText.indexOf('mysql') !== -1) {
+      dialect = 'mysql';
+    }
+    if (magic.indexOf('spark') !== -1 || lowerText.indexOf('spark') !== -1) {
+      dialect = 'spark';
+    }
+    try {
+      // 分离解释器标识和 SQL 内容
+      let textToFormat = paragraph.text;
+      let magicLine = '';
+      let intpMatch = /^\s*(%.+?)[\s\n]/.exec(paragraph.text);
+      if (intpMatch) {
+        magicLine = intpMatch[0].trim();
+        // 获取 magic 行之后的内容
+        textToFormat = paragraph.text.substring(intpMatch[0].length);
+      }
+
+      // 只格式化 SQL 部分
+      let formattedSql = sf.format(textToFormat, {
+        language: dialect,
+        indent: '  ',
+        uppercase: true,
+        linesBetweenQueries: 2,
+      });
+
+      // 组合 magic 行和格式化后的 SQL
+      let formatted = magicLine ? magicLine + '\n' + formattedSql : formattedSql;
+      paragraph.text = formatted;
+      // 用 replace 代替 setValue，这样 Ctrl+Z 可以撤销
+      let session = $scope.editor.getSession();
+      let lastRow = session.getLength() - 1;
+      session.replace(new ace.Range(0, 0, lastRow, session.getLine(lastRow).length), formatted);
+      // 保存到服务器
+      commitParagraph(paragraph);
+    } catch (e) {
+      console.warn('SQL format error:', e);
+    }
+  };
 
   $scope.$on('$destroy', function() {
     if (cancelSlowHintTimer) {

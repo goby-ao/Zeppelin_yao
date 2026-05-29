@@ -48,6 +48,13 @@ limitations under the License.
       <span class="zp-interpreter-chip" ng-if="paragraph.config.editorMode">
         {{paragraph.config.editorMode.replace('ace/mode/', '') | uppercase}}
       </span>
+      <span class="zp-format-btn"
+            ng-if="isSqlMode(paragraph)"
+            ng-click="formatSqlCode(paragraph)"
+            tooltip-placement="top"
+            uib-tooltip="格式化 SQL">
+        <i class="fa fa-align-left"></i> 格式化
+      </span>
       <code-editor
         paragraph-id="paragraph.id"
         paragraph-context="paragraph"
