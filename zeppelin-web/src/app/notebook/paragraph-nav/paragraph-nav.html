@@ -1,0 +1,72 @@
+<!--
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<div class="paragraph-nav-container" ng-if="nodes.length > 0">
+  <div class="paragraph-nav-track">
+    <div class="paragraph-nav-node-wrapper"
+         ng-repeat="node in nodes track by node.id"
+         ng-style="{'top': getNodeTop($index) + '%'}"
+         ng-class="{'first-node': $index === 0, 'last-node': $index === nodes.length - 1}"
+         ng-mouseenter="onNodeEnter(node.id)"
+         ng-mouseleave="onNodeLeave()">
+
+      <div class="paragraph-nav-node"
+           ng-class="{'current-viewing': isCurrentViewing(node.id),
+                      'locked': node.isLocked,
+                      'running': node.status === 'RUNNING',
+                      'pending': node.status === 'PENDING'}"
+           ng-click="onNodeClick({paragraphId: node.id})">
+
+        <!-- Status dot -->
+        <div class="nav-node-dot"
+             ng-style="{'background': node.status === 'READY' ? 'transparent' : getStatusColor(node.status),
+                        'border-color': getStatusColor(node.status)}">
+          <i ng-if="node.status === 'RUNNING'" class="fa fa-spinner spin-icon"></i>
+          <i ng-if="node.status === 'ERROR'" class="fa fa-times error-icon"></i>
+          <i ng-if="node.status === 'ABORT'" class="fa fa-exclamation abort-icon"></i>
+        </div>
+
+        <!-- Lock indicator -->
+        <div class="nav-node-lock" ng-if="node.isLocked">
+          <i class="fa fa-lock"></i>
+        </div>
+      </div>
+
+      <!-- Hover tooltip -->
+      <div class="paragraph-nav-tooltip" ng-if="hoveredNodeId === node.id"
+           ng-mouseenter="onTooltipEnter()"
+           ng-mouseleave="onTooltipLeave()">
+        <div class="tooltip-header">
+          <span class="tooltip-title">{{node.title}}</span>
+          <button class="tooltip-lock-btn"
+                  ng-class="{'locked': node.isLocked}"
+                  ng-click="onLockToggle({paragraphId: node.id}); $event.stopPropagation()"
+                  title="{{node.isLocked ? 'Unlock' : 'Lock this paragraph'}}">
+            <i class="fa" ng-class="{'fa-lock': node.isLocked, 'fa-unlock': !node.isLocked}"></i>
+          </button>
+        </div>
+        <div class="tooltip-status">
+          <span class="status-dot" ng-style="{'background': getStatusColor(node.status)}"></span>
+          <span class="status-label">{{getStatusLabel(node.status)}}</span>
+          <span class="status-duration" ng-if="node.duration">{{node.duration}}</span>
+        </div>
+        <pre class="tooltip-code" ng-if="node.fullCode">{{node.fullCode}}</pre>
+        <div class="tooltip-error" ng-if="node.status === 'ERROR' && node.errorMessage">
+          <i class="fa fa-exclamation-circle"></i>
+          {{node.errorMessage}}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

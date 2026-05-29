@@ -1,0 +1,340 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+.paragraph-nav-container {
+  position: fixed;
+  right: 16px;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  z-index: 10000;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+.paragraph-nav-track {
+  position: relative;
+  width: 24px;
+  height: 70vh;
+  margin: auto;
+  pointer-events: auto;
+}
+
+.paragraph-nav-track::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e5e7eb;
+  border-radius: 1px;
+}
+
+.paragraph-nav-node-wrapper {
+  position: absolute;
+  left: 0;
+  width: 24px;
+  transform: translateY(-50%);
+  z-index: 2;
+}
+
+.paragraph-nav-node {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.paragraph-nav-node:hover {
+  transform: scale(1.3);
+}
+
+.paragraph-nav-node.current-viewing .nav-node-dot {
+  box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.3);
+}
+
+.paragraph-nav-node.locked .nav-node-dot {
+  box-shadow: 0 0 0 3px rgba(114, 46, 209, 0.3);
+  border-color: #722ed1 !important;
+}
+
+.paragraph-nav-node.running .nav-node-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #1f6feb;
+  animation: nav-spin 1s linear infinite;
+}
+
+.paragraph-nav-node.pending .nav-node-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid #1f6feb;
+  opacity: 0.4;
+  animation: nav-pulse 1.5s ease-in-out infinite;
+}
+
+.nav-node-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #bfbfbf;
+  background: transparent;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.nav-node-dot .spin-icon {
+  font-size: 8px;
+  color: #1f6feb;
+  animation: nav-spin 1s linear infinite;
+}
+
+.nav-node-dot .error-icon {
+  font-size: 8px;
+  color: #dc2626;
+}
+
+.nav-node-dot .abort-icon {
+  font-size: 8px;
+  color: #ca8a04;
+}
+
+.nav-node-lock {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  font-size: 10px;
+  color: #722ed1;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Tooltip */
+.paragraph-nav-tooltip {
+  position: absolute;
+  right: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 480px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  padding: 10px 12px;
+  pointer-events: auto;
+  z-index: 10003;
+}
+
+.paragraph-nav-tooltip::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+  border-top: 1px solid #e5e7eb;
+}
+
+.paragraph-nav-tooltip .tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.paragraph-nav-tooltip .tooltip-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  margin-right: 8px;
+}
+
+.paragraph-nav-tooltip .tooltip-lock-btn {
+  width: 22px;
+  height: 22px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.paragraph-nav-tooltip .tooltip-lock-btn:hover {
+  border-color: #722ed1;
+  color: #722ed1;
+}
+
+.paragraph-nav-tooltip .tooltip-lock-btn.locked {
+  background: #722ed1;
+  border-color: #722ed1;
+  color: #fff;
+}
+
+.paragraph-nav-tooltip .tooltip-lock-btn i {
+  font-size: 11px;
+}
+
+.paragraph-nav-tooltip .tooltip-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.paragraph-nav-tooltip .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.paragraph-nav-tooltip .status-label {
+  color: #6b7280;
+}
+
+.paragraph-nav-tooltip .status-duration {
+  color: #6b7280;
+  margin-left: auto;
+}
+
+.paragraph-nav-tooltip .status-duration::before {
+  content: '\00b7';
+  margin-right: 4px;
+}
+
+.paragraph-nav-tooltip .tooltip-code {
+  font-size: 11px;
+  color: #6b7280;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  background: #f5f5f5;
+  padding: 6px 8px;
+  border-radius: 3px;
+  white-space: pre;
+  max-height: 280px;
+  overflow-y: auto;
+  line-height: 1.5;
+  margin: 4px 0 0;
+}
+
+.first-node .paragraph-nav-tooltip {
+  top: 0;
+  transform: translateY(-4px);
+}
+
+.first-node .paragraph-nav-tooltip::after {
+  top: 12px;
+  transform: rotate(45deg);
+}
+
+.last-node .paragraph-nav-tooltip {
+  top: auto;
+  bottom: 0;
+  transform: translateY(4px);
+}
+
+.last-node .paragraph-nav-tooltip::after {
+  top: auto;
+  bottom: 12px;
+  transform: rotate(45deg);
+}
+
+.paragraph-nav-tooltip .tooltip-error {
+  font-size: 11px;
+  color: #dc2626;
+  margin-top: 6px;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  word-break: break-word;
+}
+
+.paragraph-nav-tooltip .tooltip-error i {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Locked paragraph styling */
+.paragraph-locked {
+  position: relative;
+}
+
+.paragraph-locked::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #722ed1;
+  border-radius: 2px;
+  z-index: 10;
+}
+
+.paragraph-locked .paragraph {
+  box-shadow: 0 0 0 2px rgba(114, 46, 209, 0.25), 0 2px 8px rgba(0, 0, 0, 0.09);
+}
+
+.paragraph-dimmed {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.paragraph-nav-highlight .paragraph {
+  box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.4), 0 2px 8px rgba(0, 0, 0, 0.09);
+  transition: box-shadow 0.3s ease;
+}
+
+@keyframes nav-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes nav-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.2); }
+}
+
+@media (max-width: 1200px) {
+  .paragraph-nav-container {
+    display: none;
+  }
+}
