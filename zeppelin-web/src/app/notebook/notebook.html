@@ -155,6 +155,8 @@ limitations under the License.
        ng-controller="ParagraphCtrl"
        ng-init="init(currentParagraph, note)"
        ng-class="columnWidthClass(currentParagraph.config.colWidth)"
+       data-paragraph-id="{{currentParagraph.id}}"
+       ng-attr-class="{{columnWidthClass(currentParagraph.config.colWidth)}} {{lockedParagraphId === currentParagraph.id ? 'paragraph-locked' : ''}} {{lockedParagraphId && lockedParagraphId !== currentParagraph.id ? 'paragraph-dimmed' : ''}}"
        style="margin: 0; padding: 0;">
 
        <!-- see ZEPPELIN-2806
@@ -178,4 +180,12 @@ limitations under the License.
     </div>
   </div>
   <div style="clear:both;height:10px"></div>
+
+  <!-- Paragraph Navigation Bar -->
+  <paragraph-nav
+    paragraphs="note.paragraphs"
+    locked-paragraph-id="lockedParagraphId"
+    on-lock-toggle="toggleParagraphLock(paragraphId)"
+    on-node-click="scrollToParagraphById(paragraphId)">
+  </paragraph-nav>
 </div>

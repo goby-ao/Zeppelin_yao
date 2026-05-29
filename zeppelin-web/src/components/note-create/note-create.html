@@ -14,48 +14,54 @@ limitations under the License.
 <div id="noteCreateModal" class="modal fade" role="dialog"
      modalvisible previsiblecallback="noteCreateCtrl.preVisible"
      targetinput="noteName" tabindex="-1">
-  <div class="modal-dialog">
-
-    <!-- modal content-->
-    <div class="modal-content" id="NoteCreateCtrl">
-      <!-- modal header -->
-      <div class="modal-header modal-header-note-name">
+  <div class="modal-dialog note-create-dialog">
+    <div class="modal-content note-create-content" id="NoteCreateCtrl">
+      <div class="modal-header note-create-header">
         <button type="button" class="close" data-dismiss="modal">&times;</button>
         <h4 class="modal-title" ng-show="!noteCreateCtrl.clone">新建笔记</h4>
         <h4 class="modal-title" ng-show="noteCreateCtrl.clone">克隆笔记</h4>
       </div>
-
-      <!-- modal body-->
-      <div class="modal-body modal-body-note-name">
+      <div class="modal-body note-create-body">
         <div class="form-group">
-          <!-- note name -->
-          <div>
-            <label for="noteName">笔记名称</label>
-            <input placeholder="请输入笔记名称" type="text"
-                   class="form-control note-name-create-input"
-                   id="noteName" ng-model="note.notename"
-                   ng-enter="noteCreateCtrl.handleNameEnter()" />
+          <label for="noteName" ng-show="!noteCreateCtrl.clone">笔记名称</label>
+          <label for="noteName" ng-show="noteCreateCtrl.clone">克隆为</label>
+          <input placeholder="请输入笔记名称" type="text"
+                 class="form-control note-create-input"
+                 id="noteName" ng-model="note.notename"
+                 ng-change="onNoteNameChange()"
+                 ng-enter="noteCreateCtrl.handleNameEnter()" />
+        </div>
+        <div class="form-group" ng-show="!noteCreateCtrl.clone">
+          <label>默认解释器（执行引擎）</label>
+          <div class="interpreter-quick-tags">
+            <span class="interpreter-tag"
+                  ng-class="{'active': noteCreateCtrl.quickTag === 'sh'}"
+                  ng-click="noteCreateCtrl.selectQuickTag('sh')">Shell</span>
+            <span class="interpreter-tag"
+                  ng-class="{'active': noteCreateCtrl.quickTag === 'python'}"
+                  ng-click="noteCreateCtrl.selectQuickTag('python')">Python</span>
+            <span class="interpreter-tag"
+                  ng-class="{'active': noteCreateCtrl.quickTag === 'spark'}"
+                  ng-click="noteCreateCtrl.selectQuickTag('spark')">Spark</span>
+            <span class="interpreter-tag"
+                  ng-class="{'active': noteCreateCtrl.quickTag === 'hive'}"
+                  ng-click="noteCreateCtrl.selectQuickTag('hive')">Hive</span>
           </div>
-          <!-- default interpreter -->
-          <div class="btn-group default-interpreter-select" ng-show="!noteCreateCtrl.clone">
-            <label for="defaultInterpreter">默认解释器</label>
-            <select id="defaultInterpreter"
-                    name="defaultInterpreter"
-                    class="form-control"
-                    ng-model="note.defaultInterpreter"
-                    ng-options="option.name for option in interpreterSettings">
-            </select>
-          </div>
-        </div> <!-- end: form-group -->
-        <div class="panel panel-default note-name-desc-panel">
-          <div class="panel-heading">
-            使用 "/" 创建目录，例如：/目录A/笔记1
-          </div>
+          <select id="defaultInterpreter"
+                  name="defaultInterpreter"
+                  class="form-control note-create-input"
+                  ng-model="note.defaultInterpreter"
+                  ng-options="option.name for option in interpreterSettings">
+          </select>
+        </div>
+        <div class="note-create-hint">
+          <i class="fa fa-info-circle"></i>
+          使用 <code>/</code> 创建目录，例如：<code>/目录A/笔记1</code>
         </div>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer note-create-footer">
         <button type="button" id="createNoteButton"
-                class="btn btn-primary"
+                class="btn btn-create"
                 data-dismiss="modal" ng-click="noteCreateCtrl.createNote()">
           <span ng-show="!noteCreateCtrl.clone">创建</span>
           <span ng-show="noteCreateCtrl.clone">克隆</span>

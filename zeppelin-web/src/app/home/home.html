@@ -22,7 +22,7 @@ limitations under the License.
       <h1 class="box-heading" id="welcome" style = "font-size: 24px">
         欢迎使用 Zeppelin 数据探索工具！
       </h1>
-      这是一个面向数据分析和开发的在线笔记工具。你可以使用 SQL、Shell、Python 等代码，完成交互式查询、分析和协作。<br/>
+      你可以在一个笔记本中同时使用 <code>SQL</code>、<code>Shell</code>、<code>Python</code> 等代码，完成交互式查询、分析和协作。<br/>
       <br/>
       <div class="row">
         <div class="col-md-6 home-side-panel">
@@ -77,12 +77,27 @@ limitations under the License.
               <span>快速回到最近打开的笔记</span>
             </div>
             <ul class="recent-notes-list" ng-if="recentNotes.length > 0">
-              <li ng-repeat="recentNote in recentNotes track by recentNote.id">
-                <a href="#/notebook/{{recentNote.id}}">
-                  <span class="recent-note-icon"><i class="icon-doc"></i></span>
+              <li ng-repeat="recentNote in recentNotes track by recentNote.id"
+                  ng-class="{'recent-note-starred': recentNote.starred, 'recent-note-deleted': isNoteDeleted(recentNote.id)}">
+                <span class="recent-note-star" ng-click="toggleStar(recentNote, $event)"
+                      ng-if="!isNoteDeleted(recentNote.id)">
+                  <i ng-class="recentNote.starred ? 'fa fa-star' : 'fa fa-star-o'"></i>
+                </span>
+                <span class="recent-note-deleted-badge" ng-if="isNoteDeleted(recentNote.id)">
+                  <i class="fa fa-trash-o"></i>
+                </span>
+                <a ng-if="!isNoteDeleted(recentNote.id)" href="#/notebook/{{recentNote.id}}" class="recent-note-link">
                   <span class="recent-note-name">{{recentNote.name}}</span>
                   <span class="recent-note-time">{{formatRecentTime(recentNote.time)}}</span>
                 </a>
+                <span ng-if="isNoteDeleted(recentNote.id)" class="recent-note-link recent-note-deleted-text">
+                  <span class="recent-note-name">{{recentNote.name}}</span>
+                  <span class="recent-note-time">已删除</span>
+                </span>
+                <span class="recent-note-remove" ng-if="isNoteDeleted(recentNote.id)"
+                      ng-click="removeRecentNote(recentNote, $event)" title="从列表移除">
+                  <i class="fa fa-times"></i>
+                </span>
               </li>
             </ul>
             <div class="recent-notes-empty" ng-if="recentNotes.length === 0">
@@ -90,32 +105,31 @@ limitations under the License.
             </div>
           </div>
         </div>
-        <div class="col-md-4 home-notes-panel" ng-if="ticket">
+        <div class="col-md-6 home-notes-panel" ng-if="ticket">
           <div class="home-module home-notes-module">
             <div class="home-module-header home-notes-header">
               <h4>笔记</h4>
-              <button type="button" class="home-notes-refresh"
-                      ng-style="!isReloadingNotes && {'cursor': 'pointer'}"
-                      ng-click="reloadNoteList();"
-                      tooltip-placement="bottom"
-                      uib-tooltip="从存储重新加载笔记">
-                <i ng-class="isReloadingNotes ? 'fa fa-refresh fa-spin' : 'fa fa-refresh'"></i>
-              </button>
-            </div>
-
-            <div class="home-note-actions">
-              <a href="" class="home-note-action"
-                 data-toggle="modal"
-                 data-target="#noteImportModal">
-                <i class="fa fa-upload"></i> 导入笔记
-              </a>
-              <a href="" class="home-note-action"
-                 ng-controller="NoteCreateCtrl as noteCreateCtrl"
-                 data-toggle="modal"
-                 data-target="#noteCreateModal"
-                 ng-click="noteCreateCtrl.getInterpreterSettings()">
-                <i class="icon-notebook"></i> 新建笔记
-              </a>
+              <div class="home-notes-header-actions">
+                <a href="" class="home-note-action home-note-action-create"
+                   ng-controller="NoteCreateCtrl as noteCreateCtrl"
+                   data-toggle="modal"
+                   data-target="#noteCreateModal"
+                   ng-click="noteCreateCtrl.getInterpreterSettings()">
+                  <i class="icon-notebook"></i> 新建笔记
+                </a>
+                <a href="" class="home-note-action"
+                   data-toggle="modal"
+                   data-target="#noteImportModal">
+                  <i class="fa fa-upload"></i> 导入
+                </a>
+                <button type="button" class="home-notes-refresh"
+                        ng-style="!isReloadingNotes && {'cursor': 'pointer'}"
+                        ng-click="reloadNoteList();"
+                        tooltip-placement="bottom"
+                        uib-tooltip="从存储重新加载笔记">
+                  <i ng-class="isReloadingNotes ? 'fa fa-refresh fa-spin' : 'fa fa-refresh'"></i>
+                </button>
+              </div>
             </div>
             <ul id="notebook-names">
               <li class="filter-names" ng-include="'components/note-name-filter/note-name-filter.html'"></li>

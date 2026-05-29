@@ -130,8 +130,20 @@
   font-size: 32px;
 }
 
+a.navbar-brand {
+  transition: opacity 0.2s ease;
+}
+
 a.navbar-brand:hover {
   color: #fff !important;
+  opacity: 0.65;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+}
+
+a.navbar-brand:focus,
+a.navbar-brand:active {
+  outline: none;
+  box-shadow: none;
 }
 
 @media (max-width: 767px) {

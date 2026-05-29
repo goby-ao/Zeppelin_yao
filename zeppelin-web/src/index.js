@@ -46,6 +46,7 @@ import './app/credential/credential.controller.js';
 import './app/configuration/configuration.controller.js';
 import './app/notebook/revisions-comparator/revisions-comparator.component.js';
 import './app/notebook/paragraph/paragraph.controller.js';
+import './app/notebook/paragraph-nav/paragraph-nav.js';
 import './app/notebook/paragraph/clipboard.controller.js';
 import './app/notebook/paragraph/resizable.directive.js';
 import './app/notebook/paragraph/result/result.controller.js';

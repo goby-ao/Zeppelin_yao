@@ -1,7 +1,6 @@
 /*
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -12,38 +11,148 @@
  * limitations under the License.
  */
 
-.modal-header-note-name {
-  background-color: #3071a9;
-  border: 2px solid #3071a9;
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px;
+.note-create-dialog {
+  max-width: 520px;
 }
 
-.modal-header-note-name > .modal-title {
-  font-weight: 300;
-  font-size: 20px;
-  color: white;
+.note-create-content {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
 }
 
-.modal-header-note-name > .close {
-  color: #cfcfcf;
+.note-create-header {
+  background: #fff;
+  border-bottom: none;
+  padding: 24px 24px 0;
+}
+
+.note-create-header .modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.note-create-header .close {
+  color: #999;
   opacity: 1;
+  font-size: 20px;
+  margin-top: 2px;
+  transition: color 0.15s ease;
 }
 
-.modal-body-note-name label {
-  font-size: 17px;
-  font-weight: 400;
+.note-create-header .close:hover {
+  color: #333;
 }
 
-.note-name-create-input {
-  margin-top: 5px;
+.note-create-body {
+  padding: 16px 24px 8px;
 }
 
-.note-name-desc-panel {
-  margin-top: 20px;
-  margin-bottom: 4px;
+.note-create-body label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 6px;
 }
 
-.default-interpreter-select {
-  margin-top: 12px;
+.note-create-input {
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  font-size: 14px;
+  padding: 0 12px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.note-create-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  outline: none;
+}
+
+.note-create-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #888;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.note-create-hint i {
+  color: #aaa;
+  flex-shrink: 0;
+}
+
+.note-create-hint code {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #2563eb;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+.note-create-footer {
+  padding: 8px 24px 24px;
+  border-top: none;
+}
+
+.btn-create {
+  width: 100%;
+  height: 42px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-create:hover {
+  background: #1d4ed8;
+  color: #fff;
+}
+
+.btn-create:active {
+  background: #1e40af;
+}
+
+.interpreter-quick-tags {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.interpreter-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #d1fae5;
+  background: #f0fdf4;
+  color: #16a34a;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.interpreter-tag:hover {
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.interpreter-tag.active {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
 }

@@ -31,7 +31,7 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
   vm.websocketMsgSrv = websocketMsgSrv;
   vm.arrayOrderingSrv = arrayOrderingSrv;
   vm.noteActionService = noteActionService;
-  vm.numberOfNotesDisplayed = window.innerHeight / 20;
+  vm.numberOfNotesDisplayed = Math.max(200, window.innerHeight / 20);
 
   vm.notebookHome = false;
   vm.noteCustomHome = true;
@@ -44,7 +44,54 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
   $scope.isReloading = false;
   $scope.TRASH_FOLDER_ID = TRASH_FOLDER_ID;
   $scope.query = {q: ''};
-  $scope.recentNotes = readRecentNotes().slice(0, 7);
+  $scope.recentNotes = readRecentNotes();
+
+  $scope.toggleStar = function(note, $event) {
+    $event.preventDefault();
+    $event.stopPropagation();
+    if (!note.starred) {
+      let starredCount = $scope.recentNotes.filter(function(n) {
+        return n.starred;
+      }).length;
+      if (starredCount >= 5) {
+        ngToast.create({content: '最多置顶 5 个笔记', className: 'warning', timeout: 2000});
+        return;
+      }
+    }
+    note.starred = !note.starred;
+    saveRecentNotes($scope.recentNotes);
+    $scope.recentNotes = readRecentNotes();
+  };
+
+  function saveRecentNotes(notes) {
+    try {
+      window.localStorage.setItem(RECENT_NOTES_KEY, angular.toJson(notes));
+    } catch (e) {
+      // ignore localStorage errors
+    }
+  }
+
+  $scope.isNoteDeleted = function(noteId) {
+    // 笔记列表未加载完成时，不显示为已删除
+    if (!vm.notes || !angular.isArray(vm.notes.flatList) || vm.notes.flatList.length === 0) {
+      return false;
+    }
+    for (let i = 0; i < vm.notes.flatList.length; i++) {
+      if (vm.notes.flatList[i] && vm.notes.flatList[i].id === noteId) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  $scope.removeRecentNote = function(note, $event) {
+    $event.preventDefault();
+    $event.stopPropagation();
+    $scope.recentNotes = $scope.recentNotes.filter(function(n) {
+      return n.id !== note.id;
+    });
+    saveRecentNotes($scope.recentNotes);
+  };
 
   $scope.initHome = function() {
     websocketMsgSrv.getHomeNote();
@@ -92,7 +139,19 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
     try {
       let raw = window.localStorage.getItem(RECENT_NOTES_KEY);
       let notes = raw ? angular.fromJson(raw) : [];
-      return angular.isArray(notes) ? notes : [];
+      if (!angular.isArray(notes)) {
+        notes = [];
+      }
+      notes.sort(function(a, b) {
+        if (a.starred && !b.starred) {
+          return -1;
+        }
+        if (!a.starred && b.starred) {
+          return 1;
+        }
+        return (b.time || 0) - (a.time || 0);
+      });
+      return notes.slice(0, 10);
     } catch (e) {
       return [];
     }

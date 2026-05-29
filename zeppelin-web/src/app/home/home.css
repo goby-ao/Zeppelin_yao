@@ -27,6 +27,15 @@ body {
   margin-bottom: 0px !important;
 }
 
+.home code {
+  background: #f0f2f5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  color: #c7254e;
+}
+
 .bodyAsIframe {
   padding-top: 20px;
   background: white;
@@ -402,27 +411,10 @@ body .navbar {
 
 .recent-notes-list li {
   margin: 0;
-}
-
-.recent-notes-list a {
-  display: -ms-flexbox;
   display: flex;
-  -ms-flex-align: center;
   align-items: center;
-  min-height: 42px;
-  padding: 8px 10px;
-  border-radius: 7px;
-  color: #1f2328;
-  text-decoration: none;
-  -webkit-transition: background 140ms ease;
-  transition: background 140ms ease;
 }
 
-.recent-notes-list a:hover,
-.recent-notes-list a:focus {
-  background: #f8fafc;
-  text-decoration: none;
-}
 
 .recent-note-icon {
   width: 22px;
@@ -451,6 +443,115 @@ body .navbar {
   white-space: nowrap;
 }
 
+.recent-note-star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 4px;
+  font-size: 12px;
+  color: #e5e7eb;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.recent-note-star:hover {
+  color: #fbbf24;
+  background: #fffbeb;
+  transform: scale(1.15);
+}
+
+.recent-note-starred .recent-note-star {
+  color: #f59e0b;
+  text-shadow: 0 0 6px rgba(245, 158, 11, 0.3);
+}
+
+.recent-note-starred .recent-note-star:hover {
+  color: #d97706;
+  background: #fef3c7;
+}
+
+.recent-note-starred .recent-note-name {
+  font-weight: 600;
+}
+
+.recent-note-link {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 3px 10px;
+  border-radius: 7px;
+  color: #1f2328;
+  text-decoration: none;
+  flex: 1;
+  min-width: 0;
+  transition: background 140ms ease;
+}
+
+.recent-note-link:hover,
+.recent-note-link:focus {
+  background: #f8fafc;
+  text-decoration: none;
+  outline: none;
+}
+
+.recent-note-deleted {
+  opacity: 0.5;
+}
+
+.recent-note-deleted-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 4px;
+  font-size: 12px;
+  color: #ef4444;
+  flex-shrink: 0;
+}
+
+.recent-note-deleted-text {
+  cursor: default !important;
+}
+
+.recent-note-deleted-text:hover {
+  background: transparent !important;
+}
+
+.recent-note-deleted-text .recent-note-name {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.recent-note-deleted-text .recent-note-time {
+  color: #ef4444;
+  font-size: 11px;
+}
+
+.recent-note-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-left: 4px;
+  font-size: 11px;
+  color: #d1d5db;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.recent-note-remove:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
 .recent-notes-empty {
   padding: 12px 10px;
   color: #94a3b8;
@@ -458,7 +559,7 @@ body .navbar {
 }
 
 .home-notes-panel {
-  max-width: 520px;
+  max-width: 780px;
 }
 
 .home-notes-module {
@@ -466,7 +567,22 @@ body .navbar {
 }
 
 .home-notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 14px;
+}
+
+.home-notes-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-notes-header-actions .home-note-action {
+  padding: 4px 12px;
+  font-size: 12px;
+  min-height: 28px;
 }
 
 .home-notes-refresh {
@@ -493,12 +609,6 @@ body .navbar {
   background: #eff6ff;
   color: #2563eb;
   outline: none;
-}
-
-.home-note-actions {
-  display: -ms-flexbox;
-  display: flex;
-  margin-bottom: 14px;
 }
 
 .home-note-action {
@@ -534,6 +644,20 @@ body .navbar {
 .home-note-action i {
   margin-right: 7px;
   font-size: 14px;
+}
+
+.home-note-action-create {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  padding: 7px 18px;
+}
+
+.home-note-action-create:hover,
+.home-note-action-create:focus {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
 }
 
 .home-notes-module #notebook-names {
@@ -580,9 +704,9 @@ body .navbar {
   display: flex;
   -ms-flex-align: center;
   align-items: center;
-  min-height: 30px;
-  margin: 1px 0;
-  padding: 4px 7px;
+  min-height: 26px;
+  margin: 0;
+  padding: 2px 7px;
   border-radius: 7px;
   color: #1f2328;
   -webkit-transition: background 120ms ease;
@@ -596,17 +720,23 @@ body .navbar {
 .home-notes-module .note-folder-item > a {
   min-width: 0;
   overflow: hidden;
-  color: #2563eb;
+  color: #4b6fa0;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
   -ms-flex: 1;
   flex: 1;
+  text-decoration: none;
 }
 
 .home-notes-module .note-folder-item > a:hover {
-  color: #1d4ed8;
+  color: #3b5b8a;
+}
+
+.home-notes-module .note-folder-item > a:focus {
+  outline: none;
+  color: #3b5b8a;
 }
 
 .home-notes-module .note-folder-item i.icon-doc,

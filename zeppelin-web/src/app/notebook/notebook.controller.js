@@ -45,6 +45,10 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   $scope.collaborativeModeUsers = [];
   $scope.looknfeelOption = ['default', 'simple', 'report'];
   $scope.noteFormTitle = null;
+
+  // Paragraph nav lock state
+  $scope.lockedParagraphId = null;
+  let highlightTimer = null;
   $scope.cronOption = [
     {name: 'None', value: undefined},
     {name: '1m', value: '0 0/1 * * * ?'},
@@ -241,14 +245,23 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
       if (!angular.isArray(notes)) {
         notes = [];
       }
+      let existing = null;
       notes = notes.filter(function(item) {
+        if (item && item.id === note.id) {
+          existing = item;
+          return false;
+        }
         return item && item.id !== note.id;
       });
-      notes.unshift({
+      let entry = {
         id: note.id,
         name: note.name || note.id,
         time: Date.now(),
-      });
+      };
+      if (existing && existing.starred) {
+        entry.starred = true;
+      }
+      notes.unshift(entry);
       window.localStorage.setItem(RECENT_NOTES_KEY, angular.toJson(notes.slice(0, 20)));
     } catch (e) {
       // LocalStorage can be unavailable in private mode or restricted iframe contexts.
@@ -1738,6 +1751,96 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     websocketMsgSrv.removeNoteForms($scope.note, formName);
   };
 
+  // --- Paragraph Navigation Lock ---
+
+  $scope.toggleParagraphLock = function(paragraphId) {
+    if ($scope.lockedParagraphId === paragraphId) {
+      $scope.lockedParagraphId = null;
+    } else {
+      $scope.lockedParagraphId = paragraphId;
+    }
+  };
+
+  $scope.scrollToParagraphById = function(paragraphId) {
+    let el = document.querySelector('[data-paragraph-id="' + paragraphId + '"]');
+    if (!el) {
+      return;
+    }
+
+    let rect = el.getBoundingClientRect();
+    let absoluteTop = rect.top + window.pageYOffset;
+    let headerHeight = 110;
+    let viewportHeight = window.innerHeight;
+    let centeredTop = absoluteTop - viewportHeight / 2 + rect.height / 2;
+
+    let targetTop;
+    if (absoluteTop < viewportHeight) {
+      targetTop = Math.max(0, absoluteTop - headerHeight);
+    } else {
+      targetTop = Math.max(0, centeredTop);
+    }
+
+    angular.element('html, body').stop().animate({scrollTop: targetTop}, 500, 'swing', function() {
+      if (highlightTimer) {
+        clearTimeout(highlightTimer);
+      }
+      el.classList.add('paragraph-nav-highlight');
+      highlightTimer = setTimeout(function() {
+        el.classList.remove('paragraph-nav-highlight');
+        highlightTimer = null;
+      }, 1500);
+    });
+  };
+
+  // Double-click on dimmed area to unlock
+  function onDblClickUnlock(e) {
+    if (!$scope.lockedParagraphId) {
+      return;
+    }
+    let lockedEl = document.querySelector('[data-paragraph-id="' + $scope.lockedParagraphId + '"]');
+    if (!lockedEl) {
+      return;
+    }
+    if (lockedEl.contains(e.target)) {
+      return;
+    }
+    $scope.lockedParagraphId = null;
+    $scope.$apply();
+  }
+  document.addEventListener('dblclick', onDblClickUnlock);
+
+  // Esc to exit lock mode
+  function onEscKey(e) {
+    if (e.keyCode === 27 && $scope.lockedParagraphId) {
+      $scope.lockedParagraphId = null;
+      $scope.$apply();
+    }
+  }
+  document.addEventListener('keydown', onEscKey);
+
+  // Wheel interception in lock mode
+  function onWheel(event) {
+    if (!$scope.lockedParagraphId) {
+      return;
+    }
+    let lockedEl = document.querySelector('[data-paragraph-id="' + $scope.lockedParagraphId + '"]');
+    if (!lockedEl) {
+      return;
+    }
+    if (!lockedEl.contains(event.target)) {
+      event.preventDefault();
+      let scrollables = lockedEl.querySelectorAll('.resultContent, table, pre, .code-body');
+      for (let i = 0; i < scrollables.length; i++) {
+        let s = scrollables[i];
+        if (s.scrollHeight > s.clientHeight) {
+          s.scrollTop += event.deltaY;
+          break;
+        }
+      }
+    }
+  }
+  document.addEventListener('wheel', onWheel, {passive: false});
+
   $scope.$on('$destroy', function() {
     angular.element(window).off('beforeunload');
     $scope.killSaveTimer();
@@ -1745,6 +1848,12 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
 
     document.removeEventListener('click', $scope.focusParagraphOnClick);
     document.removeEventListener('keydown', $scope.keyboardShortcut);
+    document.removeEventListener('keydown', onEscKey);
+    document.removeEventListener('wheel', onWheel);
+    document.removeEventListener('dblclick', onDblClickUnlock);
+    if (highlightTimer) {
+      clearTimeout(highlightTimer);
+    }
   });
 
   $scope.$on('$unBindKeyEvent', function() {
