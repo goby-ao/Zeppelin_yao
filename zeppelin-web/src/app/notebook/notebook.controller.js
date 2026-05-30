@@ -554,10 +554,19 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   };
 
   $scope.runAllParagraphs = function(noteId) {
+    let count = $scope.note.paragraphs.length;
     BootstrapDialog.confirm({
       closable: true,
-      title: '',
-      message: 'Run all paragraphs?',
+      title: '运行全部段落',
+      message: '<div style="padding: 4px 0;">' +
+        '<div style="margin-bottom: 10px;">即将运行当前笔记中的 <strong>' + count + '</strong> 个代码块。</div>' +
+        '<div style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 6px; padding: 10px 12px; font-size: 12px; color: #92400e;">' +
+          '<i class="fa fa-exclamation-triangle" style="margin-right: 4px;"></i>' +
+          '所有代码块将依次执行，请确认无误后再操作。' +
+        '</div>' +
+      '</div>',
+      btnOKLabel: '确认运行',
+      btnCancelLabel: '取消',
       callback: function(result) {
         if (result) {
           const paragraphs = $scope.note.paragraphs.map((p) => {
