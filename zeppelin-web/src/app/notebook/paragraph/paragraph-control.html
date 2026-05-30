@@ -52,13 +52,13 @@ limitations under the License.
     <i class="fa"
        ng-class="{
          'fa-play': paragraph.status !== 'RUNNING' && paragraph.status !== 'PENDING',
-         'fa-clock-o': paragraph.status === 'PENDING',
+         'fa-spinner fa-spin zp-pending-spinner': paragraph.status === 'PENDING',
          'fa-stop zp-cancel-icon-stop': paragraph.status === 'RUNNING' && cancelUiState !== 'cancelling',
          'fa-spinner fa-spin zp-cancel-icon-spinner': paragraph.status === 'RUNNING' && cancelUiState === 'cancelling'
        }"></i>
     <span class="zp-run-label" ng-if="paragraph.status !== 'RUNNING' && paragraph.status !== 'PENDING'">运行</span>
     <span class="zp-run-label" ng-if="paragraph.status === 'RUNNING'">停止</span>
-    <span class="zp-run-label" ng-if="paragraph.status === 'PENDING'">排队中</span>
+    <span class="zp-run-label" ng-if="paragraph.status === 'PENDING'">初始化中</span>
     <span class="zp-kbd"
           ng-if="paragraph.status !== 'RUNNING' && paragraph.status !== 'PENDING'">⇧↵</span>
   </span>
