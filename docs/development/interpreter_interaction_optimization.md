@@ -135,6 +135,81 @@ function ensureInterpreterBindingsLoaded() {
 }
 ```
 
+### 6. 重启解释器对话框优化
+
+**文件**: `paragraph.controller.js`
+
+优化重启确认对话框：
+- 显示解释器名称（从段落 `%magic` 前缀提取）
+- 黄色提示框：重启后首次运行会稍慢
+- 灰色建议：仅在解释器异常时使用
+- 按钮汉化：确认重启 / 取消
+- 标题加图标
+
+### 7. 笔记本工具栏优化
+
+**文件**: `notebook-actionBar.html`, `notebook.css`
+
+#### 按钮调大
+- 所有按钮从 `btn-xs` 改为 `btn-sm`
+- 右侧图标区 `font-size` 从 15px 调到 17px
+
+#### 按钮分组
+- 第一组：运行 / 克隆 / 导出 / 重载
+- 第二组：隐藏代码 / 隐藏输出 / 清空输出
+- 第三组：协作模式
+- 搜索
+- 删除（回收站中显示红色 `btn-danger`）
+
+#### 垂直居中
+- h3 容器改为 `display: flex; align-items: center`
+- 右侧按钮区用 `margin-left: auto` 推到右边
+
+#### 版本管理注释屏蔽
+- 版本控制相关按钮用 HTML 注释包裹
+
+### 8. 对话框汉化
+
+**文件**: `noteActionService.js`, `notebook.controller.js`
+
+#### noteActionService 汉化
+- 移动到回收站、永久删除、清空输出、恢复回收站、清空回收站
+- 重命名笔记、重命名文件夹、文件夹合并警告
+- 所有按钮汉化（确认/取消/确认删除/确认清空/确认恢复/确认合并）
+
+#### 运行全部段落对话框
+- 标题：运行全部段落
+- 显示段落数量
+- 黄色警告框：所有代码块将依次执行
+- 按钮：确认运行 / 取消
+
+### 9. 段落运行按钮轻量化
+
+**文件**: `paragraph.css`, `paragraph-control.html`
+
+#### 运行按钮重构
+- 默认态：白色背景 + 绿色描边（#38a169），降低视觉权重
+- Hover 态：绿色实心填充 + 白色文字
+- Focus 态：绿色 focus ring（rgba(56,161,105,.25)）
+- Active 态：深绿色（#2f855a）
+- Disabled 态：灰色描边（#cbd5e0），禁用 hover 效果
+- 快捷键 ⇧↵ 默认隐藏，hover 时显示
+
+#### 停止按钮统一风格
+- 默认态：红色描边 + 白色背景（与运行按钮对称）
+- Hover 态：红色实心填充 + 白色文字
+
+#### 右上角操作按钮幽灵风格
+- 默认态：中性灰（#7b8794）+ 极浅灰描边（#e4e7eb）+ 透明背景
+- 格式化 hover：蓝色（#3182ce）
+- 重启 hover：橙色（#dd6b20）
+- 按钮高度增加到 24px
+
+#### PENDING 状态优化
+- 文案：排队中 → 初始化中
+- 图标：时钟 → 转圈（fa-spinner）
+- 动效：图标转圈 + 呼吸（透明度 0.5↔1）+ 边框绿色呼吸
+
 ## 涉及文件
 
 | 文件 | 改动 |
@@ -142,6 +217,10 @@ function ensureInterpreterBindingsLoaded() {
 | `note-create.controller.js` | 新增 `onInterpreterChange`，移除 hive→jdbc 映射 |
 | `note-create.html` | 下拉框添加 `ng-change` |
 | `paragraph.html` | 添加重启按钮，修复 tooltip 遮挡 |
-| `paragraph.css` | 添加 `.zp-restart-btn` 样式，调整按钮定位 |
-| `paragraph.controller.js` | 新增重启解释器功能，含绑定懒加载处理 |
-| `notebook.controller.js` | 修复快速笔记解释器绑定过滤逻辑 |
+| `paragraph.css` | 按钮样式重构（运行/停止/重启/格式化），PENDING 动效 |
+| `paragraph-control.html` | PENDING 文案改为初始化中，图标改为转圈 |
+| `paragraph.controller.js` | 新增重启解释器功能，含绑定懒加载和对话框优化 |
+| `notebook.controller.js` | 修复快速笔记解释器绑定过滤逻辑，运行全部对话框汉化 |
+| `notebook-actionBar.html` | 工具栏按钮分组、调大、垂直居中、版本管理注释 |
+| `notebook.css` | h3 flexbox 布局，标题垂直居中 |
+| `noteActionService.js` | 所有对话框汉化 |
