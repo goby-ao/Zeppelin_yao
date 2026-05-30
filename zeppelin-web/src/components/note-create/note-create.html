@@ -51,6 +51,7 @@ limitations under the License.
                   name="defaultInterpreter"
                   class="form-control note-create-input"
                   ng-model="note.defaultInterpreter"
+                  ng-change="noteCreateCtrl.onInterpreterChange()"
                   ng-options="option.name for option in interpreterSettings">
           </select>
         </div>

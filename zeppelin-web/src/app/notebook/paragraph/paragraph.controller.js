@@ -473,6 +473,101 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     }
   };
 
+  function ensureInterpreterBindingsLoaded() {
+    let scope = $scope;
+    while (scope && !scope.interpreterBindings) {
+      scope = scope.$parent;
+    }
+    if (scope && scope.interpreterBindings && scope.interpreterBindings.length > 0) {
+      return $q.when();
+    }
+    // 绑定未加载，触发拉取并等待结果
+    let noteId = getCurrentNoteId();
+    websocketMsgSrv.getInterpreterBindings(noteId);
+    return $q(function(resolve) {
+      let deregister = $rootScope.$on('interpreterBindings', function() {
+        deregister();
+        resolve();
+      });
+    });
+  }
+
+  $scope.restartParagraphInterpreter = function(paragraph) {
+    let settingId = getInterpreterBindingId(paragraph);
+    let intpName = getInterpreterName(paragraph);
+    if (settingId) {
+      doRestartInterpreter(settingId, intpName);
+      return;
+    }
+    // 绑定可能未加载，先拉取再重试
+    ensureInterpreterBindingsLoaded().then(function() {
+      settingId = getInterpreterBindingId(paragraph);
+      if (!settingId) {
+        BootstrapDialog.alert({
+          title: '错误',
+          message: '无法解析当前段落的解释器绑定。',
+        });
+        return;
+      }
+      doRestartInterpreter(settingId, intpName);
+    });
+  };
+
+  function getInterpreterName(paragraph) {
+    let text = (paragraph && paragraph.text) ? paragraph.text : $scope.getEditorValue();
+    let magic = getParagraphMagic(text);
+    return magic ? magic.replace(/^%/, '') : 'default';
+  }
+
+  function doRestartInterpreter(settingId, intpName) {
+    let displayName = _.escape(intpName);
+    let msgHtml =
+      '<div style="padding: 8px 0;">' +
+        '<div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">' +
+          '<i class="fa fa-exclamation-triangle" style="color:#d97706; font-size:18px;"></i>' +
+          '<span style="font-size:14px; font-weight:500;">即将重启 <code>%' + displayName + '</code> 解释器</span>' +
+        '</div>' +
+        '<div style="background:#fef3c7; border:1px solid #fde68a; border-radius:6px; padding:10px 12px; margin-bottom:12px; font-size:12px; color:#92400e;">' +
+          '<i class="fa fa-info-circle" style="margin-right:4px;"></i>' +
+          '重启后首次运行会稍慢，因为需要重新初始化解释器进程。' +
+        '</div>' +
+        '<div style="font-size:12px; color:#6b7280;">' +
+          '<i class="fa fa-lightbulb-o" style="margin-right:4px;"></i>' +
+          '建议仅在遇到解释器异常（如连接超时、进程卡死）时重启，日常使用无需操作。' +
+        '</div>' +
+      '</div>';
+
+    BootstrapDialog.confirm({
+      closable: true,
+      closeByBackdrop: true,
+      closeByKeyboard: true,
+      title: '<i class="fa fa-refresh" style="margin-right:6px;"></i>重启解释器',
+      message: msgHtml,
+      btnOKLabel: '确认重启',
+      btnCancelLabel: '取消',
+      callback: function(result) {
+        if (result) {
+          const noteId = getCurrentNoteId();
+          $http.put(baseUrlSrv.getRestApiBase() + '/interpreter/setting/restart/' + settingId, {
+            noteId: noteId,
+          })
+            .then(function() {
+              ngToast.success({
+                content: '%' + intpName + ' 解释器已重启',
+                dismissOnTimeout: true,
+              });
+            })
+            .catch(function(err) {
+              BootstrapDialog.alert({
+                title: '重启失败',
+                message: _.escape(err.data ? err.data.message : '未知错误'),
+              });
+            });
+        }
+      },
+    });
+  }
+
   function resetCancelUi(finalState, finalStatus) {
     if (cancelSlowHintTimer) {
       $timeout.cancel(cancelSlowHintTimer);

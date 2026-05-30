@@ -306,10 +306,26 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
       return interpreterBindings;
     }
 
+    // 收集段落实际使用到的解释器名称
+    let usedNames = new Set();
+    if ($scope.note && $scope.note.paragraphs) {
+      $scope.note.paragraphs.forEach(function(p) {
+        let text = p.text || '';
+        let magicMatch = text.match(/^\s*%([a-zA-Z0-9_\-]+(?:\.\w+)*)/);
+        if (magicMatch) {
+          usedNames.add(magicMatch[1].split('.')[0]);
+        }
+      });
+    }
+
     let matchedBinding = null;
     let filteredBindings = interpreterBindings.filter(function(setting) {
       if (setting && (setting.id === quickNoteBinding || setting.name === quickNoteBinding)) {
         matchedBinding = setting;
+        return true;
+      }
+      // 保留段落实际使用到的其他解释器
+      if (setting && usedNames.has(setting.name)) {
         return true;
       }
       return false;
@@ -321,9 +337,19 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     }
 
     matchedBinding.selected = true;
-    if ($scope.note && $scope.note.id && quickNoteBindingSaved[$scope.note.id] !== matchedBinding.id) {
-      quickNoteBindingSaved[$scope.note.id] = matchedBinding.id;
-      websocketMsgSrv.saveInterpreterBindings($scope.note.id, [matchedBinding.id]);
+    // 保存绑定时，把段落用到的其他解释器也加上
+    let idsToSave = [matchedBinding.id];
+    filteredBindings.forEach(function(s) {
+      if (s && s.id !== matchedBinding.id && idsToSave.indexOf(s.id) === -1) {
+        idsToSave.push(s.id);
+      }
+    });
+    if ($scope.note && $scope.note.id) {
+      let savedKey = idsToSave.sort().join(',');
+      if (quickNoteBindingSaved[$scope.note.id] !== savedKey) {
+        quickNoteBindingSaved[$scope.note.id] = savedKey;
+        websocketMsgSrv.saveInterpreterBindings($scope.note.id, idsToSave);
+      }
     }
     return filteredBindings;
   }
