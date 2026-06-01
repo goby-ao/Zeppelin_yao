@@ -45,24 +45,26 @@ limitations under the License.
          class="zp-paragraph-editor-shell"
          ng-class="{'zp-code-collapsible': shouldShowCodeCollapse(paragraph),
                     'zp-code-collapsed': codeCollapsed && shouldShowCodeCollapse(paragraph)}">
-      <span class="zp-interpreter-chip" ng-if="paragraph.config.editorMode">
-        {{paragraph.config.editorMode.replace('ace/mode/', '') | uppercase}}
-      </span>
-      <span class="zp-restart-btn"
-            ng-click="restartParagraphInterpreter(paragraph)"
-            tooltip-placement="top"
-            tooltip-append-to-body="true"
-            uib-tooltip="仅在任务执行异常时使用！">
-        <i class="fa fa-refresh"></i> 重启
-      </span>
-      <span class="zp-format-btn"
-            ng-if="isSqlMode(paragraph)"
-            ng-click="formatSqlCode(paragraph)"
-            tooltip-placement="top"
-            tooltip-append-to-body="true"
-            uib-tooltip="格式化 SQL 代码">
-        <i class="fa fa-align-left"></i> 格式化
-      </span>
+      <div class="zp-editor-actions">
+        <span class="zp-format-btn"
+              ng-if="isSqlMode(paragraph)"
+              ng-click="formatSqlCode(paragraph)"
+              tooltip-placement="top"
+              tooltip-append-to-body="true"
+              uib-tooltip="格式化 SQL 代码">
+          <i class="fa fa-align-left"></i> 格式化
+        </span>
+        <span class="zp-restart-btn"
+              ng-click="restartParagraphInterpreter(paragraph)"
+              tooltip-placement="top"
+              tooltip-append-to-body="true"
+              uib-tooltip="仅在任务执行异常时使用！">
+          <i class="fa fa-refresh"></i> 重启
+        </span>
+        <span class="zp-interpreter-chip" ng-if="paragraph.config.editorMode">
+          {{paragraph.config.editorMode.replace('ace/mode/', '') | uppercase}}
+        </span>
+      </div>
       <code-editor
         paragraph-id="paragraph.id"
         paragraph-context="paragraph"
@@ -72,6 +74,12 @@ limitations under the License.
         revision-view="revisionView"
         ng-click="onEditorClick()"
       ></code-editor>
+      <div class="zp-quick-note-placeholder"
+           ng-if="getQuickNotePlaceholder(paragraph)"
+           ng-click="focusQuickNotePlaceholder()">
+        <i class="fa fa-lightbulb-o"></i>
+        <span>{{getQuickNotePlaceholder(paragraph)}}</span>
+      </div>
       <div class="zp-code-collapse-fade"
            ng-if="codeCollapsed && shouldShowCodeCollapse(paragraph)"></div>
       <button type="button"

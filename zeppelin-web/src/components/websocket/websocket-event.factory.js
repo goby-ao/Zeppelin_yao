@@ -169,12 +169,17 @@ function WebsocketEventFactory($rootScope, $websocket, $location, baseUrlSrv, sa
     } else if (op === 'SAVE_NOTE_FORMS') {
       $rootScope.$broadcast('saveNoteForms', data);
     } else if (op === 'ERROR_INFO') {
+      let info = data && data.info !== undefined && data.info !== null ? data.info.toString() : '';
+      if (info.indexOf('Fail to get completion') === 0) {
+        console.warn(info);
+        return;
+      }
       BootstrapDialog.show({
         closable: false,
         closeByBackdrop: false,
         closeByKeyboard: false,
         title: 'Details',
-        message: _.escape(data.info.toString()),
+        message: _.escape(info),
         buttons: [{
           // close all the dialogs when there are error on running all paragraphs
           label: 'Close',

@@ -51,10 +51,8 @@ limitations under the License.
               <small>
                 <span style="display:inline-block" ng-repeat="intp in item.interpreters">
                   <span ng-show="!$first">, </span>
-                  %<span ng-show="!$parent.$first || $first">{{item.name}}</span
-                  ><span ng-show="(!$parent.$first || $first) && !$first">.</span
-                  ><span ng-show="!$first">{{intp.name}}</span>
-                  <span ng-show="$parent.$first && $first">(默认)</span>
+                  %{{item.name}}<span ng-show="intp.name !== item.name">.{{intp.name}}</span>
+                  <span ng-show="$parent.$first && (intp.defaultInterpreter || (!(item.interpreters | filter:{defaultInterpreter:true}).length && $first))">(默认)</span>
                 </span>
               </small>
             </div>

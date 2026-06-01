@@ -1,7 +1,7 @@
 export const QUICK_NOTE_ROOT = '快速笔记';
 
 export const QUICK_NOTE_BINDINGS = {
-  hive: 'jdbc',
+  hive: 'hive',
   shell: 'sh',
 };
 

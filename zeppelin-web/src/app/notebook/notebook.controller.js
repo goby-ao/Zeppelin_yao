@@ -84,7 +84,6 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
 
   let connectedOnce = false;
   let quickNoteBindingSaved = {};
-  let revisionHistoryRequested = false;
   let isRevisionPath = function(path) {
     let pattern = new RegExp('^.*\/notebook\/[a-zA-Z0-9_]*\/revision\/[a-zA-Z0-9_]*');
     return pattern.test(path);
@@ -183,22 +182,9 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     });
   };
 
-  const hasAuthenticatedTicket = function() {
-    return $rootScope.ticket &&
-      $rootScope.ticket.ticket &&
-      $rootScope.ticket.ticket !== 'anonymous' &&
-      $rootScope.ticket.principal &&
-      $rootScope.ticket.principal !== 'anonymous';
-  };
-
   const requestRevisionHistory = function() {
     // 版本历史功能已禁用，减少打开笔记时的请求
     return;
-    // if (revisionHistoryRequested || !hasAuthenticatedTicket()) {
-    //   return;
-    // }
-    // revisionHistoryRequested = true;
-    // websocketMsgSrv.listRevisionHistory($routeParams.noteId);
   };
 
   /** Init the new controller */
@@ -352,6 +338,18 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
       }
     }
     return filteredBindings;
+  }
+
+  function refreshNoMagicParagraphEditorSettings() {
+    if (!$scope.note || !$scope.note.paragraphs) {
+      return;
+    }
+    _.forEach($scope.note.paragraphs, function(n) {
+      let regExp = /^\s*%/g;
+      if (!n.text || !regExp.exec(n.text)) {
+        $scope.$broadcast('saveInterpreterBindings', n.id);
+      }
+    });
   }
 
   $scope.focusParagraphOnClick = function(clickEvent) {
@@ -560,7 +558,8 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
       title: '运行全部段落',
       message: '<div style="padding: 4px 0;">' +
         '<div style="margin-bottom: 10px;">即将运行当前笔记中的 <strong>' + count + '</strong> 个代码块。</div>' +
-        '<div style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 6px; padding: 10px 12px; font-size: 12px; color: #92400e;">' +
+        '<div style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 6px; ' +
+          'padding: 10px 12px; font-size: 12px; color: #92400e;">' +
           '<i class="fa fa-exclamation-triangle" style="margin-right: 4px;"></i>' +
           '所有代码块将依次执行，请确认无误后再操作。' +
         '</div>' +
@@ -819,8 +818,8 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   };
 
   $scope.$on('interpreterBindings', function(event, data) {
+    let quickNoteBinding = getQuickNoteInterpreterBinding($scope.note);
     $scope.interpreterBindings = filterQuickNoteInterpreterBindings(data.interpreterBindings);
-    $scope.interpreterBindingsOrig = angular.copy($scope.interpreterBindings); // to check dirty
 
     let selected = false;
     let key;
@@ -850,6 +849,12 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
       }
       $scope.showSetting = true;
     }
+
+    $scope.interpreterBindingsOrig = angular.copy($scope.interpreterBindings); // to check dirty
+
+    if (quickNoteBinding) {
+      refreshNoMagicParagraphEditorSettings();
+    }
   });
 
   $scope.interpreterSelectionListeners = {
@@ -872,6 +877,9 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   };
 
   $scope.closeSetting = function() {
+    if (!$scope.showSetting) {
+      return;
+    }
     if (isSettingDirty()) {
       BootstrapDialog.confirm({
         closable: true,
@@ -1022,6 +1030,9 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   };
 
   $scope.closePermissions = function() {
+    if (!$scope.showPermissions) {
+      return;
+    }
     if (isPermissionsDirty()) {
       BootstrapDialog.confirm({
         closable: true,

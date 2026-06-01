@@ -48,6 +48,13 @@ const CANCEL_MAX_WAIT_MS = 150000;
 const CANCEL_RESEND_FEEDBACK_MS = 800;
 const CANCEL_PENDING_BLOCK_MS = 5000;
 const CODE_COLLAPSE_LINE_THRESHOLD = 40;
+const QUICK_NOTE_PLACEHOLDERS = {
+  hive: '在这里编写 SQL 代码，按 Shift + Enter 直接提交查询。',
+  spark: '在这里编写 Spark SQL，按 Shift + Enter 运行查询。',
+  python: '在这里编写 Python 脚本，按 Shift + Enter 运行。',
+  shell: '在这里编写 Shell 命令，按 Shift + Enter 运行。',
+  sh: '在这里编写 Shell 命令，按 Shift + Enter 运行。',
+};
 
 angular.module('zeppelinWebApp').controller('ParagraphCtrl', ParagraphCtrl);
 
@@ -58,7 +65,6 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   'ngInject';
 
   let ANGULAR_FUNCTION_OBJECT_NAME_PREFIX = '_Z_ANGULAR_FUNC_';
-  let completionListLength = undefined;
   $rootScope.keys = Object.keys;
   $scope.parentNote = null;
   $scope.paragraph = {};
@@ -109,6 +115,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   let currentRange = getCurrentRangeDefault();
 
   let editorSetting = {};
+  $scope.backendCompletionSettingLoaded = false;
   // flag that is used to set editor setting on paste percent sign
   let pastePercentSign = false;
   // flag that is used to set editor setting on save interpreter bindings
@@ -253,6 +260,28 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     return completionKey === 'TAB';
   };
 
+  const isFrontendCompletionEnabled = function(scope) {
+    let paragraph = scope && scope.paragraph;
+    return !!(paragraph && paragraph.config && paragraph.config.editorSetting &&
+      scope.backendCompletionSettingLoaded &&
+      paragraph.config.editorSetting.completionSupport === true);
+  };
+
+  const applyFrontendCompletionSetting = function() {
+    if (!$scope.editor) {
+      return;
+    }
+    let enabled = isFrontendCompletionEnabled($scope);
+    $scope.editor.setOptions({
+      enableBasicAutocompletion: enabled,
+      enableSnippets: false,
+      enableLiveAutocompletion: enabled,
+    });
+    if (!enabled && $scope.editor.completer) {
+      $scope.editor.completer.detach();
+    }
+  };
+
   $scope.$on('updateParagraphOutput', function(event, data) {
     if ($scope.paragraph.id === data.paragraphId) {
       if (!$scope.paragraph.results) {
@@ -347,6 +376,51 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
 
   $scope.getCodeLineCount = function(paragraph) {
     return getCodeLineCount(paragraph);
+  };
+
+  function getQuickNoteType() {
+    if (!$scope.parentNote) {
+      return '';
+    }
+    let notePath = $scope.parentNote.path || $scope.parentNote.name || '';
+    let noteName = notePath.split('/').pop();
+    let match = /^QuickNote_(.+)$/.exec(noteName || '');
+    return match ? match[1].toLowerCase() : '';
+  }
+
+  function isFirstParagraph(paragraph) {
+    if (!paragraph) {
+      return false;
+    }
+    if ($scope.parentNote && $scope.parentNote.paragraphs &&
+        $scope.parentNote.paragraphs.length > 0) {
+      return $scope.parentNote.paragraphs[0].id === paragraph.id;
+    }
+    return $scope.$index === 0;
+  }
+
+  function getCurrentParagraphText(paragraph) {
+    if ($scope.dirtyText !== undefined && $scope.dirtyText !== null) {
+      return $scope.dirtyText;
+    }
+    return paragraph && paragraph.text ? paragraph.text : '';
+  }
+
+  $scope.getQuickNotePlaceholder = function(paragraph) {
+    if (!isFirstParagraph(paragraph)) {
+      return '';
+    }
+    if (getCurrentParagraphText(paragraph).trim()) {
+      return '';
+    }
+    return QUICK_NOTE_PLACEHOLDERS[getQuickNoteType()] || '';
+  };
+
+  $scope.focusQuickNotePlaceholder = function() {
+    if ($scope.editor) {
+      $scope.editor.focus();
+    }
+    $scope.onEditorClick();
   };
 
   $scope.shouldShowCodeCollapse = function(paragraph) {
@@ -494,9 +568,8 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
 
   $scope.restartParagraphInterpreter = function(paragraph) {
     let settingId = getInterpreterBindingId(paragraph);
-    let intpName = getInterpreterName(paragraph);
     if (settingId) {
-      doRestartInterpreter(settingId, intpName);
+      doRestartInterpreter(settingId, getInterpreterName(paragraph));
       return;
     }
     // 绑定可能未加载，先拉取再重试
@@ -509,7 +582,8 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         });
         return;
       }
-      doRestartInterpreter(settingId, intpName);
+      // 绑定加载后再获取解释器名称，避免返回 'default'
+      doRestartInterpreter(settingId, getInterpreterName(paragraph));
     });
   };
 
@@ -527,7 +601,8 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
           '<i class="fa fa-exclamation-triangle" style="color:#d97706; font-size:18px;"></i>' +
           '<span style="font-size:14px; font-weight:500;">即将重启 <code>%' + displayName + '</code> 解释器</span>' +
         '</div>' +
-        '<div style="background:#fef3c7; border:1px solid #fde68a; border-radius:6px; padding:10px 12px; margin-bottom:12px; font-size:12px; color:#92400e;">' +
+        '<div style="background:#fef3c7; border:1px solid #fde68a; border-radius:6px; ' +
+          'padding:10px 12px; margin-bottom:12px; font-size:12px; color:#92400e;">' +
           '<i class="fa fa-info-circle" style="margin-right:4px;"></i>' +
           '重启后首次运行会稍慢，因为需要重新初始化解释器进程。' +
         '</div>' +
@@ -1156,9 +1231,9 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
 
   $scope.aceLoaded = function(_editor) {
     let langTools = ace.require('ace/ext/language_tools');
-    let Range = ace.require('ace/range').Range;
 
     _editor.$blockScrolling = Infinity;
+    _editor.$zeppelinParagraphScope = $scope;
     $scope.editor = _editor;
     $scope.editor.on('input', $scope.aceChanged);
     if (_editor.container.id !== '{{paragraph.id}}_editor') {
@@ -1198,16 +1273,6 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         $rootScope.isMac = false;
         // not applying emacs key binding while the binding override Ctrl-v. default behavior of paste text on windows.
       }
-
-      $scope.$on('completionListLength', function(event, data) {
-        completionListLength = data;
-      });
-
-      $scope.$on('callCompletion', function(event, data) {
-        if($scope.paragraphFocused) {
-          websocketMsgSrv.completion($scope.paragraph.id, data.buf, data.pos);
-        }
-      });
 
       let sqlKeywords = [
         // ===== 基础 SQL 语法 =====
@@ -1509,77 +1574,14 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         },
       };
 
-      let remoteCompleter = {
-        getCompletions: function(editor, session, pos, prefix, callback) {
-          let langTools = ace.require('ace/ext/language_tools');
-          let defaultKeywords = new Set();
-
-          // eslint-disable-next-line handle-callback-err
-          let getDefaultKeywords = function(err, completions) {
-            if (completions !== undefined) {
-              completions.forEach(function(c) {
-                defaultKeywords.add(c.value);
-              });
-            }
-          };
-          if (langTools.keyWordCompleter !== undefined) {
-            langTools.keyWordCompleter.getCompletions(editor, session, pos, prefix, getDefaultKeywords);
-          }
-
-          if (!editor.isFocused()) {
-            return;
-          }
-
-          pos = session.getTextRange(new Range(0, 0, pos.row, pos.column)).length;
-          let buf = session.getValue();
-
-          $rootScope.$broadcast('callCompletion', {buf: buf, pos: pos});
-
-          $scope.$on('completionList', function(event, data) {
-            let computeCaption = function(value, meta) {
-              let metaLength = meta !== undefined ? meta.length : 0;
-              let length = 42;
-              let whitespaceLength = 3;
-              let ellipses = '...';
-              let maxLengthCaption = length - metaLength - whitespaceLength - ellipses.length;
-              if (value !== undefined && value.length > maxLengthCaption) {
-                return value.substr(0, maxLengthCaption) + ellipses;
-              }
-              return value;
-            };
-            if (data.completions) {
-              let completions = [];
-              for (let c in data.completions) {
-                if (data.completions.hasOwnProperty(c)) {
-                  let v = data.completions[c];
-                  if (v.meta !== undefined && v.meta === 'keyword' && defaultKeywords.has(v.value.trim())) {
-                    continue;
-                  }
-                  completions.push({
-                    name: v.name,
-                    value: v.value,
-                    meta: v.meta,
-                    caption: computeCaption(v.name, v.meta),
-                    score: 300,
-                  });
-                }
-              }
-              $rootScope.$broadcast('completionListLength', completions.length);
-              callback(null, completions);
-            }
-          });
-        },
-      };
-
-      langTools.setCompleters([remoteCompleter, localCompleter, langTools.keyWordCompleter, langTools.snippetCompleter,
+      langTools.setCompleters([localCompleter, langTools.keyWordCompleter, langTools.snippetCompleter,
         langTools.textCompleter]);
 
       $scope.editor.setOptions({
         fontSize: $scope.paragraph.config.fontSize + 'pt',
-        enableBasicAutocompletion: true,
         enableSnippets: false,
-        enableLiveAutocompletion: true,
       });
+      applyFrontendCompletionSetting();
 
       $scope.editor.on('focus', function() {
         handleFocus(true);
@@ -1607,7 +1609,6 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
        $scope.editor.commands.on("afterExec", function(e, t) {
        if (e.command.name == "insertstring" && e.args == "." ) {
        var all = e.editor.completers;
-       //e.editor.completers = [remoteCompleter];
        e.editor.execCommand("startAutocomplete");
        //e.editor.completers = all;
        }
@@ -1751,47 +1752,11 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     this.filtered = matches;
   };
 
-  const completionSupportWithBackend = function(str) {
-    let matches;
-    if (str.length > this.filterText && str.lastIndexOf(
-        this.filterText, 0) === 0) {
-      matches = this.filtered;
-    } else {
-      matches = this.all;
-    }
-    this.filterText = str;
-    matches = this.filterCompletions(matches, this.filterText);
-    matches = matches.sort(function(a, b) {
-      return b.exactMatch - a.exactMatch || b.score - a.score;
-    });
-    let prev = null;
-
-    matches = matches.filter(function(item) {
-      if (!_.isEmpty(item.meta)) {
-        if (completionListLength !== 0) {
-          return false;
-        }
-      }
-      let caption = item.snippet || item.caption || item.value;
-      if (caption === prev) {
-        return false;
-      }
-      prev = caption;
-      return true;
-    });
-    this.filtered = matches;
-    completionListLength = undefined;
-  };
-
   const handleFocus = function(focused, isDigestPass) {
     $scope.paragraphFocused = focused;
     if (focused) {
       let filteredList = ace.require('ace/autocomplete').FilteredList;
-      if ($scope.paragraph.config.editorSetting.completionSupport) {
-        filteredList.prototype.setFilter = completionSupportWithBackend;
-      } else {
-        filteredList.prototype.setFilter = completionSupportWithoutBackend;
-      }
+      filteredList.prototype.setFilter = completionSupportWithoutBackend;
     }
 
     if ($scope.editor) {
@@ -1829,6 +1794,33 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     session.setMode(mode);
   };
 
+  let refreshEditorSetting = function(session, paragraphText, forceRefresh) {
+    if ($scope.revisionView) {
+      return;
+    }
+
+    let magic = getParagraphMagic(paragraphText);
+    let editorSettingKey = magic || '__default__';
+    if (!forceRefresh && editorSetting.magic === editorSettingKey &&
+      $scope.backendCompletionSettingLoaded) {
+      return;
+    }
+
+    editorSetting.magic = editorSettingKey;
+    $scope.backendCompletionSettingLoaded = false;
+    getEditorSetting($scope.paragraph, paragraphText)
+      .then(function(setting) {
+        if (!setting || !setting.editor) {
+          return;
+        }
+        setEditorLanguage(session, setting.editor.language);
+        _.merge($scope.paragraph.config.editorSetting, setting.editor);
+        $scope.backendCompletionSettingLoaded = true;
+        applyFrontendCompletionSetting();
+        handleFocus($scope.paragraphFocused, true);
+      });
+  };
+
   const setParagraphMode = function(session, paragraphText, pos) {
     // Evaluate the mode only if the the position is undefined
     // or the first 30 characters of the paragraph have been modified
@@ -1839,16 +1831,9 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
       if ((typeof pos === 'undefined') && $scope.paragraph.config.editorMode &&
         !setInterpreterBindings) {
         session.setMode($scope.paragraph.config.editorMode);
+        refreshEditorSetting(session, paragraphText);
       } else {
-        let magic = getParagraphMagic(paragraphText);
-        if (editorSetting.magic !== magic) {
-          editorSetting.magic = magic;
-          getEditorSetting($scope.paragraph, paragraphText)
-            .then(function(setting) {
-              setEditorLanguage(session, setting.editor.language);
-              _.merge($scope.paragraph.config.editorSetting, setting.editor);
-            });
-        }
+        refreshEditorSetting(session, paragraphText, setInterpreterBindings);
       }
     }
     pastePercentSign = false;

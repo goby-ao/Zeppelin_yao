@@ -14,6 +14,9 @@
 #
 set -euo pipefail
 
+source ~/.nvm/nvm.sh
+nvm use 12.22.12
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 WEB_DIR="${ROOT_DIR}/zeppelin-web"
@@ -27,8 +30,9 @@ CREATED_LINKS=()
 cleanup() {
   local link
   for link in "${CREATED_LINKS[@]:-}"; do
-    [[ -L "${link}" ]] && rm -f "${link}"
+    [[ -n "${link}" && -L "${link}" ]] && rm -f "${link}"
   done
+  return 0
 }
 trap cleanup EXIT
 

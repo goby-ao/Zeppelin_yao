@@ -190,6 +190,34 @@ limitations under the License.
              字号
           </a>
         </li>
+         <li>
+          <a ng-click="clearParagraphOutput(paragraph)" ng-class="{'item-disable' : isNoteRunning}">
+            <span class="fa fa-eraser shortcut-icon"></span>
+            <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+L</span>
+            清空输出
+          </a>
+        </li>
+        <li>
+          <!-- remove paragraph -->
+          <a ng-click="removeParagraph(paragraph)" ng-if="note.paragraphs.length > 1" ng-class="{'item-disable' : isNoteRunning}">
+            <span class="fa fa-times shortcut-icon"></span>
+            <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+D</span>
+            删除
+          </a>
+        </li>
+        <li>
+          <!-- paragraph handler -->
+          <a ng-click="hideTitle(paragraph)"
+             ng-show="paragraph.config.title"><span class="fa fa-font shortcut-icon"></span>
+            <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+T</span>
+            隐藏标题
+          </a>
+          <a ng-click="showTitle(paragraph)"
+             ng-show="!paragraph.config.title"><span class="fa fa-font shortcut-icon"></span>
+            <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+T</span>
+            显示标题
+          </a>
+        </li>
         <li>
           <a ng-click="moveUp(paragraph)" ng-hide="$first" ng-class="{'item-disable' : isNoteRunning}">
             <span class="icon-arrow-up shortcut-icon"></span>
@@ -236,19 +264,7 @@ limitations under the License.
             克隆代码块
           </a>
         </li>
-        <li>
-          <!-- paragraph handler -->
-          <a ng-click="hideTitle(paragraph)"
-             ng-show="paragraph.config.title"><span class="fa fa-font shortcut-icon"></span>
-            <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+T</span>
-            隐藏标题
-          </a>
-          <a ng-click="showTitle(paragraph)"
-             ng-show="!paragraph.config.title"><span class="fa fa-font shortcut-icon"></span>
-            <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+T</span>
-            显示标题
-          </a>
-        </li>
+
         <li>
           <a ng-click="hideLineNumbers(paragraph)"
              ng-show="paragraph.config.lineNumbers"><span class="fa fa-list-ol shortcut-icon"></span>
@@ -272,21 +288,6 @@ limitations under the License.
           <a ng-click="goToSingleParagraph()"><span class="icon-share-alt shortcut-icon"></span>
             <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+W</span>
             打开单代码块链接
-          </a>
-        </li>
-        <li>
-          <a ng-click="clearParagraphOutput(paragraph)" ng-class="{'item-disable' : isNoteRunning}">
-            <span class="fa fa-eraser shortcut-icon"></span>
-            <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+L</span>
-            清空输出
-          </a>
-        </li>
-        <li>
-          <!-- remove paragraph -->
-          <a ng-click="removeParagraph(paragraph)" ng-if="note.paragraphs.length > 1" ng-class="{'item-disable' : isNoteRunning}">
-            <span class="fa fa-times shortcut-icon"></span>
-            <span class="shortcut-keys">Ctrl+{{ isMac ? 'Option' : 'Alt'}}+D</span>
-            删除
           </a>
         </li>
       </ul>
