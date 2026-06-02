@@ -547,20 +547,31 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     }
   };
 
-  function ensureInterpreterBindingsLoaded() {
+  function findInterpreterBindingScope() {
     let scope = $scope;
-    while (scope && !scope.interpreterBindings) {
+    while (scope &&
+           !Object.prototype.hasOwnProperty.call(scope, 'interpreterBindings') &&
+           !Object.prototype.hasOwnProperty.call(scope, 'allInterpreterBindings')) {
       scope = scope.$parent;
     }
-    if (scope && scope.interpreterBindings && scope.interpreterBindings.length > 0) {
+    return scope;
+  }
+
+  function ensureInterpreterBindingsLoaded(forceRefresh) {
+    let scope = findInterpreterBindingScope();
+    if (!forceRefresh && scope && scope.allInterpreterBindings && scope.allInterpreterBindings.length > 0) {
       return $q.when();
     }
-    // 绑定未加载，触发拉取并等待结果
+    // Full bindings are required for paragraph-level actions such as restarting %python
+    // inside a quick note whose visible binding list is intentionally narrowed.
     let noteId = getCurrentNoteId();
     websocketMsgSrv.getInterpreterBindings(noteId);
     return $q(function(resolve) {
-      let deregister = $rootScope.$on('interpreterBindings', function() {
+      let deregister = $rootScope.$on('interpreterBindings', function(event, data) {
         deregister();
+        if (scope && data && data.interpreterBindings) {
+          scope.allInterpreterBindings = data.interpreterBindings;
+        }
         resolve();
       });
     });
@@ -573,7 +584,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
       return;
     }
     // 绑定可能未加载，先拉取再重试
-    ensureInterpreterBindingsLoaded().then(function() {
+    ensureInterpreterBindingsLoaded(true).then(function() {
       settingId = getInterpreterBindingId(paragraph);
       if (!settingId) {
         BootstrapDialog.alert({
@@ -739,14 +750,13 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   }
 
   function getInterpreterBindingId(paragraph) {
-    let scope = $scope;
-    while (scope && !scope.interpreterBindings) {
-      scope = scope.$parent;
-    }
-    const bindings = (scope && scope.interpreterBindings) || [];
+    let scope = findInterpreterBindingScope();
+    const visibleBindings = (scope && scope.interpreterBindings) || [];
+    const allBindings = (scope && scope.allInterpreterBindings) || visibleBindings;
     const paragraphText = (paragraph && paragraph.text) ? paragraph.text : $scope.getEditorValue();
     const magic = getParagraphMagic(paragraphText);
-    const name = magic ? magic.replace(/^%/, '') : (bindings[0] ? bindings[0].name : '');
+    const bindings = magic ? allBindings : visibleBindings;
+    const name = magic ? magic.replace(/^%/, '') : (visibleBindings[0] ? visibleBindings[0].name : '');
     const baseName = name ? name.split('.')[0] : '';
 
     for (let i = 0; i < bindings.length; i++) {
@@ -754,7 +764,8 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
       if (!binding) {
         continue;
       }
-      if (binding.name === name || binding.name === baseName) {
+      if (binding.name === name || binding.name === baseName ||
+          binding.id === name || binding.id === baseName) {
         return binding.id;
       }
     }

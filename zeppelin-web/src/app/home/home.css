@@ -638,26 +638,36 @@ body .navbar {
   list-style: none;
 }
 
+.home-notes-list ul {
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.home-notes-list li,
+.home-notes-list .note_folder_renderer {
+  margin: 0;
+  padding: 0;
+}
+
 /* 列表项通用样式 */
 .note-folder-item {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 26px;
+  min-height: 30px;
   margin: 0 6px;
-  padding: 2px 10px;
+  padding: 4px 10px;
   border-radius: 6px;
   color: #1f2328;
-  transition: all 150ms ease;
+  transition: background-color 150ms ease, box-shadow 150ms ease, color 150ms ease;
   cursor: pointer;
-  transform: scale(1);
 }
 
 .note-folder-item:hover {
   background: #eff6ff;
-  transform: scale(1.02);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+  box-shadow: inset 3px 0 0 #3b82f6, inset 0 0 0 1px rgba(37, 99, 235, 0.12);
 }
 
 /* 笔记名称链接 */

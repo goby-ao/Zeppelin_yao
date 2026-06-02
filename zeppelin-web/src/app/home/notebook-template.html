@@ -14,12 +14,16 @@ limitations under the License.
 
 <div ng-class="note_folder_renderer">
   <!-- note -->
-  <div ng-if="node.children == null && isFilterNote(node)" class="note-folder-item">
-    <a class="note-name" style="text-decoration: none;" href="#/notebook/{{node.id}}">
+  <div ng-if="node.children == null && isFilterNote(node)"
+       class="note-folder-item"
+       ng-click="openNote(node)">
+    <a class="note-name" style="text-decoration: none;"
+       href="#/notebook/{{node.id}}"
+       ng-click="$event.stopPropagation()">
       <i ng-class="query.q && node.isTrash ? 'fa fa-trash-o' : 'fa fa-file-text-o'"></i>
       <span>{{getNoteName(node)}}</span>
     </a>
-    <span class="note-folder-item-actions">
+    <span class="note-folder-item-actions" ng-click="$event.stopPropagation()">
       <!-- 非悬停状态：只显示更多按钮 -->
       <a class="note-action-more" ng-if="!node.isTrash">
         <i class="fa fa-ellipsis-h"></i>
@@ -59,8 +63,8 @@ limitations under the License.
 
   <!-- folder -->
   <div ng-if="node.children != null && node.id !== TRASH_FOLDER_ID">
-    <div class="note-folder-item">
-      <a class="folder-name" style="text-decoration: none; cursor: pointer;" ng-click="toggleFolderNode(node)">
+    <div class="note-folder-item" ng-click="toggleFolderNodeFromRow(node, $event)">
+      <a class="folder-name" style="text-decoration: none; cursor: pointer;" ng-click="$event.stopPropagation(); toggleFolderNode(node)">
         <i ng-class="node.hidden ? 'fa fa-folder' : 'fa fa-folder-open'"></i>
         <span>{{getNoteName(node)}}</span>
       </a>
@@ -111,8 +115,8 @@ limitations under the License.
   </div>
   <!-- trash folder -->
   <div ng-if="node.id === TRASH_FOLDER_ID">
-    <div class="note-folder-item">
-      <a class="folder-name" style="text-decoration: none; cursor: pointer;" ng-click="toggleFolderNode(node)">
+    <div class="note-folder-item" ng-click="toggleFolderNodeFromRow(node, $event)">
+      <a class="folder-name" style="text-decoration: none; cursor: pointer;" ng-click="$event.stopPropagation(); toggleFolderNode(node)">
         <i class="fa fa-trash-o"></i>
         <span>回收站</span>
       </a>

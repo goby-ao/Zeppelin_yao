@@ -201,6 +201,29 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
     node.hidden = !node.hidden;
   };
 
+  function isNoteListActionClick(event) {
+    var element = event && event.target;
+    while (element) {
+      if (element.className &&
+          (' ' + element.className + ' ').indexOf(' note-folder-item-actions ') >= 0) {
+        return true;
+      }
+      if (element.className &&
+          (' ' + element.className + ' ').indexOf(' note-folder-item ') >= 0) {
+        return false;
+      }
+      element = element.parentNode;
+    }
+    return false;
+  }
+
+  $scope.toggleFolderNodeFromRow = function(node, event) {
+    if (isNoteListActionClick(event)) {
+      return;
+    }
+    $scope.toggleFolderNode(node);
+  };
+
   angular.element('#loginModal').on('hidden.bs.modal', function(e) {
     $rootScope.$broadcast('initLoginValues');
   });
@@ -237,6 +260,13 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
 
   $scope.loadMoreNotes = function() {
     vm.numberOfNotesDisplayed += 10;
+  };
+
+  $scope.openNote = function(note) {
+    if (!note || !note.id || note.children !== null) {
+      return;
+    }
+    $location.path('/notebook/' + note.id);
   };
 
   $scope.renameNote = function(nodeId, nodePath) {

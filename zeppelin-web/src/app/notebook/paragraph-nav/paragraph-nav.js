@@ -17,6 +17,8 @@
 
 angular.module('zeppelinWebApp').directive('paragraphNav', paragraphNav);
 
+const MAX_PARAGRAPH_NAV_COUNT = 30;
+
 function paragraphNav() {
   'ngInject';
 
@@ -36,6 +38,12 @@ function paragraphNav() {
 
       let observer = null;
       let hideTooltipTimer = null;
+
+      function shouldShowNav() {
+        return scope.paragraphs &&
+          scope.paragraphs.length > 0 &&
+          scope.paragraphs.length <= MAX_PARAGRAPH_NAV_COUNT;
+      }
 
       scope.onNodeEnter = function(nodeId) {
         if (hideTooltipTimer) {
@@ -65,6 +73,12 @@ function paragraphNav() {
 
       function buildNodes() {
         let paragraphs = scope.paragraphs || [];
+        if (!shouldShowNav()) {
+          scope.nodes = [];
+          scope.hoveredNodeId = null;
+          scope.currentViewingId = null;
+          return;
+        }
         scope.nodes = paragraphs.map(function(p, i) {
           return {
             id: p.id,
@@ -155,7 +169,7 @@ function paragraphNav() {
         if (observer) {
           observer.disconnect();
         }
-        if (!scope.paragraphs || !scope.paragraphs.length) {
+        if (!shouldShowNav()) {
           return;
         }
 
@@ -187,10 +201,11 @@ function paragraphNav() {
         });
       }
 
-      scope.$watch('paragraphs', function(newVal) {
-        if (newVal && newVal.length) {
-          buildNodes();
-          setupObserver();
+      scope.$watchCollection('paragraphs', function(newVal) {
+        buildNodes();
+        setupObserver();
+        if (!newVal || !newVal.length) {
+          scope.nodes = [];
         }
       });
 
