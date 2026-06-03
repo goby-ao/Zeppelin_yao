@@ -6,6 +6,8 @@ const proxy = httpProxy.createProxyServer({
   changeOrigin: true,
   secure: true,
   ws: true,
+  timeout: 120000,
+  proxyTimeout: 120000,
 });
 
 function getAllowedOrigin(req) {
@@ -36,14 +38,49 @@ proxy.on('proxyRes', function(proxyRes, req) {
   setCors(proxyRes.headers, getAllowedOrigin(req));
 });
 
+function closeSocket(socket) {
+  if (!socket || socket.destroyed) {
+    return;
+  }
+  if (typeof socket.end === 'function') {
+    socket.end();
+  }
+  if (typeof socket.destroy === 'function') {
+    socket.destroy();
+  }
+}
+
+function writeProxyError(res, message) {
+  if (!res) {
+    return;
+  }
+
+  if (typeof res.writeHead === 'function') {
+    if (!res.headersSent) {
+      res.writeHead(502, {'Content-Type': 'text/plain'});
+    }
+    if (typeof res.end === 'function') {
+      res.end(message);
+    }
+    return;
+  }
+
+  // In websocket proxy errors http-proxy passes the raw socket as the third arg.
+  closeSocket(res);
+}
+
 proxy.on('error', function(err, req, res) {
-  console.error('[zeppelin-online-proxy] proxy error:', err.message);
-  if (res && !res.headersSent) {
-    res.writeHead(502, {'Content-Type': 'text/plain'});
-  }
-  if (res) {
-    res.end('Proxy error: ' + err.message);
-  }
+  const message = '[zeppelin-online-proxy] proxy error: ' + err.message;
+  console.error(message);
+  writeProxyError(res, 'Proxy error: ' + err.message);
+});
+
+process.on('uncaughtException', function(err) {
+  console.error('[zeppelin-online-proxy] uncaught exception:', err && err.stack ? err.stack : err);
+});
+
+process.on('unhandledRejection', function(reason) {
+  console.error('[zeppelin-online-proxy] unhandled rejection:', reason);
 });
 
 const server = http.createServer(function(req, res) {
@@ -54,14 +91,24 @@ const server = http.createServer(function(req, res) {
     res.end();
     return;
   }
-  proxy.web(req, res);
+  try {
+    proxy.web(req, res);
+  } catch (err) {
+    console.error('[zeppelin-online-proxy] proxy.web failed:', err.message);
+    writeProxyError(res, 'Proxy error: ' + err.message);
+  }
 });
 
 server.on('upgrade', function(req, socket, head) {
   socket.on('error', function(err) {
     console.error('[zeppelin-online-proxy] socket error:', err.message);
   });
-  proxy.ws(req, socket, head);
+  try {
+    proxy.ws(req, socket, head);
+  } catch (err) {
+    console.error('[zeppelin-online-proxy] proxy.ws failed:', err.message);
+    closeSocket(socket);
+  }
 });
 
 server.on('clientError', function(err, socket) {
