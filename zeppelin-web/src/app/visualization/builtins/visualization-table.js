@@ -196,6 +196,27 @@ export default class TableVisualization extends Visualization {
     }
   }
 
+  getCopyableColumns(grid) {
+    if (!grid || !grid.columns) {
+      return [];
+    }
+
+    return grid.columns.filter((col) => {
+      return col && col.colDef && col.colDef.name && col.displayName;
+    });
+  }
+
+  getCopiedRowValues(row, columns) {
+    if (!row || !row.entity) {
+      return [];
+    }
+
+    return columns.map((col) => {
+      const value = row.entity[col.colDef.name];
+      return value === undefined || value === null ? '' : value;
+    });
+  }
+
   updateColDefType(colDef, type) {
     if (type === colDef.type) {
       return;
@@ -366,13 +387,9 @@ export default class TableVisualization extends Visualization {
           return;
         }
 
-        Object.keys(row.entity).forEach((key) => {
-          if (key === '$$hashKey') {
-            delete row.entity[key];
-          }
-        });
+        const copyableColumns = self.getCopyableColumns(row.grid);
         let aux = document.createElement('input');
-        aux.setAttribute('value', Object.values(row.entity).join('\t'));
+        aux.setAttribute('value', self.getCopiedRowValues(row, copyableColumns).join('\t'));
         document.body.appendChild(aux);
         aux.select();
         document.execCommand('copy');
@@ -384,25 +401,14 @@ export default class TableVisualization extends Visualization {
           return;
         }
 
-        rows.map((row) => {
-          Object.keys(row.entity).forEach((key) => {
-            if (key === '$$hashKey') {
-              delete row.entity[key];
-            }
-          });
-        });
-
-        let result = rows[0].grid.columns.map((r, index) => {
-                  if (index >= 2) {
-                    return r.displayName;
-                  }
-                }).join('\t')+'\n';
+        const copyableColumns = self.getCopyableColumns(rows[0] && rows[0].grid);
+        let result = copyableColumns.map((col) => col.displayName).join('\t') + '\n';
 
         for (let i = 0; i < rows.length; ++i) {
           if (i > 500) {
             break;
           }
-          result += Object.values(rows[i].entity).join('\t');
+          result += self.getCopiedRowValues(rows[i], copyableColumns).join('\t');
           if (i < rows.length - 1) {
             result += '\n';
           }
