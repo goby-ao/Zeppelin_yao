@@ -17,7 +17,10 @@ limitations under the License.
     <div class="paragraph-nav-node-wrapper"
          ng-repeat="node in nodes track by node.id"
          ng-style="{'top': getNodeTop($index) + '%'}"
-         ng-class="{'first-node': $index === 0, 'last-node': $index === nodes.length - 1}"
+         ng-class="{'first-node': $index === 0,
+                    'last-node': $index === nodes.length - 1,
+                    'near-top-node': isNearTopNode($index),
+                    'near-bottom-node': isNearBottomNode($index)}"
          ng-mouseenter="onNodeEnter(node.id)"
          ng-mouseleave="onNodeLeave()">
 

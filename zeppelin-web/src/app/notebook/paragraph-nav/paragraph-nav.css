@@ -12,7 +12,7 @@
 
 .paragraph-nav-container {
   position: fixed;
-  right: 16px;
+  right: 5px;
   top: 0;
   bottom: 0;
   width: 24px;
@@ -138,8 +138,9 @@
   right: 32px;
   top: 50%;
   transform: translateY(-50%);
-  width: 480px;
-  max-height: 80vh;
+  width: 640px;
+  max-width: calc(100vw - 96px);
+  max-height: calc(100vh - 170px);
   overflow-y: auto;
   background: #fff;
   border: 1px solid #e5e7eb;
@@ -255,23 +256,27 @@
   margin: 4px 0 0;
 }
 
-.first-node .paragraph-nav-tooltip {
+.first-node .paragraph-nav-tooltip,
+.near-top-node .paragraph-nav-tooltip {
   top: 0;
-  transform: translateY(-4px);
+  transform: translateY(8px);
 }
 
-.first-node .paragraph-nav-tooltip::after {
+.first-node .paragraph-nav-tooltip::after,
+.near-top-node .paragraph-nav-tooltip::after {
   top: 12px;
   transform: rotate(45deg);
 }
 
-.last-node .paragraph-nav-tooltip {
+.last-node .paragraph-nav-tooltip,
+.near-bottom-node .paragraph-nav-tooltip {
   top: auto;
   bottom: 0;
-  transform: translateY(4px);
+  transform: translateY(-8px);
 }
 
-.last-node .paragraph-nav-tooltip::after {
+.last-node .paragraph-nav-tooltip::after,
+.near-bottom-node .paragraph-nav-tooltip::after {
   top: auto;
   bottom: 12px;
   transform: rotate(45deg);

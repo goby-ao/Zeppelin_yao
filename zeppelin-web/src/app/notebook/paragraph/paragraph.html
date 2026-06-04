@@ -15,7 +15,7 @@ limitations under the License.
 <div id="{{paragraph.id}}_container"
      ng-class="{'paragraph': !asIframe, 'paragraphAsIframe': asIframe}"
      data-status="{{paragraph.status}}"
-     data-editor-mode="{{paragraph.config.editorMode | lowercase}}"
+     data-editor-mode="{{getEffectiveEditorMode(paragraph)}}"
      data-paragraph-magic="{{paragraph.text | limitTo:48 | lowercase}}">
 
   <div ng-if="paragraph.config.title"
@@ -61,8 +61,8 @@ limitations under the License.
               uib-tooltip="仅在任务执行异常时使用！">
           <i class="fa fa-refresh"></i> 重启
         </span>
-        <span class="zp-interpreter-chip" ng-if="paragraph.config.editorMode">
-          {{paragraph.config.editorMode.replace('ace/mode/', '') | uppercase}}
+        <span class="zp-interpreter-chip" ng-if="getEffectiveEditorMode(paragraph)">
+          {{getEffectiveEditorMode(paragraph) | uppercase}}
         </span>
       </div>
       <code-editor

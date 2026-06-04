@@ -135,6 +135,14 @@ function paragraphNav() {
         return (index / (scope.nodes.length - 1)) * 100;
       };
 
+      scope.isNearTopNode = function(index) {
+        return scope.getNodeTop(index) <= 22;
+      };
+
+      scope.isNearBottomNode = function(index) {
+        return scope.getNodeTop(index) >= 78;
+      };
+
       scope.isCurrentViewing = function(nodeId) {
         if (scope.lockedParagraphId) {
           return nodeId === scope.lockedParagraphId;

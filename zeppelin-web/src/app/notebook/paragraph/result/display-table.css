@@ -22,18 +22,38 @@
  }
 .ui-grid-pager-panel {
   vertical-align: middle;
-  background-color: #f8fafc;
+  border-top: 1px solid #edf2f7;
+  background-color: #fafbfc;
 }
 
 .ui-grid-footer-info {
-  padding: 8px 12px;
-  background-color: #f8fafc;
-  color: #475569;
+  padding: 7px 12px;
+  border-top: 1px solid #edf2f7;
+  background-color: #fafbfc;
+  color: #64748b;
   font-size: 12px;
 }
 
 .ui-grid-menu {
   overflow: auto; /** enable scrollbar in column menu */
+}
+
+/** keep ui-grid private glyphs rendered by the ui-grid icon font */
+[class^="ui-grid-icon"]:before,
+[class*=" ui-grid-icon"]:before {
+  font-family: "ui-grid" !important;
+  font-style: normal;
+  font-weight: normal;
+  speak: none;
+  display: inline-block;
+  text-decoration: inherit;
+  width: 1em;
+  margin-right: .2em;
+  margin-left: .2em;
+  text-align: center;
+  font-variant: normal;
+  line-height: 1em;
+  text-transform: none;
 }
 
 /** disable alternative color for even lows in a table */
@@ -45,7 +65,7 @@
 .ui-grid-viewport .ui-grid-cell-contents {
   word-wrap: break-word;
   white-space: pre-wrap !important;
-  border-bottom: 1px solid #e5edf7;
+  border-bottom: 1px solid #f1f5f9;
   padding: 8px 12px;
   color: #1f2937;
   font-size: 13px;
@@ -73,28 +93,38 @@ input[class *=coltuiGrid] {
 
 .ui-grid {
   border: 0;
+  border-radius: 0;
+  background: #ffffff;
+  box-shadow: none;
   color: #1f2937;
 }
 
+.ui-grid-top-panel {
+  background: #f8fafc;
+  background-image: none;
+}
+
 .ui-grid-header {
-  border-bottom: 1px solid #dbe4ef;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
 }
 
 .ui-grid-header-cell {
-  border-color: #dbe4ef;
+  border-color: #edf2f7;
   background-color: #f8fafc;
 }
 
 .ui-grid-header-cell .ui-grid-cell-contents {
   padding: 10px 12px;
-  color: #0f172a;
+  color: #111827;
   font-size: 13px;
-  font-weight: 700;
-  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  line-height: 1.4;
 }
 
 .ui-grid-cell {
-  border-color: #e5edf7;
+  border-color: #f1f5f9;
 }
 
 .ui-grid-row:hover .ui-grid-cell {

@@ -202,7 +202,7 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
   };
 
   function isNoteListActionClick(event) {
-    var element = event && event.target;
+    let element = event && event.target;
     while (element) {
       if (element.className &&
           (' ' + element.className + ' ').indexOf(' note-folder-item-actions ') >= 0) {

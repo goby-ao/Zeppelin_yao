@@ -22,6 +22,7 @@ import 'scrollmonitor/scrollMonitor.js';
 import 'angular-viewport-watch/angular-viewport-watch.js';
 
 import 'angular-ui-grid/ui-grid.css';
+import './notebook/paragraph/result/display-table.css';
 import 'angular-ui-grid';
 
 const requiredModules = [

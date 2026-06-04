@@ -90,6 +90,9 @@ module.exports = function makeWebpackConfig () {
 
   var serverPort = process.env.SERVER_PORT || 8080;
   var webPort = process.env.WEB_PORT || 9000;
+  var webPublicUrl = process.env.WEB_PUBLIC_URL || ('http://localhost:' + webPort);
+  var webPublicPath = webPublicUrl.replace(/\/?$/, '/');
+  var devProxyTarget = process.env.WEB_PROXY_TARGET || ('http://127.0.0.1:' + serverPort);
 
   /**
    * Output
@@ -103,7 +106,7 @@ module.exports = function makeWebpackConfig () {
 
     // Output path from the view of the page
     // Uses webpack-dev-server in development
-    publicPath: isProd ? '' : 'http://localhost:' + webPort + '/',
+    publicPath: isProd ? '' : webPublicPath,
 
     // Filename for entry points
     // Only adds hash in build mode
@@ -294,6 +297,33 @@ module.exports = function makeWebpackConfig () {
     },
     stats: 'minimal',
   };
+
+  if (process.env.WEB_ALLOWED_HOSTS) {
+    config.devServer.allowedHosts = process.env.WEB_ALLOWED_HOSTS.split(',')
+      .map(function(host) { return host.trim(); })
+      .filter(Boolean);
+  }
+
+  if (process.env.ZEPPELIN_WEB_DISABLE_HOST_CHECK === 'true') {
+    config.devServer.disableHostCheck = true;
+  }
+
+  if (process.env.WEB_PUBLIC_URL) {
+    config.devServer.public = webPublicUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    config.devServer.proxy = {
+      '**/api/**': {
+        target: devProxyTarget,
+        changeOrigin: true,
+        secure: false
+      },
+      '**/ws': {
+        target: devProxyTarget,
+        changeOrigin: true,
+        secure: false,
+        ws: true
+      }
+    };
+  }
 
   return config;
 }();

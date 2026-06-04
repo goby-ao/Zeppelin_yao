@@ -406,6 +406,64 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     return paragraph && paragraph.text ? paragraph.text : '';
   }
 
+  function getExplicitParagraphMagic(paragraphText) {
+    let match = /^\s*%(\S+)(?:\s|$)/.exec(paragraphText || '');
+    return match ? match[1].trim() : '';
+  }
+
+  function normalizeEditorMode(mode) {
+    return (mode || '').replace('ace/mode/', '').toLowerCase();
+  }
+
+  function isSqlLikeMode(mode) {
+    let normalized = normalizeEditorMode(mode);
+    return normalized.indexOf('sql') !== -1 ||
+      normalized.indexOf('hive') !== -1 ||
+      normalized === 'spark' ||
+      normalized.indexOf('_spark') !== -1 ||
+      normalized.indexOf('-spark') !== -1 ||
+      normalized.indexOf('spark.sql') !== -1 ||
+      normalized.indexOf('spark_sql') !== -1 ||
+      normalized.indexOf('spark-sql') !== -1 ||
+      normalized.indexOf('jdbc') !== -1 ||
+      normalized.indexOf('mysql') !== -1 ||
+      normalized.indexOf('pgsql') !== -1 ||
+      normalized.indexOf('presto') !== -1 ||
+      normalized.indexOf('trino') !== -1 ||
+      normalized.indexOf('impala') !== -1 ||
+      normalized.indexOf('clickhouse') !== -1 ||
+      normalized.indexOf('doris') !== -1 ||
+      normalized.indexOf('kyuubi') !== -1;
+  }
+
+  function getLocalAceLanguageFromMagic(magic) {
+    let normalized = normalizeEditorMode((magic || '').replace(/^%/, ''));
+    if (!normalized) {
+      return '';
+    }
+    if (isSqlLikeMode(normalized)) {
+      return 'sql';
+    }
+    if (normalized === 'sh' || normalized === 'shell' || normalized === 'bash') {
+      return 'sh';
+    }
+    if (normalized === 'python' || normalized === 'pyspark' || normalized === 'ipython') {
+      return 'python';
+    }
+    if (normalized === 'md' || normalized === 'markdown') {
+      return 'markdown';
+    }
+    return '';
+  }
+
+  $scope.getEffectiveEditorMode = function(paragraph) {
+    let explicitMagic = getExplicitParagraphMagic(getCurrentParagraphText(paragraph));
+    if (explicitMagic) {
+      return isSqlLikeMode(explicitMagic) ? 'sql' : normalizeEditorMode(explicitMagic);
+    }
+    return normalizeEditorMode(paragraph && paragraph.config && paragraph.config.editorMode);
+  };
+
   $scope.getQuickNotePlaceholder = function(paragraph) {
     if (!isFirstParagraph(paragraph)) {
       return '';
@@ -599,7 +657,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   };
 
   function getInterpreterName(paragraph) {
-    let text = (paragraph && paragraph.text) ? paragraph.text : $scope.getEditorValue();
+    let text = getCurrentParagraphText(paragraph) || $scope.getEditorValue();
     let magic = getParagraphMagic(text);
     return magic ? magic.replace(/^%/, '') : 'default';
   }
@@ -753,7 +811,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     let scope = findInterpreterBindingScope();
     const visibleBindings = (scope && scope.interpreterBindings) || [];
     const allBindings = (scope && scope.allInterpreterBindings) || visibleBindings;
-    const paragraphText = (paragraph && paragraph.text) ? paragraph.text : $scope.getEditorValue();
+    const paragraphText = getCurrentParagraphText(paragraph) || $scope.getEditorValue();
     const magic = getParagraphMagic(paragraphText);
     const bindings = magic ? allBindings : visibleBindings;
     const name = magic ? magic.replace(/^%/, '') : (visibleBindings[0] ? visibleBindings[0].name : '');
@@ -1805,10 +1863,25 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     session.setMode(mode);
   };
 
+  let applyLocalEditorLanguageFromMagic = function(session, paragraphText) {
+    let language = getLocalAceLanguageFromMagic(getExplicitParagraphMagic(paragraphText));
+    if (!language || !session) {
+      return;
+    }
+
+    let mode = 'ace/mode/' + language;
+    if ($scope.paragraph.config.editorMode !== mode ||
+        !session.getMode || !session.getMode() || session.getMode().$id !== mode) {
+      setEditorLanguage(session, language);
+    }
+  };
+
   let refreshEditorSetting = function(session, paragraphText, forceRefresh) {
     if ($scope.revisionView) {
       return;
     }
+
+    applyLocalEditorLanguageFromMagic(session, paragraphText);
 
     let magic = getParagraphMagic(paragraphText);
     let editorSettingKey = magic || '__default__';
@@ -1853,7 +1926,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
 
   // return the text that is composed of interpreter name and paragraph properties
   const getParagraphMagic = function(paragraphText) {
-    let intpNameRegexp = /^\s*(%.+?)(\s)/g;
+    let intpNameRegexp = /^\s*(%\S+)(?:\s|$)/;
     let match = intpNameRegexp.exec(paragraphText);
     if (match) {
       return match[1].trim();
@@ -2699,13 +2772,119 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   });
 
   // SQL format support
-  $scope.isSqlMode = function(paragraph) {
-    if (!paragraph || !paragraph.config || !paragraph.config.editorMode) {
+  const SQL_FORMAT_MAX_COMPACT_LINE_LENGTH = 120;
+  const SQL_FORMAT_MAX_COMPACT_SELECT_ITEMS = 8;
+
+  function getIndent(line) {
+    let match = /^(\s*)/.exec(line || '');
+    return match ? match[1] : '';
+  }
+
+  function isSqlClauseBoundary(line) {
+    return /^(select|from|where|group by|having|order by|limit|offset|fetch|union|intersect|except|join|left join|right join|full join|inner join|outer join|cross join)\b/i
+      .test((line || '').trim());
+  }
+
+  function isSimpleSelectItem(line) {
+    let item = (line || '').trim().replace(/,$/, '');
+    if (!item || item.indexOf('--') !== -1 || item.indexOf('/*') !== -1 || item.indexOf('*/') !== -1) {
       return false;
     }
-    let mode = paragraph.config.editorMode;
-    return mode.indexOf('sql') !== -1 || mode.indexOf('hive') !== -1 ||
-           mode.indexOf('mysql') !== -1 || mode.indexOf('pgsql') !== -1;
+    return /^[`"'\w.$*]+(?:\s+(?:as\s+)?[`"'\w.$]+)?$/i.test(item);
+  }
+
+  function compactSimpleSelectList(lines, index) {
+    let keyword = (lines[index] || '').trim();
+    if (keyword.toLowerCase() !== 'select') {
+      return null;
+    }
+
+    let items = [];
+    let cursor = index + 1;
+    while (cursor < lines.length) {
+      let current = (lines[cursor] || '').trim();
+      if (/^from\b/i.test(current)) {
+        break;
+      }
+      if (!isSimpleSelectItem(current)) {
+        return null;
+      }
+      items.push(current.replace(/,$/, ''));
+      cursor++;
+    }
+
+    if (items.length === 0 || items.length > SQL_FORMAT_MAX_COMPACT_SELECT_ITEMS ||
+        cursor >= lines.length) {
+      return null;
+    }
+
+    let compacted = getIndent(lines[index]) + keyword + ' ' + items.join(', ');
+    if (compacted.length > SQL_FORMAT_MAX_COMPACT_LINE_LENGTH) {
+      return null;
+    }
+    return {
+      line: compacted,
+      nextIndex: cursor,
+    };
+  }
+
+  function compactSingleValueClause(lines, index) {
+    let keyword = (lines[index] || '').trim();
+    let lowerKeyword = keyword.toLowerCase();
+    if (['from', 'where', 'order by', 'limit', 'offset'].indexOf(lowerKeyword) === -1 ||
+        index + 1 >= lines.length) {
+      return null;
+    }
+
+    let nextValue = (lines[index + 1] || '').trim();
+    if (!nextValue || nextValue.indexOf('--') === 0 || isSqlClauseBoundary(nextValue)) {
+      return null;
+    }
+    if ((lowerKeyword === 'from' || lowerKeyword === 'limit' || lowerKeyword === 'offset') &&
+        nextValue.indexOf(',') !== -1) {
+      return null;
+    }
+
+    let compacted = getIndent(lines[index]) + keyword + ' ' + nextValue;
+    if (compacted.length > SQL_FORMAT_MAX_COMPACT_LINE_LENGTH) {
+      return null;
+    }
+    return {
+      line: compacted,
+      nextIndex: index + 2,
+    };
+  }
+
+  function compactFormattedSql(formattedSql) {
+    if (!formattedSql) {
+      return formattedSql;
+    }
+
+    let lines = formattedSql.split('\n');
+    let compactedLines = [];
+    for (let i = 0; i < lines.length;) {
+      let selectList = compactSimpleSelectList(lines, i);
+      if (selectList) {
+        compactedLines.push(selectList.line);
+        i = selectList.nextIndex;
+        continue;
+      }
+
+      let clause = compactSingleValueClause(lines, i);
+      if (clause) {
+        compactedLines.push(clause.line);
+        i = clause.nextIndex;
+        continue;
+      }
+
+      compactedLines.push(lines[i]);
+      i++;
+    }
+    return compactedLines.join('\n');
+  }
+
+  $scope.isSqlMode = function(paragraph) {
+    return isSqlLikeMode($scope.getEffectiveEditorMode(paragraph));
   };
 
   $scope.formatSqlCode = function(paragraph) {
@@ -2727,11 +2906,12 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
       document.head.appendChild(script);
       return;
     }
-    if (!paragraph || !paragraph.text || !sf) {
+    let currentText = getCurrentParagraphText(paragraph);
+    if (!paragraph || !currentText || !sf) {
       return;
     }
-    let magic = getParagraphMagic(paragraph.text).toLowerCase();
-    let lowerText = paragraph.text.toLowerCase();
+    let magic = getParagraphMagic(currentText).toLowerCase();
+    let lowerText = currentText.toLowerCase();
     let dialect = 'sql';
     if (magic.indexOf('hive') !== -1 || magic.indexOf('jdbc') !== -1 || lowerText.indexOf('jdbc') !== -1) {
       dialect = 'hive';
@@ -2744,22 +2924,25 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     }
     try {
       // 分离解释器标识和 SQL 内容
-      let textToFormat = paragraph.text;
+      let textToFormat = currentText;
       let magicLine = '';
-      let intpMatch = /^\s*(%.+?)[\s\n]/.exec(paragraph.text);
+      let intpMatch = /^\s*(%\S+)(?:\s|$)/.exec(currentText);
       if (intpMatch) {
         magicLine = intpMatch[0].trim();
         // 获取 magic 行之后的内容
-        textToFormat = paragraph.text.substring(intpMatch[0].length);
+        textToFormat = currentText.substring(intpMatch[0].length);
       }
 
       // 只格式化 SQL 部分
-      let formattedSql = sf.format(textToFormat, {
+      let formattedSql = compactFormattedSql(sf.format(textToFormat, {
         language: dialect,
-        indent: '  ',
-        uppercase: true,
-        linesBetweenQueries: 2,
-      });
+        tabWidth: 2,
+        useTabs: false,
+        keywordCase: 'preserve',
+        expressionWidth: SQL_FORMAT_MAX_COMPACT_LINE_LENGTH,
+        linesBetweenQueries: 1,
+        logicalOperatorNewline: 'before',
+      }));
 
       // 组合 magic 行和格式化后的 SQL
       let formatted = magicLine ? magicLine + '\n' + formattedSql : formattedSql;
