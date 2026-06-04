@@ -1689,9 +1689,11 @@ table.table-striped {
 
 .paragraph .tableDisplay .graphContainer {
   overflow: hidden;
-  border: 1px solid var(--zp-border);
-  border-radius: 6px;
+  border: 0;
+  border-top: 1px solid var(--zp-border);
+  border-radius: 0;
   background: #ffffff;
+  box-shadow: none;
 }
 
 .paragraphFooter {
