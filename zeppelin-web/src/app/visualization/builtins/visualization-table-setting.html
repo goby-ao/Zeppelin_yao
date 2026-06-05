@@ -12,41 +12,54 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-<div class="panel panel-default" style="margin-top: 10px; margin-bottom: 11px;">
-  <div class="panel-heading" style="padding: 6px 12px 6px 12px; font-size: 13px;">
-    <span style="vertical-align: middle; display: inline-block; margin-top: 3px;">Table Options</span>
-    <span style="float: right;">
-       <div class="btn-group" role="group" aria-label="...">
-         <div type="button" ng-click="applyTableOption()"
-                       uib-tooltip="Apply new setting" tooltip-placement="top"
-                       class="btn btn-default" style="font-size: 11px; padding: 2px 5px 2px 5px;">
-           <i class="fa fa-floppy-o" aria-hidden="true"></i>
-         </div>
+<div class="panel panel-default zp-table-setting-panel">
+  <div class="panel-heading zp-table-setting-header">
+    <span class="zp-table-setting-title">表格设置</span>
+    <div class="zp-table-setting-actions" role="group" aria-label="表格设置操作">
+      <button type="button"
+              ng-click="applyTableOption()"
+              uib-tooltip="保存当前设置并收起面板"
+              tooltip-placement="top"
+              class="btn btn-default zp-table-setting-action zp-table-setting-save">
+        <i class="fa fa-floppy-o" aria-hidden="true"></i>
+        <span>保存</span>
+      </button>
 
-         <div type="button" ng-click="resetTableOption()"
-              uib-tooltip="Restore the default setting" tooltip-placement="top"
-              class="btn btn-default" style="font-size: 11px; padding: 2px 5px 2px 5px;">
-           <i class="fa fa-undo" aria-hidden="true"></i>
-         </div>
-       </div>
-    </span>
-    <div style="clear: both;"></div> <!-- to fix previous span which has float: right -->
+      <button type="button"
+              ng-click="resetTableOption()"
+              uib-tooltip="恢复默认设置"
+              tooltip-placement="top"
+              class="btn btn-default zp-table-setting-action">
+        <i class="fa fa-undo" aria-hidden="true"></i>
+        <span>恢复</span>
+      </button>
+
+      <button type="button"
+              ng-click="closeTableOption()"
+              uib-tooltip="收起结果设置面板"
+              tooltip-placement="top"
+              class="btn btn-default zp-table-setting-action zp-table-setting-close">
+        <i class="fa fa-chevron-up" aria-hidden="true"></i>
+        <span>收起设置</span>
+      </button>
+    </div>
   </div>
 
-  <div class="panel-body" style="padding: 8px 12px; margin-top: 3px;">
-    <table class="table table-striped">
+  <div class="panel-body zp-table-setting-body">
+    <table class="table table-striped zp-table-setting-table">
       <tr>
-        <th style="font-size: 12px; font-style: italic">Name</th>
-        <th style="font-size: 12px; font-style: italic">Value</th>
+        <th>选项</th>
+        <th>值</th>
       </tr>
       <tr>
       </tr>
 
       <tr data-ng-repeat="optSpec in tableOptionSpecs">
-        <td style="font-weight: 400; vertical-align: middle;">
-          <span uib-tooltip="{{optSpec.description}}" tooltip-placement="right">
-            {{optSpec.name}}
-            <i class="fa fa-info-circle" style="margin-top: 2px; margin-left: 3px; color: #7b7bbd;" aria-hidden="true"></i>
+        <td class="zp-table-setting-option-name">
+          <span uib-tooltip="{{getTableOptionDescription(optSpec)}}"
+                tooltip-placement="right">
+            {{getTableOptionName(optSpec)}}
+            <i class="fa fa-info-circle" aria-hidden="true"></i>
           </span>
         </td>
         <td>

@@ -12,10 +12,10 @@
  * limitations under the License.
  */
 
-.zp-result-chart-selector {
+.zp-result-action-strip {
   position: absolute;
   top: 7px;
-  right: 268px;
+  right: 330px;
   z-index: 3;
   display: -ms-inline-flexbox;
   display: inline-flex;
@@ -26,21 +26,61 @@
   vertical-align: middle;
 }
 
-.zp-result-chart-selector .zp-viz-group {
+.paragraph.zp-has-title .zp-result-action-strip {
+  top: 32px;
+}
+
+.zp-result-chart-selector {
   display: -ms-inline-flexbox;
   display: inline-flex;
   -ms-flex-align: center;
   align-items: center;
   height: 32px;
-  overflow: hidden;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  margin: 0;
+  vertical-align: middle;
 }
 
-.zp-result-chart-selector .zp-viz-btn {
-  position: relative;
+.zp-result-tools-trigger {
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -ms-flex-align: center;
+  align-items: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--zp-primary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.zp-result-tools-trigger:hover,
+.zp-result-tools-trigger:focus {
+  background: var(--zp-bg-hover);
+  color: var(--zp-primary);
+  outline: none;
+}
+
+.zp-result-tools-trigger .fa {
+  margin-right: 6px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.zp-result-tools-trigger .zp-result-tools-caret {
+  margin-right: 0;
+  margin-left: 7px;
+  font-size: 10px;
+}
+
+.zp-result-clear-output {
   display: -ms-inline-flexbox;
   display: inline-flex;
   -ms-flex-align: center;
@@ -48,96 +88,244 @@
   -ms-flex-pack: center;
   justify-content: center;
   width: 32px;
-  height: 32px;
-  margin: 0 1px;
+  height: 28px;
+  margin-left: 6px;
   padding: 0;
-  border: 0;
+  border: 1px solid #e2e8f0;
   border-radius: 6px;
-  background: transparent;
-  color: var(--zp-muted);
-  font-size: 16px;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 12px;
   line-height: 1;
-  -webkit-transition: background-color 120ms ease, color 120ms ease, -webkit-transform 80ms ease-out;
-  transition: background-color 120ms ease, color 120ms ease, transform 80ms ease-out;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
 }
 
-.zp-result-chart-selector .zp-viz-btn:hover {
-  background: var(--zp-bg-hover);
+.zp-result-clear-output:hover,
+.zp-result-clear-output:focus {
+  border-color: #bfdbfe;
+  background: #eff6ff;
   color: var(--zp-primary);
+  outline: none;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.10);
 }
 
-.zp-result-chart-selector .zp-viz-btn.active,
-.zp-result-chart-selector .zp-viz-btn.active:hover,
-.zp-result-chart-selector .zp-viz-btn.active:focus {
-  background: transparent;
-  color: var(--zp-primary);
-  box-shadow: inset 0 -2px 0 var(--zp-primary);
+.zp-result-clear-output:active {
+  background: #dbeafe;
 }
 
-.zp-result-chart-selector .zp-viz-btn svg {
-  width: 16px;
-  height: 16px;
-  vertical-align: middle;
+.zp-result-clear-output[disabled] {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  color: #cbd5e1;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
-.zp-result-settings-action {
-  position: absolute;
-  top: 7px;
-  right: 160px;
-  z-index: 3;
-  display: -ms-inline-flexbox;
-  display: inline-flex;
+.zp-result-tools-menu {
+  z-index: 10050 !important;
+  min-width: 188px;
+  padding: 6px 0;
+  border-color: var(--zp-border);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
+}
+
+.zp-result-tools-title {
+  padding: 6px 14px 4px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.zp-result-tools-menu .divider {
+  margin: 5px 0;
+}
+
+.zp-result-tools-item {
+  display: -ms-flexbox;
+  display: flex;
   -ms-flex-align: center;
   align-items: center;
-  height: 32px;
-  margin: 0;
-  border-left: 1px solid var(--zp-border);
-  vertical-align: middle;
+  width: 100%;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  background: transparent;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
 }
 
-.zp-result-settings-action .btnText {
+.zp-result-tools-item:hover,
+.zp-result-tools-item:focus {
+  background: #f8fafc;
+  color: var(--zp-primary);
+  outline: none;
+}
+
+.zp-result-tools-item.active {
+  color: var(--zp-primary);
+  background: #eff6ff;
+}
+
+.zp-result-tools-icon,
+.zp-result-tools-icon-fa {
   display: -ms-inline-flexbox;
   display: inline-flex;
   -ms-flex-align: center;
   align-items: center;
   -ms-flex-pack: center;
   justify-content: center;
-  min-width: 98px;
-  height: 32px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--zp-primary);
-  font-size: 14px;
-  line-height: 1;
-  text-align: center;
-  text-decoration: none;
+  width: 18px;
+  min-width: 18px;
+  margin-right: 10px;
+  color: inherit;
 }
 
-.zp-result-settings-action .btnText .fa {
-  margin-left: 6px;
+.zp-result-tools-icon svg {
+  width: 15px;
+  height: 15px;
+  vertical-align: middle;
 }
 
-.zp-result-settings-action .btnText:hover,
-.zp-result-settings-action .btnText:focus {
-  background: var(--zp-bg-hover);
+.zp-result-tools-label {
+  -ms-flex: 1 1 auto;
+  flex: 1 1 auto;
+}
+
+.zp-result-tools-check {
+  margin-left: 12px;
   color: var(--zp-primary);
-  text-decoration: none;
+  font-size: 11px;
 }
 
 @media (max-width: 1279px) {
-  .zp-result-chart-selector,
-  .zp-result-settings-action {
+  .zp-result-action-strip {
     position: static;
-    display: inline-block;
+    display: -ms-inline-flexbox;
+    display: inline-flex;
+    -ms-flex-align: center;
+    align-items: center;
     margin: 4px 12px 8px 12px;
     vertical-align: middle;
   }
+}
 
-  .zp-result-settings-action {
-    padding-left: 18px;
-  }
+.zp-table-setting-panel {
+  margin-top: 10px;
+  margin-bottom: 11px;
+  border-color: var(--zp-border);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.zp-table-setting-header {
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-align: center;
+  align-items: center;
+  min-height: 40px;
+  padding: 6px 10px 6px 12px;
+  border-color: var(--zp-border);
+  background: #f8fafc;
+}
+
+.zp-table-setting-title {
+  -ms-flex: 1 1 auto;
+  flex: 1 1 auto;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.zp-table-setting-actions {
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -ms-flex-align: center;
+  align-items: center;
+}
+
+.zp-table-setting-action + .zp-table-setting-action {
+  margin-left: 6px;
+}
+
+.zp-table-setting-action.btn {
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -ms-flex-align: center;
+  align-items: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  min-width: 58px;
+  height: 28px;
+  padding: 0 10px;
+  border-color: #dbe3ef;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.zp-table-setting-action.btn:hover,
+.zp-table-setting-action.btn:focus {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: var(--zp-primary);
+  outline: none;
+}
+
+.zp-table-setting-action .fa {
+  margin-right: 5px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.zp-table-setting-save.btn {
+  border-color: #bfdbfe;
+  color: var(--zp-primary);
+}
+
+.zp-table-setting-close.btn {
+  min-width: 78px;
+}
+
+.zp-table-setting-body {
+  padding: 8px 12px;
+  margin-top: 0;
+}
+
+.zp-table-setting-table {
+  margin-bottom: 0;
+}
+
+.zp-table-setting-table > tbody > tr > th {
+  padding: 7px 8px;
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  border-bottom: 1px solid var(--zp-border);
+}
+
+.zp-table-setting-option-name {
+  font-weight: 400;
+  vertical-align: middle;
+}
+
+.zp-table-setting-option-name .fa-info-circle {
+  margin-top: 2px;
+  margin-left: 3px;
+  color: #64748b;
 }
 
 .rotate90 {

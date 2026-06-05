@@ -223,7 +223,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     }
 
     if (!config.fontSize) {
-      config.fontSize = 9;
+      config.fontSize = 10;
     }
 
     if (config.lineNumbers === undefined) {
@@ -267,17 +267,40 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
       paragraph.config.editorSetting.completionSupport === true);
   };
 
+  const isCursorInInterpreterMagic = function(editor) {
+    if (!editor || !editor.session || !editor.getCursorPosition) {
+      return false;
+    }
+
+    let pos = editor.getCursorPosition();
+    if (!pos || pos.row !== 0 || !editor.session.getLine) {
+      return false;
+    }
+
+    let line = editor.session.getLine(0) || '';
+    let leadingSpaces = line.length - line.replace(/^\s+/, '').length;
+    let trimmed = line.substring(leadingSpaces);
+    if (trimmed.charAt(0) !== '%') {
+      return false;
+    }
+
+    let firstWhitespace = trimmed.search(/\s/);
+    let magicEnd = firstWhitespace === -1 ? line.length : leadingSpaces + firstWhitespace;
+    return pos.column >= leadingSpaces && pos.column <= magicEnd;
+  };
+
   const applyFrontendCompletionSetting = function() {
     if (!$scope.editor) {
       return;
     }
     let enabled = isFrontendCompletionEnabled($scope);
+    let suppressMagicCompletion = isCursorInInterpreterMagic($scope.editor);
     $scope.editor.setOptions({
-      enableBasicAutocompletion: enabled,
+      enableBasicAutocompletion: enabled && !suppressMagicCompletion,
       enableSnippets: false,
-      enableLiveAutocompletion: enabled,
+      enableLiveAutocompletion: enabled && !suppressMagicCompletion,
     });
-    if (!enabled && $scope.editor.completer) {
+    if ((!enabled || suppressMagicCompletion) && $scope.editor.completer) {
       $scope.editor.completer.detach();
     }
   };
@@ -1591,7 +1614,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'alias', 'unalias', 'history', 'jobs', 'bg', 'fg', 'kill', 'wait', 'trap',
         'if', 'then', 'else', 'elif', 'fi', 'for', 'while', 'until', 'do', 'done',
         'case', 'esac', 'function', 'select', 'in', 'time', 'nohup',
-        'ssh', 'scp', 'rsync', 'curl', 'wget', 'ping', 'telnet', 'netstat',
+        'scp', 'rsync', 'curl', 'wget', 'ping', 'telnet', 'netstat',
         'tar', 'gzip', 'gunzip', 'zip', 'unzip', 'bzip2',
         'ps', 'top', 'df', 'du', 'free', 'uptime', 'whoami', 'who', 'id',
         'date', 'cal', 'bc', 'expr', 'basename', 'dirname', 'realpath',
@@ -1599,24 +1622,27 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'true', 'false', 'yes',
         // Hadoop / HDFS
         'hdfs', 'hadoop', 'hdfs dfs', 'hdfs dfs -ls', 'hdfs dfs -cat', 'hdfs dfs -put',
-        'hdfs dfs -get', 'hdfs dfs -cp', 'hdfs dfs -mv', 'hdfs dfs -rm', 'hdfs dfs -rm -r',
+        'hdfs dfs -get', 'hdfs dfs -cp', 'hdfs dfs -mv', 'hdfs dfs -rm',
         'hdfs dfs -mkdir', 'hdfs dfs -mkdir -p', 'hdfs dfs -touchz', 'hdfs dfs -stat',
         'hdfs dfs -du', 'hdfs dfs -du -s', 'hdfs dfs -du -h', 'hdfs dfs -count',
         'hdfs dfs -chmod', 'hdfs dfs -chown', 'hdfs dfs -expunge',
         'hdfs dfs -getmerge', 'hdfs dfs -setrep', 'hdfs dfs -test',
         'hdfs dfs -text', 'hdfs dfs -tail', 'hdfs dfs -checksum',
         'hadoop fs', 'hadoop fs -ls', 'hadoop fs -cat', 'hadoop fs -put', 'hadoop fs -get',
-        'hadoop fs -rm', 'hadoop fs -rm -r', 'hadoop fs -mkdir',
+        'hadoop fs -rm', 'hadoop fs -mkdir',
         'hadoop fs -du', 'hadoop fs -du -s', 'hadoop fs -count',
         'hadoop jar', 'hadoop classpath', 'hadoop version',
-        'hdfs dfsadmin', 'hdfs dfsadmin -report', 'hdfs dfsadmin -safemode',
+        'hdfs dfsadmin', 'hdfs dfsadmin -report',
         'yarn', 'yarn application', 'yarn application -list', 'yarn application -kill',
-        'yarn logs', 'mapred job', 'mapred job -list', 'mapred job -kill',
-        'beeline', 'hive', 'hive -e', 'hive -f', 'spark-submit', 'spark-shell', 'pyspark',
+        'yarn logs', 'mapred job', 'mapred job -list',
+        'beeline', 'hive', 'hive -e', 'hive -f', 'spark-submit', 'spark-shell',
       ];
 
       let localCompleter = {
         getCompletions: function(editor, session, pos, prefix, callback) {
+          if (isCursorInInterpreterMagic(editor)) {
+            return callback(null, []);
+          }
           if (!prefix) {
             return callback(null, []);
           }
@@ -1669,6 +1695,10 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
 
       $scope.editor.getSession().on('change', function(e, editSession) {
         autoAdjustEditorHeight(_editor);
+        applyFrontendCompletionSetting();
+      });
+      $scope.editor.selection.on('changeCursor', function() {
+        applyFrontendCompletionSetting();
       });
 
       setParagraphMode($scope.editor.getSession(), $scope.editor.getSession().getValue());
@@ -1726,7 +1756,8 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
 
           // If user has pressed tab on first line char or if isTabCompletion() is false, keep existing behavior
           // If user has pressed tab anywhere in between and editor mode is not %md, show autocomplete
-          if (!isAllTabs && iCursor.column && isTabCompletion()) {
+          if (!isCursorInInterpreterMagic($scope.editor) &&
+              !isAllTabs && iCursor.column && isTabCompletion()) {
             $scope.editor.execCommand('startAutocomplete');
           } else {
             ace.config.loadModule('ace/ext/language_tools', function() {
@@ -2699,6 +2730,50 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     }
   });
 
+  const scrollToSearchRange = function(range) {
+    if (!$scope.editor || !range) {
+      return;
+    }
+
+    $scope.editor.selection.setSelectionRange(range, false);
+    $scope.editor.renderer.scrollToLine(range.start.row, true, true);
+    if ($scope.editor.renderer.scrollCursorIntoView) {
+      $scope.editor.renderer.scrollCursorIntoView();
+    }
+
+    $timeout(function() {
+      let headerHeight = 110;
+      let viewportTop = angular.element(document).scrollTop();
+      let viewportHeight = angular.element(window).height();
+      let targetTop = null;
+
+      if ($scope.editor.renderer && $scope.editor.renderer.textToScreenCoordinates) {
+        let coords = $scope.editor.renderer.textToScreenCoordinates(range.start.row, range.start.column);
+        if (coords && $window.isFinite(coords.pageY)) {
+          targetTop = coords.pageY;
+        }
+      }
+
+      if (targetTop === null) {
+        let editorElement = angular.element('#' + $scope.paragraph.id + '_editor');
+        if (editorElement.length > 0) {
+          targetTop = editorElement.offset().top;
+        }
+      }
+
+      if (targetTop === null) {
+        return;
+      }
+
+      let upperBound = viewportTop + headerHeight + 24;
+      let lowerBound = viewportTop + viewportHeight - 96;
+      if (targetTop < upperBound || targetTop > lowerBound) {
+        let scrollTarget = Math.max(0, targetTop - headerHeight - 80);
+        angular.element('html, body').stop().animate({scrollTop: scrollTarget}, 180);
+      }
+    }, 0, false);
+  };
+
   $scope.$on('nextOccurrence', function(event, paragraphId) {
     if ($scope.paragraph.id !== paragraphId) {
       return;
@@ -2716,6 +2791,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     }
     currentRange.markerId = $scope.editor.session.addMarker(
       searchRanges[currentRange.id].range, 'ace_selection', 'text');
+    scrollToSearchRange(searchRanges[currentRange.id].range);
   });
 
   $scope.$on('prevOccurrence', function(event, paragraphId) {
@@ -2737,6 +2813,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     }
     currentRange.markerId = $scope.editor.session.addMarker(
       searchRanges[currentRange.id].range, 'ace_selection', 'text');
+    scrollToSearchRange(searchRanges[currentRange.id].range);
   });
 
   $scope.$on('replaceCurrent', function(event, from, to) {

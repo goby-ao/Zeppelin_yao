@@ -116,6 +116,27 @@ limitations under the License.
 
   <span class="zp-toolbar-spacer"></span>
   <span class="zp-chart-anchor"></span>
+
+  <span class="zp-toolbar-code-actions" ng-if="!revisionView">
+    <span class="zp-toolbar-code-btn"
+          ng-if="isSqlMode(paragraph)"
+          ng-click="formatSqlCode(paragraph)"
+          tooltip-placement="bottom"
+          tooltip-append-to-body="true"
+          uib-tooltip="格式化 SQL 代码">
+      <i class="fa fa-align-left"></i>
+      <span>格式化</span>
+    </span>
+    <span class="zp-toolbar-code-btn zp-code-restart-btn"
+          ng-click="restartParagraphInterpreter(paragraph)"
+          tooltip-placement="bottom"
+          tooltip-append-to-body="true"
+          uib-tooltip="仅在任务执行异常时使用！">
+      <i class="fa fa-refresh"></i>
+      <span>重启</span>
+    </span>
+  </span>
+
   <span class="zp-toolbar-divider"></span>
 
   <span class="{{paragraph.config.editorHide ? 'icon-size-fullscreen' : 'icon-size-actual'}} zp-toolbar-item zp-toolbar-icon" style="cursor:pointer" tooltip-placement="bottom"

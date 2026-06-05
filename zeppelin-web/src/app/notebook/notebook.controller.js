@@ -85,6 +85,8 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
 
   let connectedOnce = false;
   let quickNoteBindingSaved = {};
+  let interpreterBindingsBackgroundTimer = null;
+  let loadingInterpreterBindingsInBackground = false;
   let isRevisionPath = function(path) {
     let pattern = new RegExp('^.*\/notebook\/[a-zA-Z0-9_]*\/revision\/[a-zA-Z0-9_]*');
     return pattern.test(path);
@@ -320,6 +322,52 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     }
     return filteredBindings;
   }
+
+  function formatInterpreterMagic(name) {
+    if (!name) {
+      return '';
+    }
+    return '%' + String(name).replace(/^%+/, '');
+  }
+
+  function getSelectedInterpreterMagic(interpreterBindings) {
+    if (!angular.isArray(interpreterBindings) || interpreterBindings.length === 0) {
+      return '';
+    }
+    let defaultBinding = null;
+    for (let i = 0; i < interpreterBindings.length; i++) {
+      let binding = interpreterBindings[i];
+      if (binding && binding.selected) {
+        defaultBinding = binding;
+        break;
+      }
+    }
+    if (!defaultBinding) {
+      defaultBinding = interpreterBindings[0];
+    }
+
+    return defaultBinding && defaultBinding.name ? formatInterpreterMagic(defaultBinding.name) : '';
+  }
+
+  function getFirstParagraphMagic() {
+    if (!$scope.note || !angular.isArray($scope.note.paragraphs)) {
+      return '';
+    }
+    for (let i = 0; i < $scope.note.paragraphs.length; i++) {
+      let text = $scope.note.paragraphs[i] && $scope.note.paragraphs[i].text;
+      let match = text && text.match(/^\s*%([\w.-]+)/);
+      if (match) {
+        return formatInterpreterMagic(match[1]);
+      }
+    }
+    return '';
+  }
+
+  $scope.getDefaultInterpreterMagic = function() {
+    return getSelectedInterpreterMagic($scope.interpreterBindings) ||
+      formatInterpreterMagic(getQuickNoteInterpreterBinding($scope.note)) ||
+      getFirstParagraphMagic();
+  };
 
   function refreshNoMagicParagraphEditorSettings() {
     if (!$scope.note || !$scope.note.paragraphs) {
@@ -798,6 +846,27 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     websocketMsgSrv.getInterpreterBindings($scope.note.id);
   };
 
+  function scheduleInterpreterBindingsForTitle() {
+    if (!$scope.note || !$scope.note.id ||
+        (angular.isArray($scope.interpreterBindings) && $scope.interpreterBindings.length > 0)) {
+      return;
+    }
+
+    if (interpreterBindingsBackgroundTimer) {
+      $timeout.cancel(interpreterBindingsBackgroundTimer);
+    }
+
+    interpreterBindingsBackgroundTimer = $timeout(function() {
+      interpreterBindingsBackgroundTimer = null;
+      if (!$scope.note || !$scope.note.id || $scope.showSetting ||
+          (angular.isArray($scope.interpreterBindings) && $scope.interpreterBindings.length > 0)) {
+        return;
+      }
+      loadingInterpreterBindingsInBackground = true;
+      getInterpreterBindings();
+    }, 300);
+  }
+
   $scope.$on('interpreterBindings', function(event, data) {
     let quickNoteBinding = getQuickNoteInterpreterBinding($scope.note);
     $scope.allInterpreterBindings = data.interpreterBindings || [];
@@ -829,10 +898,13 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
           }
         }
       }
-      $scope.showSetting = true;
+      if (!loadingInterpreterBindingsInBackground) {
+        $scope.showSetting = true;
+      }
     }
 
     $scope.interpreterBindingsOrig = angular.copy($scope.interpreterBindings); // to check dirty
+    loadingInterpreterBindingsInBackground = false;
 
     if (quickNoteBinding) {
       refreshNoMagicParagraphEditorSettings();
@@ -1698,7 +1770,8 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     initializeLookAndFeel();
 
     // interpreterBindings 延迟加载，不在打开笔记时阻塞
-    // 仅在打开设置面板时加载 (openSetting)
+    // 后台延迟加载一次用于标题默认解释器 tag；打开设置面板时也会加载 (openSetting)
+    scheduleInterpreterBindingsForTitle();
     getPermissions();
     let isPersonalized = $scope.note.config.personalizedMode;
     isPersonalized = isPersonalized === undefined ? 'false' : isPersonalized;
@@ -1706,6 +1779,10 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   });
 
   $scope.$on('$routeChangeStart', function(event, next, current) {
+    if (interpreterBindingsBackgroundTimer) {
+      $timeout.cancel(interpreterBindingsBackgroundTimer);
+      interpreterBindingsBackgroundTimer = null;
+    }
     if (!$scope.note || !$scope.note.paragraphs) {
       return;
     }

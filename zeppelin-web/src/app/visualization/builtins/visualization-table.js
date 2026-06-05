@@ -57,6 +57,21 @@ const TABLE_OPTION_SPECS = [
   },
 ];
 
+const TABLE_OPTION_TEXT = {
+  useFilter: {
+    name: '启用列筛选',
+    description: '在表头显示筛选入口，便于按列过滤结果。',
+  },
+  showPagination: {
+    name: '启用分页',
+    description: '分页展示结果，适合行数较多的查询结果。',
+  },
+  showAggregationFooter: {
+    name: '显示汇总页脚',
+    description: '在表格底部显示汇总值。',
+  },
+};
+
 /**
  * Visualize data in table format
  */
@@ -529,6 +544,11 @@ export default class TableVisualization extends Visualization {
   getSetting(chart) {
     const self = this; // for closure in scope
     const configObj = self.config;
+    const closeTableOptionPanel = () => {
+      if (typeof self._closeGraphSetting === 'function') {
+        self._closeGraphSetting();
+      }
+    };
 
     // emit config if it's updated in `render`
     if (configObj.initialized) {
@@ -550,6 +570,17 @@ export default class TableVisualization extends Visualization {
         isCheckboxWidget: isCheckboxWidget,
         isTextareaWidget: isTextareaWidget,
         isBtnGroupWidget: isBtnGroupWidget,
+        getTableOptionName: (optSpec) => {
+          const optionText = TABLE_OPTION_TEXT[optSpec.name];
+          return optionText ? optionText.name : optSpec.name;
+        },
+        getTableOptionDescription: (optSpec) => {
+          const optionText = TABLE_OPTION_TEXT[optSpec.name];
+          return optionText ? optionText.description : optSpec.description;
+        },
+        closeTableOption: () => {
+          closeTableOptionPanel();
+        },
         tableOptionValueChanged: () => {
           self.persistConfigWithGridState(configObj);
         },
@@ -566,6 +597,7 @@ export default class TableVisualization extends Visualization {
           // emit config to re-render table
           configObj.initialized = true;
           self.persistConfig(configObj);
+          closeTableOptionPanel();
         },
         tableWidgetOnKeyDown: (event, optSpec) => {
           const code = event.keyCode || event.which;

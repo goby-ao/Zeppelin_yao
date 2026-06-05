@@ -12,40 +12,89 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-<div id="{{id}}_switch"
-     ng-if="$index === 0 && (type == 'TABLE' || type == 'NETWORK') && !asIframe && !viewOnly"
-     ng-hide="!(type == 'TABLE' || type == 'NETWORK')"
-     class="zp-result-chart-selector">
+<div class="zp-result-action-strip"
+     ng-if="$index === 0 && !asIframe && !viewOnly">
 
-  <div ng-if="type == 'TABLE' || type == 'NETWORK'" class="btn-group zp-viz-group">
-    <button type="button" class="btn btn-default btn-sm zp-viz-btn"
-            ng-repeat="viz in builtInTableDataVisualizationList track by $index"
-            ng-if="viz.supports.indexOf(type) > -1"
-            ng-class="{'active' : viz.id == graphMode && !config.helium.activeApp}"
-            ng-click="switchViz(viz.id)"
-            tooltip-placement="bottom" uib-tooltip="{{viz.name ? viz.name : ''}}"
-            ng-bind-html="viz.icon">
-    </button>
-  </div>
-
-  <div class="btn-group zp-viz-group">
-    <button type="button"
-            ng-if="type != 'TABLE' && type != 'NETWORK'"
-            ng-click="switchApp()"
-            ng-class="{'active' : !config.helium.activeApp}"
-            class="btn btn-default btn-sm zp-viz-btn"
-            tooltip-placement="bottom" uib-tooltip="解释器应用"><i class="fa fa-terminal"></i>
-    </button>
+  <div id="{{id}}_switch"
+       ng-if="type == 'TABLE' || type == 'NETWORK'"
+       class="zp-result-chart-selector"
+       uib-dropdown
+       dropdown-append-to-body="true">
 
     <button type="button"
-            class="btn btn-default btn-sm zp-viz-btn"
-            ng-repeat="app in apps"
-            ng-click="switchApp(app.id)"
-            ng-class="{'active' : app.id == config.helium.activeApp}"
-            tooltip-placement="bottom" uib-tooltip="{{app.pkg.name ? app.pkg.name : '解释器应用'}}"
-            ng-bind-html="app.pkg.icon">
+            class="zp-result-tools-trigger"
+            uib-dropdown-toggle
+            tooltip-placement="bottom"
+            tooltip-append-to-body="true"
+            uib-tooltip="结果视图">
+      <i class="fa fa-table"></i>
+      <span>结果视图</span>
+      <i class="fa fa-caret-down zp-result-tools-caret"></i>
     </button>
+
+    <ul class="dropdown-menu dropdown-menu-right zp-result-tools-menu"
+        uib-dropdown-menu
+        role="menu">
+      <li class="zp-result-tools-title">可视化方式</li>
+      <li ng-repeat="viz in builtInTableDataVisualizationList track by $index"
+          ng-if="viz.supports.indexOf(type) > -1">
+        <button type="button"
+                class="zp-result-tools-item"
+                ng-class="{'active' : viz.id == graphMode && !config.helium.activeApp}"
+                ng-click="switchViz(viz.id)">
+          <span class="zp-result-tools-icon" ng-bind-html="viz.icon"></span>
+          <span class="zp-result-tools-label" ng-switch="viz.id">
+            <span ng-switch-when="table">表格</span>
+            <span ng-switch-when="multiBarChart">柱状图</span>
+            <span ng-switch-when="pieChart">饼图</span>
+            <span ng-switch-when="stackedAreaChart">面积图</span>
+            <span ng-switch-when="lineChart">折线图</span>
+            <span ng-switch-when="scatterChart">散点图</span>
+            <span ng-switch-when="network">网络图</span>
+            <span ng-switch-default>{{viz.name ? viz.name : '视图'}}</span>
+          </span>
+          <i class="fa fa-check zp-result-tools-check"
+             ng-if="viz.id == graphMode && !config.helium.activeApp"></i>
+        </button>
+      </li>
+
+      <li class="zp-result-tools-title" ng-if="apps.length > 0">解释器应用</li>
+      <li ng-repeat="app in apps">
+        <button type="button"
+                class="zp-result-tools-item"
+                ng-class="{'active' : app.id == config.helium.activeApp}"
+                ng-click="switchApp(app.id)">
+          <span class="zp-result-tools-icon" ng-bind-html="app.pkg.icon"></span>
+          <span class="zp-result-tools-label">{{app.pkg.name ? app.pkg.name : '解释器应用'}}</span>
+          <i class="fa fa-check zp-result-tools-check"
+             ng-if="app.id == config.helium.activeApp"></i>
+        </button>
+      </li>
+
+      <li role="separator" class="divider" ng-if="!config.helium.activeApp"></li>
+      <li ng-if="!config.helium.activeApp">
+        <button type="button"
+                class="zp-result-tools-item"
+                ng-class="{'active' : config.graph.optionOpen}"
+                ng-click="toggleGraphSetting()">
+          <i class="fa fa-sliders zp-result-tools-icon-fa"></i>
+          <span class="zp-result-tools-label">结果设置</span>
+          <i class="fa"
+             ng-class="config.graph.optionOpen ? 'fa-caret-up' : 'fa-caret-down'"></i>
+        </button>
+      </li>
+    </ul>
   </div>
+
+  <button type="button"
+          class="zp-result-clear-output"
+          ng-click="clearCurrentResultOutput()"
+          ng-disabled="paragraph.status === 'RUNNING' || paragraph.status === 'PENDING'"
+          tooltip-placement="bottom"
+          tooltip-append-to-body="true"
+          uib-tooltip="清空当前结果输出">
+    <i class="fa fa-eraser"></i>
+  </button>
 </div>
 
 <div id="{{paragraph.id}}_helium"
@@ -95,12 +144,3 @@ limitations under the License.
     <li ng-click="exportToDSV('\t')"><a>TSV</a></li>
   </ul>-->
 </div>
-
-<span
-   ng-if="$index === 0 && (type == 'TABLE' || type == 'NETWORK') && !config.helium.activeApp && !asIframe && !viewOnly"
-   class="zp-result-settings-action">
-  <a class="btnText" ng-click="toggleGraphSetting()"
-     tooltip-placement="bottom" uib-tooltip="结果设置">
-    设置 <span ng-class="config.graph.optionOpen ? 'fa fa-caret-up' : 'fa fa-caret-down'"></span>
-  </a>
-</span>

@@ -802,6 +802,18 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
     return angular.element('#vizsetting' + scopeId + '_' + graphMode);
   };
 
+  const closeGraphSetting = function() {
+    if (!$scope.config || !$scope.config.graph || !$scope.config.graph.optionOpen) {
+      return;
+    }
+
+    let newConfig = angular.copy($scope.config);
+    newConfig.graph.optionOpen = false;
+
+    let newParams = angular.copy(paragraph.settings.params);
+    commitParagraphResult(paragraph.title, paragraph.text, newConfig, newParams);
+  };
+
   const renderGraph = function(graphElemId, graphMode, refresh) {
     // set graph height
     const height = $scope.config.graph.height;
@@ -862,6 +874,7 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
 
           builtInViz.instance._createNewScope = createNewScope;
           builtInViz.instance._templateRequest = $templateRequest;
+          builtInViz.instance._closeGraphSetting = closeGraphSetting;
           const transformation = builtInViz.instance.getTransformation();
           transformation._emitter = emitter;
           transformation._templateRequest = $templateRequest;
@@ -901,6 +914,7 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
         const config = getVizConfig(graphMode);
         loadedElem.height(height);
         const transformation = builtInViz.instance.getTransformation();
+        builtInViz.instance._closeGraphSetting = closeGraphSetting;
         transformation.setConfig(config);
         const transformed = transformation.transform(tableData);
         transformation.renderSetting(transformationSettingTargetEl);
@@ -964,6 +978,15 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
 
     let newParams = angular.copy(paragraph.settings.params);
     commitParagraphResult(paragraph.title, paragraph.text, newConfig, newParams);
+  };
+
+  $scope.clearCurrentResultOutput = function() {
+    if (!paragraph || !paragraph.id ||
+        paragraph.status === ParagraphStatus.PENDING ||
+        paragraph.status === ParagraphStatus.RUNNING) {
+      return;
+    }
+    websocketMsgSrv.clearParagraphOutput(paragraph.id);
   };
 
   const getVizConfig = function(vizId) {
