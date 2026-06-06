@@ -332,7 +332,7 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
     }
 
     if (!config.graph.height) {
-      config.graph.height = 300;
+      config.graph.height = 420;
     }
 
     if (!config.graph.optionOpen) {
