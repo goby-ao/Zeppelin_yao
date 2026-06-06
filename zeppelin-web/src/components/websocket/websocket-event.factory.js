@@ -39,9 +39,9 @@ function WebsocketEventFactory($rootScope, $websocket, $location, baseUrlSrv, sa
       data.ticket = $rootScope.ticket.ticket;
       data.roles = $rootScope.ticket.roles;
     } else {
-      data.principal = '';
-      data.ticket = '';
-      data.roles = '';
+      data.principal = 'anonymous';
+      data.ticket = 'anonymous';
+      data.roles = '[]';
     }
 
     data.msgId = uniqueClientId + '-' + ++lastMsgIdSeqSent;
@@ -172,6 +172,10 @@ function WebsocketEventFactory($rootScope, $websocket, $location, baseUrlSrv, sa
       let info = data && data.info !== undefined && data.info !== null ? data.info.toString() : '';
       if (info.indexOf('Fail to get completion') === 0) {
         console.warn(info);
+        return;
+      }
+      if (!info) {
+        console.warn('Received empty ERROR_INFO from websocket');
         return;
       }
       BootstrapDialog.show({

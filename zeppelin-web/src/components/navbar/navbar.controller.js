@@ -72,7 +72,9 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
 
     getZeppelinVersion();
     getClusterAddr();
-    loadNotes();
+    if ($rootScope.ticket !== undefined) {
+      loadNotes();
+    }
   }
 
   function isFilterNote(note) {

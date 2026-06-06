@@ -11,25 +11,34 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
-<div ng-controller="HomeCtrl as home" data-ng-init="initHome()">
+<div class="home-page" ng-controller="HomeCtrl as home" data-ng-init="initHome()">
 <!--  <div ng-show="home.staticHome" class="box width-full home">-->
 <!--  解决白屏问题-->
   <div class="box width-full home">
     <div class="zeppelin">
       <div class="zeppelin2"></div>
     </div>
-    <div>
-      <h1 class="box-heading" id="welcome" style="font-size: 24px">
-        欢迎使用 Zeppelin 数据探索工具！
-      </h1>
-      你可以在一个笔记本中同时使用 <code>SQL</code>、<code>Shell</code>、<code>Python</code> 等代码，完成交互式查询、分析和协作。<br/>
-      <br/>
-      <div class="row">
+    <div class="home-shell">
+      <div class="home-intro">
+        你可以在一个笔记本中同时使用 <code>SQL</code>、<code>Shell</code>、<code>Python</code> 等代码，完成交互式查询、分析和协作。
+      </div>
+      <div class="row home-content-row">
         <div class="col-md-6 home-side-panel">
           <div class="home-module">
-            <div class="home-module-header">
+            <div class="home-module-header quick-analysis-header">
               <h4><i class="fa fa-rocket" style="margin-right: 8px; color: #3b82f6;"></i>快速开始</h4>
-              <span>选择常用引擎快速开始</span>
+              <div class="quick-cluster-switch" aria-label="选择计算集群">
+                <span class="quick-cluster-heading">
+                  <span class="quick-cluster-icon"><i class="fa fa-sitemap"></i></span>
+                  <span class="quick-cluster-label">运行集群</span>
+                </span>
+                <button type="button"
+                        ng-repeat="cluster in quickNoteClusters"
+                        ng-class="{'active': quickNoteCluster === cluster.key}"
+                        ng-click="setQuickNoteCluster(cluster.key)">
+                  {{cluster.label}}
+                </button>
+              </div>
             </div>
             <div class="quick-analysis-list">
               <button type="button" class="quick-analysis-card quick-analysis-hive"
@@ -37,7 +46,7 @@ limitations under the License.
                 <span class="quick-analysis-icon"><i class="fa fa-database"></i></span>
                 <span class="quick-analysis-content">
                   <strong>开始 Hive 查询</strong>
-                  <small>适合数据查询与分析</small>
+                  <small><span class="quick-analysis-magic">{{getQuickNoteMagic('hive')}}</span> SQL 分析</small>
                 </span>
                 <i class="fa fa-angle-right quick-analysis-arrow"></i>
               </button>
@@ -45,8 +54,8 @@ limitations under the License.
                       ng-click="quickCreate('spark')">
                 <span class="quick-analysis-icon"><i class="fa fa-bolt"></i></span>
                 <span class="quick-analysis-content">
-                  <strong>开始 Spark 分析</strong>
-                  <small>适合大规模计算与探索</small>
+                  <strong>开始 Spark 查询</strong>
+                  <small><span class="quick-analysis-magic">{{getQuickNoteMagic('spark')}}</span> SQL 分析</small>
                 </span>
                 <i class="fa fa-angle-right quick-analysis-arrow"></i>
               </button>
@@ -55,7 +64,7 @@ limitations under the License.
                 <span class="quick-analysis-icon"><i class="fa fa-code"></i></span>
                 <span class="quick-analysis-content">
                   <strong>Python 脚本</strong>
-                  <small>适合脚本处理与建模分析</small>
+                  <small><span class="quick-analysis-magic">{{getQuickNoteMagic('python')}}</span> 脚本与建模分析</small>
                 </span>
                 <i class="fa fa-angle-right quick-analysis-arrow"></i>
               </button>
@@ -64,7 +73,7 @@ limitations under the License.
                 <span class="quick-analysis-icon"><i class="fa fa-terminal"></i></span>
                 <span class="quick-analysis-content">
                   <strong>Shell 脚本</strong>
-                  <small>适合命令与批处理脚本</small>
+                  <small><span class="quick-analysis-magic">{{getQuickNoteMagic('shell')}}</span> 命令与批处理</small>
                 </span>
                 <i class="fa fa-angle-right quick-analysis-arrow"></i>
               </button>
@@ -133,8 +142,17 @@ limitations under the License.
             <div class="home-notes-card-header">
               <h4><i class="fa fa-book" style="margin-right: 8px; color: #3b82f6;"></i>笔记</h4>
               <div class="home-notes-search">
-                <input type="text"
+                <input type="search"
                        class="note-name-query form-control"
+                       name="zp-note-q"
+                       id="zp-note-q"
+                       autocomplete="one-time-code"
+                       autocapitalize="off"
+                       aria-autocomplete="none"
+                       spellcheck="false"
+                       data-lpignore="true"
+                       data-1p-ignore="true"
+                       data-form-type="other"
                        placeholder="&#xf002   按名称搜索笔记"
                        ng-model="query.q"
                        ng-model-options="{ updateOn: 'default blur', debounce: { 'default': 300, 'blur': 0 } }" />
@@ -158,7 +176,6 @@ limitations under the License.
         </div>
       </div>
     </div>
-    <br/><br/><br/>
   </div>
 
 
@@ -177,5 +194,5 @@ limitations under the License.
     </div>
   </div>
 
-  <div style="clear:both;height:10px"></div>
+  <div ng-show="home.notebookHome" style="clear:both;height:10px"></div>
 </div>

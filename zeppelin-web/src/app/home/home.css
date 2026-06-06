@@ -15,6 +15,7 @@
 body {
   padding-top: 50px;
   color: #212121;
+  box-sizing: border-box;
 }
 
 html,
@@ -23,20 +24,86 @@ body {
   -ms-overflow-style: scrollbar;
 }
 
+.home-page,
+#main > [ng-view] {
+  height: 100%;
+  min-height: 0;
+}
+
+.home-page {
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-direction: column;
+  flex-direction: column;
+}
+
 .home {
   margin-bottom: 0px !important;
-  height: calc(100vh - 50px);
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex: 1 1 auto;
+  flex: 1 1 auto;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  min-height: 0;
+  box-sizing: border-box;
   overflow: hidden;
 }
 
+.home-shell {
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex: 1 1 auto;
+  flex: 1 1 auto;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.home-intro {
+  -ms-flex: 0 0 auto;
+  flex: 0 0 auto;
+  margin-bottom: 14px;
+}
+
 .home .row {
-  height: calc(100vh - 180px);
+  -ms-flex: 1 1 auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-bottom: 0;
 }
 
 .home-side-panel {
-  height: 100%;
-  overflow-y: auto;
+  min-height: 0;
+  overflow: hidden;
   max-width: 600px;
+}
+
+@media (min-width: 992px) {
+  .home .row {
+    display: flex;
+  }
+
+  .home-side-panel {
+    display: -ms-flexbox;
+    display: flex;
+    -ms-flex-direction: column;
+    flex-direction: column;
+    width: 40%;
+    max-width: 40%;
+    flex: 0 0 40%;
+  }
+
+  .home-notes-panel {
+    display: -ms-flexbox;
+    display: flex;
+    -ms-flex-direction: column;
+    flex-direction: column;
+    min-height: 0;
+    width: 60%;
+    max-width: 60%;
+    flex: 0 0 60%;
+  }
 }
 
 .home code {
@@ -221,6 +288,8 @@ body .navbar {
 #main {
   padding: 10px;
   height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
 }
 
 #notebook-list {
@@ -274,17 +343,25 @@ body .navbar {
 
 .home-module {
   margin-bottom: 22px;
-  padding: 18px;
+  padding: 16px;
   border: 1px solid #e5e7eb;
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
+  box-sizing: border-box;
 }
 
-/* 最近使用模块 - 上移8px，高度减少5px */
 .home-recent-module {
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex: 1 1 auto;
+  flex: 1 1 auto;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  min-height: 0;
   margin-top: -3px;
-  margin-bottom: 12px;
+  margin-bottom: 0px;
+  overflow: hidden;
 }
 
 .home-module-header {
@@ -307,6 +384,96 @@ body .navbar {
 .home-module-header span {
   color: #64748b;
   font-size: 12px;
+}
+
+.quick-analysis-header {
+  -ms-flex-align: center;
+  align-items: center;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
+}
+
+.quick-cluster-switch {
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -ms-flex-align: center;
+  align-items: center;
+  height: 34px;
+  padding: 3px;
+  border: 1px solid #d8e2f1;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), 0 1px 3px rgba(15, 23, 42, 0.08);
+  max-width: 100%;
+}
+
+.quick-cluster-switch .quick-cluster-heading {
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -ms-flex-align: center;
+  align-items: center;
+  padding: 0 9px 0 3px;
+  color: #52647c;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.quick-cluster-switch .quick-cluster-icon {
+  display: -ms-inline-flexbox;
+  display: inline-flex;
+  -ms-flex-align: center;
+  align-items: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #e0ebff;
+  color: #2563eb;
+  font-size: 11px;
+}
+
+.quick-cluster-switch .quick-cluster-label {
+  color: inherit;
+  font-size: inherit;
+}
+
+.quick-cluster-switch button {
+  height: 26px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.quick-cluster-switch button:hover,
+.quick-cluster-switch button:focus {
+  background: rgba(37, 99, 235, 0.08);
+  color: #315273;
+  outline: none;
+}
+
+.quick-cluster-switch button.active {
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 5px rgba(37, 99, 235, 0.26);
+}
+
+@media (max-width: 480px) {
+  .quick-cluster-switch .quick-cluster-heading {
+    padding-right: 6px;
+  }
+
+  .quick-cluster-switch button {
+    padding: 0 9px;
+  }
 }
 
 .quick-analysis-list {
@@ -404,6 +571,20 @@ body .navbar {
   font-size: 12px;
 }
 
+.quick-analysis-content .quick-analysis-magic {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #2563eb;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
 .quick-analysis-arrow {
   margin-left: 10px;
   color: #94a3b8;
@@ -411,8 +592,12 @@ body .navbar {
 }
 
 .recent-notes-list {
+  -ms-flex: 1 1 auto;
+  flex: 1 1 auto;
+  min-height: 0;
   margin: 0;
   padding: 0;
+  overflow-y: auto;
   list-style: none;
 }
 
@@ -572,6 +757,7 @@ body .navbar {
 .home-notes-panel {
   max-width: 780px;
   position: relative;
+  min-height: 0;
 }
 
 /* 操作按钮区 - 绝对定位在右上角，不占据文档流高度 */
@@ -596,6 +782,13 @@ body .navbar {
 
 /* 笔记卡片 */
 .home-notes-card {
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex: 1 1 auto;
+  flex: 1 1 auto;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  min-height: 0;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -608,7 +801,7 @@ body .navbar {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px 16px 12px;
+  padding: 16px 16px 6px;
 }
 
 .home-notes-card-header h4 {
@@ -631,9 +824,12 @@ body .navbar {
 
 /* 笔记列表 */
 .home-notes-list {
-  height: 500px;
+  -ms-flex: 1 1 auto;
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
   margin: 0;
-  padding: 4px 0;
+  padding: 0 0;
   overflow-y: auto;
   list-style: none;
 }
@@ -656,7 +852,7 @@ body .navbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 30px;
+  #min-height: 30px;
   margin: 0 6px;
   padding: 0px 10px;
   border-radius: 6px;
@@ -887,6 +1083,10 @@ body .navbar {
   border-radius: 3px;
   -webkit-box-shadow: none;
   box-shadow: none;
+}
+
+.box.home {
+  min-height: 0;
 }
 
 .box-heading {

@@ -1,5 +1,57 @@
 # Codex 工作日志
 
+## 2026-06-07 Zeppelin 首页 iframe 高度与快速笔记集群优化
+
+### 改动范围
+
+- 主要涉及 `zeppelin-web` 的 AngularJS 1.x 首页、快速笔记、导航搜索、登录探测和 websocket 前端容错。
+- 本批次未修改后端 Java、解释器运行时和线上发布脚本。
+- 首页布局问题以本地 `http://localhost:9100/` dev server 和浏览器尺寸测量做过验证。
+
+### 关键改动
+
+- 首页 iframe 高度适配：
+  - 移除首页主体中依赖 `100vh`、`calc(100vh - ...)` 和 `window.innerHeight` 的高度计算。
+  - 将 `#main`、`ng-view`、`.home`、左右面板、最近使用卡片和笔记列表串成父容器驱动的 flex 高度链。
+  - 最近使用列表和右侧笔记列表改为在自身剩余空间内滚动，避免嵌入中台 iframe 时把外层撑出纵向滚动条。
+  - 去掉首页底部多余 `<br/>` 占位，避免固定高度容器内被无意义内容挤压。
+
+- 首页快速开始与集群选择：
+  - 首页快速入口支持 Hadoop2 / Hadoop3 集群切换，Hive 和 Spark 根据集群映射到不同解释器。
+  - 集群选择控件改为带 `fa-sitemap` 图标的轻量胶囊样式，选中态保持蓝色主视觉，增强识别度但不过度抢眼。
+  - 控件在 375px 窄屏下会自然换行，不产生横向溢出。
+  - 快速入口展示实际 magic，例如 `%hive`、`%hadoop3_hive`、`%spark`、`%hadoop3_spark`。
+
+- 快速笔记和新建笔记弹窗：
+  - 新增 `quick-note.config.js` 的集群配置、localStorage 持久化和解释器映射方法。
+  - 新建笔记弹窗支持快捷选择 Shell、Python、Hive、Spark，并可切换集群。
+  - 手动选择默认解释器时，同步推断 Hadoop2 / Hadoop3 集群，保证快速标签和默认解释器一致。
+
+- 导航、登录和 websocket 稳定性：
+  - 导航笔记搜索输入补充浏览器自动填充规避属性，减少密码管理器或自动补全干扰。
+  - 登录接口 GET 探测返回 405 时不再误触发 `session_logout`，但其他 405 仍保留原有登出广播。
+  - websocket 发送消息在无 ticket 时使用 anonymous 占位，避免空字段。
+  - websocket 收到空 `ERROR_INFO` 时只打印 warning，不弹出空白错误框。
+
+### 注意事项
+
+- 本批次是前端代码改动；上线仍需重新构建 `zeppelin-web-0.9.1-SNAPSHOT.war` 并替换线上包。
+- 快速笔记的 Hadoop2 / Hadoop3 映射依赖线上解释器 id/name：
+  - Hadoop2: `hive`、`spark`
+  - Hadoop3: `hadoop3_hive`、`hadoop3_spark`
+  - Shell / Python 为全局映射：`sh`、`python`
+- 首页剩余 `100vh` 只用于水印和下拉菜单最大高度，不参与首页主体 iframe 高度计算。
+
+### 本次校验
+
+- `git diff --check`
+- `./node_modules/.bin/eslint src/app/home/home.controller.js`
+- `node -e "const fs=require('fs'); const postcss=require('postcss'); postcss.parse(fs.readFileSync('src/app/home/home.css','utf8'), {from:'src/app/home/home.css'}); console.log('home.css parsed')"`
+- 本地 dev server: `WEB_PORT=9100 COREPACK_ENABLE_PROJECT_SPEC=0 npm run dev:server`
+- 浏览器实测：
+  - 1280x720 下 `html/body` 无页面级多余纵向滚动。
+  - 375px 宽度下集群选择控件无横向溢出。
+
 ## 2026-06-05 Zeppelin 笔记页与结果视图交互补充
 
 ### 改动范围

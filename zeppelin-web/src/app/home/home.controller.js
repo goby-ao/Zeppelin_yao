@@ -13,8 +13,13 @@
  */
 
 import {
+  NOTE_CLUSTERS,
   QUICK_NOTE_ROOT,
   getQuickNoteBinding,
+  getQuickNoteKey,
+  getQuickNoteMagic,
+  getSavedNoteCluster,
+  saveNoteCluster,
 } from '../quick-note.config';
 
 angular.module('zeppelinWebApp').controller('HomeCtrl', HomeCtrl);
@@ -31,7 +36,7 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
   vm.websocketMsgSrv = websocketMsgSrv;
   vm.arrayOrderingSrv = arrayOrderingSrv;
   vm.noteActionService = noteActionService;
-  vm.numberOfNotesDisplayed = Math.max(200, window.innerHeight / 20);
+  vm.numberOfNotesDisplayed = 200;
 
   vm.notebookHome = false;
   vm.noteCustomHome = true;
@@ -45,6 +50,8 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
   $scope.TRASH_FOLDER_ID = TRASH_FOLDER_ID;
   $scope.query = {q: ''};
   $scope.recentNotes = readRecentNotes();
+  $scope.quickNoteClusters = NOTE_CLUSTERS;
+  $scope.quickNoteCluster = getSavedNoteCluster();
 
   $scope.toggleStar = function(note, $event) {
     $event.preventDefault();
@@ -100,7 +107,8 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
 
   $scope.quickCreate = function(interpreter) {
     let userName = getCurrentUserName();
-    let noteName = QUICK_NOTE_ROOT + '/' + userName + '/QuickNote_' + interpreter;
+    let quickNoteKey = getQuickNoteKey(interpreter, $scope.quickNoteCluster);
+    let noteName = QUICK_NOTE_ROOT + '/' + userName + '/QuickNote_' + quickNoteKey;
     let existingNote = findNoteByPath(noteName);
 
     if (existingNote && existingNote.id) {
@@ -109,6 +117,15 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
     }
 
     websocketMsgSrv.createNotebook(noteName, getDefaultInterpreterGroup(interpreter));
+  };
+
+  $scope.setQuickNoteCluster = function(cluster) {
+    $scope.quickNoteCluster = cluster;
+    saveNoteCluster(cluster);
+  };
+
+  $scope.getQuickNoteMagic = function(interpreter) {
+    return getQuickNoteMagic(interpreter, $scope.quickNoteCluster);
   };
 
   $scope.formatRecentTime = function(time) {
@@ -165,7 +182,7 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
   }
 
   function getDefaultInterpreterGroup(interpreter) {
-    return getQuickNoteBinding(interpreter);
+    return getQuickNoteBinding(interpreter, $scope.quickNoteCluster);
   }
 
   function findNoteByPath(notePath) {

@@ -26,3 +26,51 @@ describe('Controller: MainCtrl', function() {
     expect(scope.asIframe).toEqual(true);
   });
 });
+
+describe('Factory: httpInterceptor', function() {
+  beforeEach(angular.mock.module('zeppelinWebApp'));
+
+  let httpInterceptor;
+  let rootScope;
+
+  beforeEach(inject(function(_httpInterceptor_, $rootScope) {
+    httpInterceptor = _httpInterceptor_;
+    rootScope = $rootScope;
+  }));
+
+  it('does not broadcast session logout for login endpoint GET 405', function() {
+    let sessionLogoutBroadcasted = false;
+    rootScope.$on('session_logout', function() {
+      sessionLogoutBroadcasted = true;
+    });
+
+    httpInterceptor.responseError({
+      status: 405,
+      config: {
+        method: 'GET',
+        url: 'https://dc.migu.cn/mgwh/zeppelin/api/login',
+      },
+    }).catch(angular.noop);
+    rootScope.$digest();
+
+    expect(sessionLogoutBroadcasted).toBe(false);
+  });
+
+  it('keeps broadcasting session logout for other 405 responses', function() {
+    let sessionLogoutBroadcasted = false;
+    rootScope.$on('session_logout', function() {
+      sessionLogoutBroadcasted = true;
+    });
+
+    httpInterceptor.responseError({
+      status: 405,
+      config: {
+        method: 'GET',
+        url: 'https://dc.migu.cn/mgwh/zeppelin/api/notebook',
+      },
+    }).catch(angular.noop);
+    rootScope.$digest();
+
+    expect(sessionLogoutBroadcasted).toBe(true);
+  });
+});

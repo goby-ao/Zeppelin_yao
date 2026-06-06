@@ -51,6 +51,8 @@ const CODE_COLLAPSE_LINE_THRESHOLD = 40;
 const QUICK_NOTE_PLACEHOLDERS = {
   hive: '在这里编写 SQL 代码，按 Shift + Enter 直接提交查询。',
   spark: '在这里编写 Spark SQL，按 Shift + Enter 运行查询。',
+  hadoop3_hive: '在这里编写 Hadoop3 Hive SQL，按 Shift + Enter 直接提交查询。',
+  hadoop3_spark: '在这里编写 Hadoop3 Spark SQL，按 Shift + Enter 运行查询。',
   python: '在这里编写 Python 脚本，按 Shift + Enter 运行。',
   shell: '在这里编写 Shell 命令，按 Shift + Enter 运行。',
   sh: '在这里编写 Shell 命令，按 Shift + Enter 运行。',

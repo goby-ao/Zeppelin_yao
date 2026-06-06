@@ -176,10 +176,17 @@ let zeppelinWebApp = angular.module('zeppelinWebApp', requiredModules)
       if (process.env.PROD) {
         $httpProvider.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
       }
+      function isLoginEndpointMethodProbe(rejection) {
+        let config = rejection && rejection.config ? rejection.config : {};
+        return config.method === 'GET' &&
+          angular.isString(config.url) &&
+          /\/api\/login\/?([?#].*)?$/.test(config.url);
+      }
+
       $provide.factory('httpInterceptor', function($q, $rootScope) {
         return {
           'responseError': function(rejection) {
-            if (rejection.status === 405) {
+            if (rejection.status === 405 && !isLoginEndpointMethodProbe(rejection)) {
               let data = {};
               data.info = '';
               $rootScope.$broadcast('session_logout', data);

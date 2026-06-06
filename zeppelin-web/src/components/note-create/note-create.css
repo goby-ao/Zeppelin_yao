@@ -12,7 +12,8 @@
  */
 
 .note-create-dialog {
-  max-width: 520px;
+  width: 560px;
+  max-width: calc(100vw - 48px);
 }
 
 .note-create-content {
@@ -55,6 +56,70 @@
   font-weight: 500;
   color: #555;
   margin-bottom: 6px;
+}
+
+.note-create-engine-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding: 3px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.note-create-engine-header label {
+  margin-bottom: 0;
+}
+
+.note-create-engine-copy {
+  min-width: 0;
+}
+
+.note-create-engine-desc {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.note-create-cluster-switch {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 3px;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.note-create-cluster-label {
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.note-create-cluster-switch button {
+  height: 26px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.note-create-cluster-switch button.active {
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.22);
 }
 
 .note-create-input {
@@ -127,32 +192,60 @@
 
 .interpreter-quick-tags {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 8px 10px;
   margin-bottom: 10px;
 }
 
 .interpreter-tag {
   display: inline-flex;
   align-items: center;
-  padding: 4px 14px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
+  justify-content: center;
+  min-height: 30px;
+  padding: 5px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  border: 1px solid #d1fae5;
+  border: 1px solid #bbf7d0;
   background: #f0fdf4;
-  color: #16a34a;
-  transition: all 0.15s ease;
+  color: #15803d;
+  box-shadow: none;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease,
+    color 0.15s ease;
   user-select: none;
 }
 
+.interpreter-tag-main {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
 .interpreter-tag:hover {
-  background: #dcfce7;
   border-color: #86efac;
+  background: #dcfce7;
+  color: #166534;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.12);
 }
 
 .interpreter-tag.active {
   background: #16a34a;
   border-color: #16a34a;
   color: #fff;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.18);
+}
+
+@media (max-width: 768px) {
+  .note-create-dialog {
+    width: auto;
+    max-width: calc(100vw - 24px);
+  }
+
+  .note-create-engine-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
 }

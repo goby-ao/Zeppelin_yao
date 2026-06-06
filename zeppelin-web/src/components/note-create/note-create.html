@@ -32,20 +32,49 @@ limitations under the License.
                  ng-enter="noteCreateCtrl.handleNameEnter()" />
         </div>
         <div class="form-group" ng-show="!noteCreateCtrl.clone">
-          <label>默认解释器（执行引擎）</label>
+          <div class="note-create-engine-header">
+            <div class="note-create-engine-copy">
+              <label>默认解释器（执行引擎）</label>
+            </div>
+            <div class="note-create-cluster-switch" aria-label="选择计算集群">
+              <span class="note-create-cluster-label">集群选择:</span>
+              <button type="button"
+                      ng-repeat="cluster in noteCreateCtrl.clusterOptions"
+                      ng-class="{'active': noteCreateCtrl.selectedCluster === cluster.key}"
+                      ng-click="noteCreateCtrl.selectCluster(cluster.key)">
+                {{cluster.label}}
+              </button>
+            </div>
+          </div>
           <div class="interpreter-quick-tags">
-            <span class="interpreter-tag"
-                  ng-class="{'active': noteCreateCtrl.quickTag === 'sh'}"
-                  ng-click="noteCreateCtrl.selectQuickTag('sh')">Shell</span>
-            <span class="interpreter-tag"
-                  ng-class="{'active': noteCreateCtrl.quickTag === 'python'}"
-                  ng-click="noteCreateCtrl.selectQuickTag('python')">Python</span>
-            <span class="interpreter-tag"
-                  ng-class="{'active': noteCreateCtrl.quickTag === 'spark'}"
-                  ng-click="noteCreateCtrl.selectQuickTag('spark')">Spark</span>
-            <span class="interpreter-tag"
-                  ng-class="{'active': noteCreateCtrl.quickTag === 'hive'}"
-                  ng-click="noteCreateCtrl.selectQuickTag('hive')">Hive</span>
+            <button type="button" class="interpreter-tag interpreter-tag-shell"
+                    ng-class="{'active': noteCreateCtrl.quickTag === 'sh'}"
+                    ng-click="noteCreateCtrl.selectQuickTag('sh')">
+              <span class="interpreter-tag-main">
+                <span>Shell</span>
+              </span>
+            </button>
+            <button type="button" class="interpreter-tag interpreter-tag-python"
+                    ng-class="{'active': noteCreateCtrl.quickTag === 'python'}"
+                    ng-click="noteCreateCtrl.selectQuickTag('python')">
+              <span class="interpreter-tag-main">
+                <span>Python</span>
+              </span>
+            </button>
+            <button type="button" class="interpreter-tag interpreter-tag-spark"
+                    ng-class="{'active': noteCreateCtrl.quickTag === 'spark'}"
+                    ng-click="noteCreateCtrl.selectQuickTag('spark')">
+              <span class="interpreter-tag-main">
+                <span>Spark</span>
+              </span>
+            </button>
+            <button type="button" class="interpreter-tag interpreter-tag-hive"
+                    ng-class="{'active': noteCreateCtrl.quickTag === 'hive'}"
+                    ng-click="noteCreateCtrl.selectQuickTag('hive')">
+              <span class="interpreter-tag-main">
+                <span>Hive</span>
+              </span>
+            </button>
           </div>
           <select id="defaultInterpreter"
                   name="defaultInterpreter"

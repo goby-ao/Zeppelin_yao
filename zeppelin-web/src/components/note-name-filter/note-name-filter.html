@@ -11,9 +11,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
-<form>
-<input type="text"
+<form autocomplete="off">
+<input type="search"
        class="note-name-query form-control"
+       name="zp-note-search"
+       autocomplete="new-password"
+       autocorrect="off"
+       autocapitalize="off"
+       aria-autocomplete="none"
+       spellcheck="false"
+       data-lpignore="true"
+       data-1p-ignore="true"
+       data-form-type="other"
+       readonly="readonly"
+       onfocus="this.removeAttribute('readonly')"
        ng-click="$event.stopPropagation()"
        placeholder="&#xf002   按名称搜索笔记"
        ng-model="$parent.query.q"
