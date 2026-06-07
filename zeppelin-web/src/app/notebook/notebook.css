@@ -182,7 +182,7 @@ body {
 
 .notebook-actionBar-title {
   width: auto;
-  max-width: 40%;
+  max-width: 60%;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;

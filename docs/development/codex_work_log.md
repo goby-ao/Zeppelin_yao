@@ -27,6 +27,47 @@
   - 新建笔记弹窗支持快捷选择 Shell、Python、Hive、Spark，并可切换集群。
   - 手动选择默认解释器时，同步推断 Hadoop2 / Hadoop3 集群，保证快速标签和默认解释器一致。
 
+### Hadoop2 / Hadoop3 切换配置与模板位置
+
+- 集群配置入口：
+  - `zeppelin-web/src/app/quick-note.config.js`
+  - `NOTE_CLUSTERS` 控制可选集群列表和展示文案，目前为 `Hadoop2`、`Hadoop3`。
+  - `DEFAULT_NOTE_CLUSTER` 控制默认集群，目前为 `hadoop2`。
+  - `NOTE_CLUSTER_STORAGE_KEY` 控制 localStorage key，目前为 `zeppelin.quickNote.cluster`。
+
+- 解释器映射入口：
+  - `zeppelin-web/src/app/quick-note.config.js`
+  - `CLUSTER_INTERPRETER_BINDINGS` 控制 Hive / Spark 在不同集群下映射到哪个解释器。
+  - 当前映射：
+    - Hadoop2 Hive -> `hive`
+    - Hadoop2 Spark -> `spark`
+    - Hadoop3 Hive -> `hadoop3_hive`
+    - Hadoop3 Spark -> `hadoop3_spark`
+  - `GLOBAL_INTERPRETER_BINDINGS` 控制不随集群变化的解释器，目前 Shell -> `sh`，Python -> `python`。
+
+- 首页模板位置：
+  - `zeppelin-web/src/app/home/home.html`
+  - `.quick-cluster-switch` 是首页“运行集群”切换控件。
+  - 快速入口里的 `{{getQuickNoteMagic('hive')}}`、`{{getQuickNoteMagic('spark')}}` 会根据当前集群展示实际 magic。
+  - 首页样式在 `zeppelin-web/src/app/home/home.css`，包括集群切换胶囊样式、图标和响应式换行。
+
+- 新建笔记弹窗模板位置：
+  - `zeppelin-web/src/components/note-create/note-create.html`
+  - `.note-create-cluster-switch` 是弹窗里的“集群选择”切换控件。
+  - `.interpreter-quick-tags` 是 Shell / Python / Hive / Spark 快速标签区域。
+  - 弹窗样式在 `zeppelin-web/src/components/note-create/note-create.css`。
+  - 弹窗逻辑在 `zeppelin-web/src/components/note-create/note-create.controller.js`，`selectCluster()` 和 `selectQuickTag()` 负责切换集群后同步默认解释器。
+
+- 快速笔记占位提示位置：
+  - `zeppelin-web/src/app/notebook/paragraph/paragraph.controller.js`
+  - `QUICK_NOTE_PLACEHOLDERS` 控制不同快速笔记类型的首段占位提示。
+  - Hadoop3 当前有独立提示：`hadoop3_hive`、`hadoop3_spark`。
+
+- 快速笔记绑定识别位置：
+  - `zeppelin-web/src/app/notebook/notebook.controller.js`
+  - `getQuickNoteInterpreterBinding()` 会从 `QuickNote_xxx` 笔记名识别绑定目标，并通过 `getQuickNoteBinding()` 转成解释器绑定。
+  - 如果后续新增集群或改解释器 id/name，优先改 `quick-note.config.js`，再检查首页模板、弹窗模板和占位提示是否需要补文案。
+
 - 导航、登录和 websocket 稳定性：
   - 导航笔记搜索输入补充浏览器自动填充规避属性，减少密码管理器或自动补全干扰。
   - 登录接口 GET 探测返回 405 时不再误触发 `session_logout`，但其他 405 仍保留原有登出广播。
