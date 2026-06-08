@@ -1394,7 +1394,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'TIMESTAMP', 'DATE', 'INTERVAL', 'BINARY',
 
         // ===== Hive DDL - 表操作 =====
-        'CREATE TABLE', 'CREATE EXTERNAL TABLE', 'CREATE TEMPORARY TABLE', 'CREATE MANAGED TABLE',
+        'CREATE TABLE', 'CREATE EXTERNAL TABLE', 'CREATE TEMPORARY TABLE',
         'DROP TABLE', 'DROP TABLE IF EXISTS',
         'ALTER TABLE', 'ALTER TABLE RENAME TO', 'ALTER TABLE SET TBLPROPERTIES',
         'ALTER TABLE ADD COLUMNS', 'ALTER TABLE REPLACE COLUMNS', 'ALTER TABLE CHANGE COLUMN',
@@ -1466,7 +1466,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'WITH', 'CTE', 'RECURSIVE',
 
         // ===== Hive DML - 事务操作 (ACID) =====
-        'UPDATE', 'DELETE FROM', 'MERGE INTO', 'USING',
+        'UPDATE', 'DELETE FROM', 'USING',
         'BEGIN TRANSACTION', 'COMMIT', 'ROLLBACK',
         'INSERT', 'VALUES',
 
@@ -1606,7 +1606,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'BUCKET', 'CLUSTERED BY', 'SORTED BY', 'INTO BUCKETS',
         'STORED AS', 'ROW FORMAT', 'FIELDS TERMINATED BY', 'LINES TERMINATED BY',
         'SERDE', 'WITH SERDEPROPERTIES', 'LOCATION', 'TBLPROPERTIES',
-        'EXTERNAL TABLE', 'MANAGED TABLE', 'TEMPORARY TABLE', 'MATERIALIZED VIEW',
+        'EXTERNAL TABLE', 'TEMPORARY TABLE',
       ];
 
       let shellKeywords = [
@@ -1637,7 +1637,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'hadoop jar', 'hadoop classpath', 'hadoop version',
         'hdfs dfsadmin', 'hdfs dfsadmin -report',
         'yarn', 'yarn application', 'yarn application -list', 'yarn application -kill',
-        'yarn logs', 'mapred job', 'mapred job -list',
+        'yarn logs',
         'beeline', 'hive', 'hive -e', 'hive -f', 'spark-submit', 'spark-shell',
       ];
 
@@ -1646,7 +1646,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
           if (isCursorInInterpreterMagic(editor)) {
             return callback(null, []);
           }
-          if (!prefix) {
+          if (!prefix || /^\d+$/.test(prefix)) {
             return callback(null, []);
           }
           let mode = session.getMode().$id || '';
@@ -1829,6 +1829,10 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
 
   // ref: https://github.com/ajaxorg/ace/blob/5021d0193d9f2bba5a978d0b1d7a4f73d18ce713/lib/ace/autocomplete.js#L454
   const completionSupportWithoutBackend = function(str) {
+    if (/^\d+$/.test(str)) {
+      this.filtered = [];
+      return;
+    }
     let matches;
     if (str.length > this.filterText && str.lastIndexOf(
         this.filterText, 0) === 0) {
