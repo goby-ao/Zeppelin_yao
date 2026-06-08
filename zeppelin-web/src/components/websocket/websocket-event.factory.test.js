@@ -1,5 +1,6 @@
 describe('Factory: websocketEvents', function() {
   let onMessageHandler;
+  let location;
   let rootScope;
   let wsMock;
   let websocketEventsSrv;
@@ -32,8 +33,9 @@ describe('Factory: websocketEvents', function() {
     });
   }));
 
-  beforeEach(inject(function($rootScope, websocketEvents) {
+  beforeEach(inject(function($rootScope, websocketEvents, $location) {
     rootScope = $rootScope;
+    location = $location;
     websocketEventsSrv = websocketEvents;
     rootScope.ticket = {
       principal: 'anonymous',
@@ -45,6 +47,7 @@ describe('Factory: websocketEvents', function() {
 
   afterEach(function() {
     delete rootScope.ticket;
+    window.localStorage.removeItem('zeppelin.quickNote.missingNotes');
   });
 
   it('does not show an empty error details dialog', function() {
@@ -82,5 +85,28 @@ describe('Factory: websocketEvents', function() {
       }),
     });
     expect(BootstrapDialog.show).toHaveBeenCalled();
+  });
+
+  it('creates missing quick note without showing error details dialog', function() {
+    spyOn(BootstrapDialog, 'show');
+    location.path('/notebook/2MW7UC6MZ');
+
+    onMessageHandler({
+      data: angular.toJson({
+        op: 'ERROR_INFO',
+        data: {
+          info: 'java.io.IOException: Can not find note: /快速笔记/chenyao_yy/QuickNote_hadoop3_spark\n\tat line',
+        },
+      }),
+    });
+
+    let sentPayload = angular.fromJson(wsMock.send.calls.mostRecent().args[0]);
+    expect(BootstrapDialog.show).not.toHaveBeenCalled();
+    expect(sentPayload.op).toEqual('NEW_NOTE');
+    expect(sentPayload.data.name).toEqual('快速笔记/chenyao_yy/QuickNote_hadoop3_spark');
+    expect(sentPayload.data.defaultInterpreterGroup).toEqual('hadoop3_spark');
+
+    let missingNotes = angular.fromJson(window.localStorage.getItem('zeppelin.quickNote.missingNotes'));
+    expect(missingNotes['2MW7UC6MZ']).toEqual('快速笔记/chenyao_yy/QuickNote_hadoop3_spark');
   });
 });

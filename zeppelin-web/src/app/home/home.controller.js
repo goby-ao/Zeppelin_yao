@@ -13,6 +13,7 @@
  */
 
 import {
+  MISSING_QUICK_NOTE_STORAGE_KEY,
   NOTE_CLUSTERS,
   QUICK_NOTE_ROOT,
   getQuickNoteBinding,
@@ -188,6 +189,7 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
   function findNoteByPath(notePath) {
     let candidates = [];
     let normalizedNotePath = normalizeNotePath(notePath);
+    let missingQuickNotes = readMissingQuickNotes();
     if (vm.notes && angular.isArray(vm.notes.flatList)) {
       candidates = candidates.concat(vm.notes.flatList);
     }
@@ -197,6 +199,9 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
 
     for (let i = 0; i < candidates.length; i++) {
       let note = candidates[i];
+      if (isMissingQuickNote(note, normalizedNotePath, missingQuickNotes)) {
+        continue;
+      }
       if (note && (normalizeNotePath(note.path) === normalizedNotePath ||
           normalizeNotePath(note.name) === normalizedNotePath)) {
         return note;
@@ -207,6 +212,20 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
 
   function normalizeNotePath(path) {
     return path ? path.replace(/^\/+/, '') : '';
+  }
+
+  function readMissingQuickNotes() {
+    try {
+      let raw = window.localStorage.getItem(MISSING_QUICK_NOTE_STORAGE_KEY);
+      let notes = raw ? angular.fromJson(raw) : {};
+      return notes && angular.isObject(notes) && !angular.isArray(notes) ? notes : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function isMissingQuickNote(note, normalizedNotePath, missingQuickNotes) {
+    return note && note.id && missingQuickNotes[note.id] === normalizedNotePath;
   }
 
   $scope.reloadNoteList = function() {

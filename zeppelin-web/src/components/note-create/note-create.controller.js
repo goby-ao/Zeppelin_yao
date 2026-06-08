@@ -147,7 +147,7 @@ function NoteCreateCtrl($scope, noteListFactory, $routeParams, websocketMsgSrv) 
     if (interpreterName === 'hadoop3_hive' || interpreterName === 'hadoop3_spark') {
       vm.selectedCluster = 'hadoop3';
       saveNoteCluster(vm.selectedCluster);
-    } else if (interpreterName === 'hive' || interpreterName === 'spark') {
+    } else if (interpreterName === 'hive' || interpreterName === 'spark' || interpreterName === 'spark3') {
       vm.selectedCluster = 'hadoop2';
       saveNoteCluster(vm.selectedCluster);
     }

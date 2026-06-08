@@ -12,6 +12,12 @@
  * limitations under the License.
  */
 
+import {
+  MISSING_QUICK_NOTE_STORAGE_KEY,
+  QUICK_NOTE_ROOT,
+  getQuickNoteBinding,
+} from '../../app/quick-note.config';
+
 angular.module('zeppelinWebApp').factory('websocketEvents', WebsocketEventFactory);
 
 function WebsocketEventFactory($rootScope, $websocket, $location, baseUrlSrv, saveAsService, ngToast) {
@@ -178,6 +184,18 @@ function WebsocketEventFactory($rootScope, $websocket, $location, baseUrlSrv, sa
         console.warn('Received empty ERROR_INFO from websocket');
         return;
       }
+      let missingQuickNotePath = getMissingQuickNotePath(info);
+      if (missingQuickNotePath) {
+        rememberMissingQuickNote(getCurrentNotebookId(), missingQuickNotePath);
+        websocketCalls.sendNewEvent({
+          op: 'NEW_NOTE',
+          data: {
+            name: normalizeNotePath(missingQuickNotePath),
+            defaultInterpreterGroup: getQuickNoteDefaultInterpreterGroup(missingQuickNotePath),
+          },
+        });
+        return;
+      }
       BootstrapDialog.show({
         closable: false,
         closeByBackdrop: false,
@@ -236,6 +254,55 @@ function WebsocketEventFactory($rootScope, $websocket, $location, baseUrlSrv, sa
     }
     $rootScope.$broadcast('setConnectedStatus', false);
   });
+
+  function getMissingQuickNotePath(info) {
+    let marker = 'Can not find note:';
+    let markerIndex = info.indexOf(marker);
+    if (markerIndex < 0) {
+      return '';
+    }
+
+    let notePath = info.substring(markerIndex + marker.length).split(/\r?\n/)[0].trim();
+    let normalizedNotePath = normalizeNotePath(notePath);
+    if (normalizedNotePath.indexOf(QUICK_NOTE_ROOT + '/') !== 0 ||
+        normalizedNotePath.indexOf('/QuickNote_') < 0) {
+      return '';
+    }
+    return notePath;
+  }
+
+  function getCurrentNotebookId() {
+    let match = /^\/notebook\/([^\/]+)/.exec($location.path());
+    return match ? match[1] : '';
+  }
+
+  function rememberMissingQuickNote(noteId, notePath) {
+    if (!noteId) {
+      return;
+    }
+
+    try {
+      let raw = window.localStorage.getItem(MISSING_QUICK_NOTE_STORAGE_KEY);
+      let notes = raw ? angular.fromJson(raw) : {};
+      if (!notes || !angular.isObject(notes) || angular.isArray(notes)) {
+        notes = {};
+      }
+      notes[noteId] = normalizeNotePath(notePath);
+      window.localStorage.setItem(MISSING_QUICK_NOTE_STORAGE_KEY, angular.toJson(notes));
+    } catch (e) {
+      // ignore localStorage errors
+    }
+  }
+
+  function getQuickNoteDefaultInterpreterGroup(notePath) {
+    let noteName = normalizeNotePath(notePath).split('/').pop() || '';
+    let match = /^QuickNote_(.+)$/.exec(noteName);
+    return match ? getQuickNoteBinding(match[1]) : undefined;
+  }
+
+  function normalizeNotePath(path) {
+    return path ? path.replace(/^\/+/, '') : '';
+  }
 
   return websocketCalls;
 }

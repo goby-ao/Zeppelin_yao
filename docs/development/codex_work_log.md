@@ -20,7 +20,7 @@
   - 首页快速入口支持 Hadoop2 / Hadoop3 集群切换，Hive 和 Spark 根据集群映射到不同解释器。
   - 集群选择控件改为带 `fa-sitemap` 图标的轻量胶囊样式，选中态保持蓝色主视觉，增强识别度但不过度抢眼。
   - 控件在 375px 窄屏下会自然换行，不产生横向溢出。
-  - 快速入口展示实际 magic，例如 `%hive`、`%hadoop3_hive`、`%spark`、`%hadoop3_spark`。
+  - 快速入口展示实际 magic，例如 `%hive`、`%hadoop3_hive`、`%spark3`、`%hadoop3_spark`。
 
 - 快速笔记和新建笔记弹窗：
   - 新增 `quick-note.config.js` 的集群配置、localStorage 持久化和解释器映射方法。
@@ -40,7 +40,7 @@
   - `CLUSTER_INTERPRETER_BINDINGS` 控制 Hive / Spark 在不同集群下映射到哪个解释器。
   - 当前映射：
     - Hadoop2 Hive -> `hive`
-    - Hadoop2 Spark -> `spark`
+    - Hadoop2 Spark -> `spark3`
     - Hadoop3 Hive -> `hadoop3_hive`
     - Hadoop3 Spark -> `hadoop3_spark`
   - `GLOBAL_INTERPRETER_BINDINGS` 控制不随集群变化的解释器，目前 Shell -> `sh`，Python -> `python`。
@@ -78,7 +78,7 @@
 
 - 本批次是前端代码改动；上线仍需重新构建 `zeppelin-web-0.9.1-SNAPSHOT.war` 并替换线上包。
 - 快速笔记的 Hadoop2 / Hadoop3 映射依赖线上解释器 id/name：
-  - Hadoop2: `hive`、`spark`
+  - Hadoop2: `hive`、`spark3`
   - Hadoop3: `hadoop3_hive`、`hadoop3_spark`
   - Shell / Python 为全局映射：`sh`、`python`
 - 首页剩余 `100vh` 只用于水印和下拉菜单最大高度，不参与首页主体 iframe 高度计算。

@@ -2,6 +2,7 @@ export const QUICK_NOTE_ROOT = '快速笔记';
 
 export const DEFAULT_NOTE_CLUSTER = 'hadoop2';
 export const NOTE_CLUSTER_STORAGE_KEY = 'zeppelin.quickNote.cluster';
+export const MISSING_QUICK_NOTE_STORAGE_KEY = 'zeppelin.quickNote.missingNotes';
 
 export const NOTE_CLUSTERS = [
   {key: 'hadoop2', label: 'Hadoop2'},
@@ -11,7 +12,7 @@ export const NOTE_CLUSTERS = [
 const CLUSTER_INTERPRETER_BINDINGS = {
   hadoop2: {
     hive: 'hive',
-    spark: 'spark',
+    spark: 'spark3',
   },
   hadoop3: {
     hive: 'hadoop3_hive',
@@ -26,6 +27,7 @@ const GLOBAL_INTERPRETER_BINDINGS = {
 };
 
 const QUICK_NOTE_KEY_ALIASES = {
+  spark3: 'spark3',
   hadoop3_hive: 'hadoop3_hive',
   hadoop3_spark: 'hadoop3_spark',
 };
