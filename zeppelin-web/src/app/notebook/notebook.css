@@ -327,6 +327,38 @@ body {
   font-weight: 700;
 }
 
+/* Large note stats badge in action bar */
+.zp-note-stats-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background: #f1f5f9;
+  color: #64748b;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.zp-note-stats-badge .fa {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.zp-note-stats-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.zp-note-stats-critical {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+
 .form-control-title-input:after, .form-control-title:after {
   content: "\200E‎";
 }

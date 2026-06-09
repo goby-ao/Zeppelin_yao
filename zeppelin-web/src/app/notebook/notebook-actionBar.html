@@ -39,6 +39,16 @@ limitations under the License.
         <span class="zp-note-default-interpreter-label">默认引擎：</span>
         <span class="zp-note-default-interpreter-magic">{{getDefaultInterpreterMagic()}}</span>
       </span>
+      <span class="zp-note-stats-badge"
+            ng-if="!input.showEditor && noteStats.severity !== 'normal'"
+            tooltip-placement="bottom"
+            uib-tooltip="段落数：{{noteStats.paragraphCount}}&#013;预估大小：{{noteStats.estimatedSizeMB}} MB&#013;结果较多时建议清空输出以提升性能"
+            ng-class="{'zp-note-stats-warning': noteStats.severity === 'warning',
+                       'zp-note-stats-critical': noteStats.severity === 'critical'}">
+        <i class="fa fa-database"></i>
+        <span>{{noteStats.paragraphCount}} 段</span>
+        <span ng-if="noteStats.estimatedSizeMB > 0"> · {{noteStats.estimatedSizeMB}} MB</span>
+      </span>
     </div>
     <div>
       <!-- 克隆 / 导出 / 重载 -->

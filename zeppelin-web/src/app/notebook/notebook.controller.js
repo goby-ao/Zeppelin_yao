@@ -284,6 +284,58 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     return note && note.id && String(note.id) === String($routeParams.noteId);
   }
 
+  // ---- Large note performance helpers ----
+
+  const NOTE_SIZE_WARNING_MB = 2;
+  const NOTE_SIZE_CRITICAL_MB = 5;
+
+  function computeNoteStats(note) {
+    let paragraphCount = (note && angular.isArray(note.paragraphs)) ? note.paragraphs.length : 0;
+    let estimatedSizeMB = 0;
+    let severity = 'normal';
+
+    try {
+      let jsonStr = angular.toJson(note);
+      let bytes = jsonStr ? jsonStr.length : 0;
+      estimatedSizeMB = Math.round((bytes / (1024 * 1024)) * 10) / 10;
+      if (estimatedSizeMB >= NOTE_SIZE_CRITICAL_MB) {
+        severity = 'critical';
+      } else if (estimatedSizeMB >= NOTE_SIZE_WARNING_MB) {
+        severity = 'warning';
+      }
+    } catch (e) {
+      estimatedSizeMB = 0;
+    }
+
+    return {
+      paragraphCount: paragraphCount,
+      estimatedSizeMB: estimatedSizeMB,
+      severity: severity,
+    };
+  }
+
+  function showLargeNoteToast(stats) {
+    let sizeInfo = stats.estimatedSizeMB > 0
+      ? '约 ' + stats.estimatedSizeMB + ' MB'
+      : stats.paragraphCount + ' 个段落';
+
+    if (stats.severity === 'critical') {
+      ngToast.warning({
+        content: '此笔记规模较大（' + sizeInfo + '），打开和操作可能卡顿。请点击顶部 「清空输出」 按钮移除所有段落输出结果。',
+        dismissOnTimeout: false,
+        timeout: 15000,
+        verticalPosition: 'top',
+      });
+    } else if (stats.severity === 'warning') {
+      ngToast.info({
+        content: '此笔记包含 ' + stats.paragraphCount + ' 个段落（' + sizeInfo + '），结果较多时建议点击顶部 「清空输出」 按钮提升性能。',
+        dismissOnTimeout: false,
+        timeout: 8000,
+        verticalPosition: 'top',
+      });
+    }
+  }
+
   function normalizeQuickNotePath(path) {
     return path ? path.replace(/^\/+/, '') : '';
   }
@@ -1792,10 +1844,19 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
 
     initializeLookAndFeel();
 
+    // 大型笔记性能优化：检测笔记规模，显示提示
+    $scope.noteStats = computeNoteStats($scope.note);
+
     // interpreterBindings 延迟加载，不在打开笔记时阻塞
     // 后台延迟加载一次用于标题默认解释器 tag；打开设置面板时也会加载 (openSetting)
     scheduleInterpreterBindingsForTitle();
     getPermissions();
+    // 延迟显示大型笔记提示，避免阻塞首屏渲染
+    if ($scope.noteStats.severity !== 'normal') {
+      $timeout(function() {
+        showLargeNoteToast($scope.noteStats);
+      }, 800);
+    }
     let isPersonalized = $scope.note.config.personalizedMode;
     isPersonalized = isPersonalized === undefined ? 'false' : isPersonalized;
     $scope.note.config.personalizedMode = isPersonalized;
