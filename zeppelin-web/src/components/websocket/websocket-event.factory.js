@@ -13,9 +13,8 @@
  */
 
 import {
-  MISSING_QUICK_NOTE_STORAGE_KEY,
+  RECENT_NOTES_KEY,
   QUICK_NOTE_ROOT,
-  getQuickNoteBinding,
 } from '../../app/quick-note.config';
 
 angular.module('zeppelinWebApp').factory('websocketEvents', WebsocketEventFactory);
@@ -186,14 +185,19 @@ function WebsocketEventFactory($rootScope, $websocket, $location, baseUrlSrv, sa
       }
       let missingQuickNotePath = getMissingQuickNotePath(info);
       if (missingQuickNotePath) {
-        rememberMissingQuickNote(getCurrentNotebookId(), missingQuickNotePath);
-        websocketCalls.sendNewEvent({
-          op: 'NEW_NOTE',
-          data: {
-            name: normalizeNotePath(missingQuickNotePath),
-            defaultInterpreterGroup: getQuickNoteDefaultInterpreterGroup(missingQuickNotePath),
-          },
-        });
+        let currentNoteId = getCurrentNotebookId();
+        removeDeletedNoteFromRecentNotes(currentNoteId);
+        if (currentNoteId) {
+          // 正在浏览已删除的笔记 → 静默跳转首页
+          $location.path('/');
+        } else {
+          // 在首页/回收站对已损坏笔记做操作（删除等）→ 刷新列表 + 提示
+          websocketCalls.sendNewEvent({op: 'RELOAD_NOTES_FROM_REPO'});
+          ngToast.info({
+            content: '该笔记数据已不存在，列表已刷新',
+            timeout: 3000,
+          });
+        }
         return;
       }
       BootstrapDialog.show({
@@ -264,11 +268,16 @@ function WebsocketEventFactory($rootScope, $websocket, $location, baseUrlSrv, sa
 
     let notePath = info.substring(markerIndex + marker.length).split(/\r?\n/)[0].trim();
     let normalizedNotePath = normalizeNotePath(notePath);
-    if (normalizedNotePath.indexOf(QUICK_NOTE_ROOT + '/') !== 0 ||
-        normalizedNotePath.indexOf('/QuickNote_') < 0) {
+    if (normalizedNotePath.indexOf('/QuickNote_') < 0) {
       return '';
     }
-    return notePath;
+    // Match quick notes both in normal location and in trash
+    let quickNoteRoot = QUICK_NOTE_ROOT + '/';
+    if (normalizedNotePath.indexOf(quickNoteRoot) === 0 ||
+        normalizedNotePath.indexOf('~Trash/' + quickNoteRoot) === 0) {
+      return notePath;
+    }
+    return '';
   }
 
   function getCurrentNotebookId() {
@@ -276,28 +285,25 @@ function WebsocketEventFactory($rootScope, $websocket, $location, baseUrlSrv, sa
     return match ? match[1] : '';
   }
 
-  function rememberMissingQuickNote(noteId, notePath) {
+  function removeDeletedNoteFromRecentNotes(noteId) {
     if (!noteId) {
       return;
     }
-
     try {
-      let raw = window.localStorage.getItem(MISSING_QUICK_NOTE_STORAGE_KEY);
-      let notes = raw ? angular.fromJson(raw) : {};
-      if (!notes || !angular.isObject(notes) || angular.isArray(notes)) {
-        notes = {};
+      let raw = window.localStorage.getItem(RECENT_NOTES_KEY);
+      let notes = raw ? angular.fromJson(raw) : [];
+      if (!angular.isArray(notes)) {
+        return;
       }
-      notes[noteId] = normalizeNotePath(notePath);
-      window.localStorage.setItem(MISSING_QUICK_NOTE_STORAGE_KEY, angular.toJson(notes));
+      let filtered = notes.filter(function(item) {
+        return item && item.id !== noteId;
+      });
+      if (filtered.length !== notes.length) {
+        window.localStorage.setItem(RECENT_NOTES_KEY, angular.toJson(filtered));
+      }
     } catch (e) {
       // ignore localStorage errors
     }
-  }
-
-  function getQuickNoteDefaultInterpreterGroup(notePath) {
-    let noteName = normalizeNotePath(notePath).split('/').pop() || '';
-    let match = /^QuickNote_(.+)$/.exec(noteName);
-    return match ? getQuickNoteBinding(match[1]) : undefined;
   }
 
   function normalizeNotePath(path) {

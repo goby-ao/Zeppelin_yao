@@ -2,7 +2,7 @@ export const QUICK_NOTE_ROOT = '快速笔记';
 
 export const DEFAULT_NOTE_CLUSTER = 'hadoop2';
 export const NOTE_CLUSTER_STORAGE_KEY = 'zeppelin.quickNote.cluster';
-export const MISSING_QUICK_NOTE_STORAGE_KEY = 'zeppelin.quickNote.missingNotes';
+export const RECENT_NOTES_KEY = 'zp_recent_notes';
 
 export const NOTE_CLUSTERS = [
   {key: 'hadoop2', label: 'Hadoop2'},

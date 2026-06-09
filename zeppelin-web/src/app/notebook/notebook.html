@@ -155,11 +155,8 @@ limitations under the License.
        ng-class="columnWidthClass(currentParagraph.config.colWidth)"
        data-paragraph-id="{{currentParagraph.id}}"
        ng-attr-class="{{columnWidthClass(currentParagraph.config.colWidth)}} {{lockedParagraphId === currentParagraph.id ? 'paragraph-locked' : ''}} {{lockedParagraphId && lockedParagraphId !== currentParagraph.id ? 'paragraph-dimmed' : ''}}"
-       style="margin: 0; padding: 0;">
-
-       <!-- see ZEPPELIN-2806
+       style="margin: 0; padding: 0;"
        viewport-watch>
-       -->
     <div class="new-paragraph"
          ng-click="insertNew('above')"
          ng-hide="viewOnly || asIframe || revisionView"

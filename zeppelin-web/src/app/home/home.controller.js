@@ -13,9 +13,9 @@
  */
 
 import {
-  MISSING_QUICK_NOTE_STORAGE_KEY,
   NOTE_CLUSTERS,
   QUICK_NOTE_ROOT,
+  RECENT_NOTES_KEY,
   getQuickNoteBinding,
   getQuickNoteKey,
   getQuickNoteMagic,
@@ -24,8 +24,6 @@ import {
 } from '../quick-note.config';
 
 angular.module('zeppelinWebApp').controller('HomeCtrl', HomeCtrl);
-
-const RECENT_NOTES_KEY = 'zp_recent_notes';
 
 function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $location, arrayOrderingSrv,
                   ngToast, noteActionService, TRASH_FOLDER_ID) {
@@ -48,6 +46,7 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
   }
 
   $scope.isReloading = false;
+  $scope.notesLoaded = false;
   $scope.TRASH_FOLDER_ID = TRASH_FOLDER_ID;
   $scope.query = {q: ''};
   $scope.recentNotes = readRecentNotes();
@@ -80,8 +79,11 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
   }
 
   $scope.isNoteDeleted = function(noteId) {
-    // 笔记列表未加载完成时，不显示为已删除
-    if (!vm.notes || !angular.isArray(vm.notes.flatList) || vm.notes.flatList.length === 0) {
+    // 笔记列表未加载完成时不判定为已删除，避免闪烁
+    if (!$scope.notesLoaded) {
+      return false;
+    }
+    if (!vm.notes || !angular.isArray(vm.notes.flatList)) {
       return false;
     }
     for (let i = 0; i < vm.notes.flatList.length; i++) {
@@ -189,7 +191,6 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
   function findNoteByPath(notePath) {
     let candidates = [];
     let normalizedNotePath = normalizeNotePath(notePath);
-    let missingQuickNotes = readMissingQuickNotes();
     if (vm.notes && angular.isArray(vm.notes.flatList)) {
       candidates = candidates.concat(vm.notes.flatList);
     }
@@ -199,9 +200,6 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
 
     for (let i = 0; i < candidates.length; i++) {
       let note = candidates[i];
-      if (isMissingQuickNote(note, normalizedNotePath, missingQuickNotes)) {
-        continue;
-      }
       if (note && (normalizeNotePath(note.path) === normalizedNotePath ||
           normalizeNotePath(note.name) === normalizedNotePath)) {
         return note;
@@ -212,20 +210,6 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
 
   function normalizeNotePath(path) {
     return path ? path.replace(/^\/+/, '') : '';
-  }
-
-  function readMissingQuickNotes() {
-    try {
-      let raw = window.localStorage.getItem(MISSING_QUICK_NOTE_STORAGE_KEY);
-      let notes = raw ? angular.fromJson(raw) : {};
-      return notes && angular.isObject(notes) && !angular.isArray(notes) ? notes : {};
-    } catch (e) {
-      return {};
-    }
-  }
-
-  function isMissingQuickNote(note, normalizedNotePath, missingQuickNotes) {
-    return note && note.id && missingQuickNotes[note.id] === normalizedNotePath;
   }
 
   $scope.reloadNoteList = function() {
@@ -270,7 +254,36 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
 
   $scope.$on('setNoteMenu', function(event, notes) {
     $scope.isReloadingNotes = false;
+    $scope.notesLoaded = true;
+    cleanStaleRecentNotes(notes);
   });
+
+  function cleanStaleRecentNotes(notes) {
+    if (!angular.isArray(notes) || notes.length === 0) {
+      return;
+    }
+    let noteIds = {};
+    for (let i = 0; i < notes.length; i++) {
+      if (notes[i] && notes[i].id) {
+        noteIds[notes[i].id] = true;
+      }
+    }
+    let changed = false;
+    $scope.recentNotes = $scope.recentNotes.filter(function(rn) {
+      if (!rn || !rn.id) {
+        changed = true;
+        return false;
+      }
+      if (!noteIds[rn.id]) {
+        changed = true;
+        return false;
+      }
+      return true;
+    });
+    if (changed) {
+      saveRecentNotes($scope.recentNotes);
+    }
+  }
 
   $scope.$on('setNoteContent', function(event, note) {
     if (vm.noteCustomHome) {

@@ -17,12 +17,11 @@ import moment from 'moment';
 import {isParagraphRunning} from './paragraph/paragraph.status';
 import {
   QUICK_NOTE_ROOT,
+  RECENT_NOTES_KEY,
   getQuickNoteBinding,
 } from '../quick-note.config';
 
 angular.module('zeppelinWebApp').controller('NotebookCtrl', NotebookCtrl);
-
-const RECENT_NOTES_KEY = 'zp_recent_notes';
 
 function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
                       $http, websocketMsgSrv, baseUrlSrv, $timeout, saveAsService,
@@ -254,6 +253,27 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
       window.localStorage.setItem(RECENT_NOTES_KEY, angular.toJson(notes.slice(0, 20)));
     } catch (e) {
       // LocalStorage can be unavailable in private mode or restricted iframe contexts.
+    }
+  }
+
+  function removeDeletedNoteFromRecentNotes(noteId) {
+    if (!noteId) {
+      return;
+    }
+    try {
+      let raw = window.localStorage.getItem(RECENT_NOTES_KEY);
+      let notes = raw ? angular.fromJson(raw) : [];
+      if (!angular.isArray(notes)) {
+        return;
+      }
+      let filtered = notes.filter(function(item) {
+        return item && item.id !== noteId;
+      });
+      if (filtered.length !== notes.length) {
+        window.localStorage.setItem(RECENT_NOTES_KEY, angular.toJson(filtered));
+      }
+    } catch (e) {
+      // ignore localStorage errors
     }
   }
 
@@ -1743,7 +1763,10 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
 
   $scope.$on('setNoteContent', function(event, note) {
     if (note === undefined) {
-      if (!$routeParams.noteId && !$scope.note) {
+      if ($routeParams.noteId) {
+        removeDeletedNoteFromRecentNotes($routeParams.noteId);
+      }
+      if (!$scope.note) {
         $location.path('/');
       }
       return;

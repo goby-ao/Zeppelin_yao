@@ -47,7 +47,7 @@ describe('Factory: websocketEvents', function() {
 
   afterEach(function() {
     delete rootScope.ticket;
-    window.localStorage.removeItem('zeppelin.quickNote.missingNotes');
+    window.localStorage.removeItem('zp_recent_notes');
   });
 
   it('does not show an empty error details dialog', function() {
@@ -87,9 +87,15 @@ describe('Factory: websocketEvents', function() {
     expect(BootstrapDialog.show).toHaveBeenCalled();
   });
 
-  it('creates missing quick note without showing error details dialog', function() {
+  it('silently redirects and cleans up recent notes for missing quick notes', function() {
     spyOn(BootstrapDialog, 'show');
     location.path('/notebook/2MW7UC6MZ');
+
+    // Seed recent notes with the deleted note so we can verify cleanup
+    window.localStorage.setItem('zp_recent_notes', angular.toJson([
+      {id: '2MW7UC6MZ', name: 'QuickNote_hadoop3_spark', time: 1},
+      {id: 'OTHER_NOTE', name: 'other', time: 2},
+    ]));
 
     onMessageHandler({
       data: angular.toJson({
@@ -100,13 +106,35 @@ describe('Factory: websocketEvents', function() {
       }),
     });
 
-    let sentPayload = angular.fromJson(wsMock.send.calls.mostRecent().args[0]);
     expect(BootstrapDialog.show).not.toHaveBeenCalled();
-    expect(sentPayload.op).toEqual('NEW_NOTE');
-    expect(sentPayload.data.name).toEqual('快速笔记/chenyao_yy/QuickNote_hadoop3_spark');
-    expect(sentPayload.data.defaultInterpreterGroup).toEqual('hadoop3_spark');
+    expect(location.path()).toEqual('/');
 
-    let missingNotes = angular.fromJson(window.localStorage.getItem('zeppelin.quickNote.missingNotes'));
-    expect(missingNotes['2MW7UC6MZ']).toEqual('快速笔记/chenyao_yy/QuickNote_hadoop3_spark');
+    // Should have removed the deleted note from recent notes
+    let recentNotes = angular.fromJson(window.localStorage.getItem('zp_recent_notes'));
+    expect(recentNotes.length).toEqual(1);
+    expect(recentNotes[0].id).toEqual('OTHER_NOTE');
+  });
+
+  it('reloads note list and shows toast for stale quick notes in trash operations', function() {
+    spyOn(BootstrapDialog, 'show');
+    location.path('/');
+
+    // Simulate clicking delete on a stale quick note in trash
+    onMessageHandler({
+      data: angular.toJson({
+        op: 'ERROR_INFO',
+        data: {
+          info: 'java.io.IOException: Can not find note: /~Trash/快速笔记/chenyao_yy/QuickNote_hadoop3_hive\n\tat line',
+        },
+      }),
+    });
+
+    expect(BootstrapDialog.show).not.toHaveBeenCalled();
+    // Should still be on home page (no redirect since we were already there)
+    expect(location.path()).toEqual('/');
+
+    // Should have sent RELOAD_NOTES_FROM_REPO to refresh the list
+    let lastPayload = angular.fromJson(wsMock.send.calls.mostRecent().args[0]);
+    expect(lastPayload.op).toEqual('RELOAD_NOTES_FROM_REPO');
   });
 });
