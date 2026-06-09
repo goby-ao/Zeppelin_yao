@@ -62,7 +62,7 @@ const QUICK_NOTE_PLACEHOLDERS = {
 angular.module('zeppelinWebApp').controller('ParagraphCtrl', ParagraphCtrl);
 
 function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $location,
-                       $timeout, $compile, $http, $q, websocketMsgSrv,
+                        $timeout, $compile, $http, $q, websocketMsgSrv,
                        baseUrlSrv, ngToast, noteVarShareService,
                        heliumService) {
   'ngInject';
@@ -1577,10 +1577,6 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'ANALYZE TABLE COMPUTE STATISTICS FOR ALL COLUMNS',
         'SHOW TABLE STATS', 'SHOW COLUMN STATS',
 
-        // ===== Hive 事务管理 =====
-        'BEGIN TRANSACTION', 'COMMIT', 'ROLLBACK',
-        'SHOW TRANSACTIONS', 'ABORT TRANSACTION',
-
         // ===== Hive EXPLAIN =====
         'EXPLAIN', 'EXPLAIN EXTENDED', 'EXPLAIN FORMATTED', 'EXPLAIN DEPENDENCY',
         'EXPLAIN AUTHORIZATION', 'EXPLAIN ANALYZE',
@@ -1610,7 +1606,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
       ];
 
       let shellKeywords = [
-        'cd', 'ls', 'pwd', 'mkdir', 'rm', 'cp', 'mv', 'chmod', 'chown', 'ln',
+        'cd', 'ls', 'pwd', 'mkdir', 'cp', 'mv', 'chmod', 'chown', 'ln',
         'cat', 'head', 'tail', 'less', 'more', 'wc', 'sort', 'uniq', 'cut', 'paste',
         'grep', 'egrep', 'fgrep', 'sed', 'awk', 'find', 'xargs',
         'echo', 'printf', 'read', 'test', 'exit', 'return', 'source', 'export',
