@@ -1753,7 +1753,7 @@ table.table-striped {
   100% { background-position: 0 200%; }
 }
 
-@media (max-width: 1279px) {
+@media (max-width: 860px) {
   .paragraph .zp-paragraph-toolbar {
     -ms-flex-wrap: wrap;
     flex-wrap: wrap;
