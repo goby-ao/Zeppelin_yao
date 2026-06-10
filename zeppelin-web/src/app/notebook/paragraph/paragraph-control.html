@@ -139,6 +139,13 @@ limitations under the License.
 
   <span class="zp-toolbar-divider"></span>
 
+  <span class="fa fa-trash zp-toolbar-item zp-toolbar-icon" style="cursor:pointer; font-size: 20px" tooltip-placement="bottom"
+        ng-if="!revisionView && note.paragraphs.length > 1"
+        tooltip-append-to-body="true"
+        uib-tooltip="删除代码块 (Ctrl+{{ (isMac ? 'Option' : 'Alt') }}+D)"
+        ng-class="{'item-disable' : isNoteRunning}"
+        ng-click="removeParagraph(paragraph)"></span>
+
   <span class="{{paragraph.config.editorHide ? 'icon-size-fullscreen' : 'icon-size-actual'}} zp-toolbar-item zp-toolbar-icon" style="cursor:pointer" tooltip-placement="bottom"
         ng-if="!revisionView"
         tooltip-append-to-body="true"

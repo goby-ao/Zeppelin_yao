@@ -1171,7 +1171,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
       BootstrapDialog.confirm({
         closable: true,
         title: '',
-        message: 'Do you want to delete this paragraph?',
+        message: '确定删除此代码块吗？',
         callback: function(result) {
           if (result) {
             console.log('Remove paragraph');
