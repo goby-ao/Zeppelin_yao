@@ -1821,6 +1821,13 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         this.origOnCommandKey(e, hashId, keyCode);
       };
     }
+
+    // ACE editor is now fully initialized.  Clear the _initializing flag
+    // so that viewport-watch's disableDigest() may proceed to turn off
+    // watchers when this paragraph scrolls out of the viewport.
+    if ($scope.paragraph) {
+      $scope.paragraph._initializing = false;
+    }
   };
 
   // ref: https://github.com/ajaxorg/ace/blob/5021d0193d9f2bba5a978d0b1d7a4f73d18ce713/lib/ace/autocomplete.js#L454
@@ -2603,17 +2610,19 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
       // focus editor
       if (!$scope.paragraph.config.editorHide) {
         if (!mouseEvent) {
-          $scope.editor.focus();
-          // move cursor to the first row (or the last row)
-          let row;
-          if (cursorPosRow >= 0) {
-            row = cursorPosRow;
-            $scope.editor.gotoLine(row, cursorPosCol);
-          } else {
-            row = $scope.editor.session.getLength();
-            $scope.editor.gotoLine(row, cursorPosCol);
+          if ($scope.editor) {
+            $scope.editor.focus();
+            // move cursor to the first row (or the last row)
+            let row;
+            if (cursorPosRow >= 0) {
+              row = cursorPosRow;
+              $scope.editor.gotoLine(row, cursorPosCol);
+            } else {
+              row = $scope.editor.session.getLength();
+              $scope.editor.gotoLine(row, cursorPosCol);
+            }
+            $scope.scrollToCursor($scope.paragraph.id, cursorPosCol);
           }
-          $scope.scrollToCursor($scope.paragraph.id, cursorPosCol);
         }
       }
       handleFocus(true);

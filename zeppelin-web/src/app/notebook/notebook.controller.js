@@ -459,7 +459,11 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     }
     for (let i = 0; i < $scope.note.paragraphs.length; i++) {
       let paragraphId = $scope.note.paragraphs[i].id;
-      if (jQuery.contains(angular.element('#' + paragraphId + '_container')[0], clickEvent.target)) {
+      let containerEl = angular.element('#' + paragraphId + '_container')[0];
+      if (!containerEl) {
+        continue;
+      }
+      if (jQuery.contains(containerEl, clickEvent.target)) {
         $scope.$broadcast('focusParagraph', paragraphId, 0, null, true);
         break;
       }
@@ -687,10 +691,7 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   $scope.saveNote = function() {
     if ($scope.note && $scope.note.paragraphs) {
       _.forEach($scope.note.paragraphs, function(par) {
-        angular
-          .element('#' + par.id + '_paragraphColumn_main')
-          .scope()
-          .saveParagraph(par);
+        saveParagraphViaScope(par);
       });
       $scope.isNoteDirty = null;
     }
@@ -856,15 +857,23 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   };
 
   let addPara = function(paragraph, index) {
+    if (!$scope.note || !$scope.note.paragraphs) {
+      return;
+    }
+
+    // Mark the paragraph as initializing so that viewport-watch's
+    // disableDigest() will skip it until aceLoaded() clears the flag.
+    // This prevents a race where $$watchers are nulled before the
+    // ng-include → code-editor → ui-ace → aceLoaded chain completes.
+    paragraph._initializing = true;
+
     $scope.note.paragraphs.splice(index, 0, paragraph);
-    $scope.note.paragraphs.map((para) => {
+    // Mark the new paragraph as focused. The aceLoaded callback in
+    // ParagraphCtrl will automatically focus the editor when it
+    // finishes initializing (ACE template loads asynchronously).
+    $scope.note.paragraphs.forEach(function(para) {
       if (para.id === paragraph.id) {
         para.focus = true;
-
-        // we need `$timeout` since angular DOM might not be initialized
-        $timeout(() => {
-          $scope.$broadcast('focusParagraph', para.id, 0, null, false);
-        });
       }
     });
   };
@@ -1703,12 +1712,29 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   });
 
   $scope.saveCursorPosition = function(paragraph) {
-    let angParagEditor = angular
-      .element('#' + paragraph.id + '_paragraphColumn_main')
-      .scope().editor;
+    let paraEl = angular.element('#' + paragraph.id + '_paragraphColumn_main');
+    if (!paraEl[0]) {
+      return;
+    }
+    let paraScope = paraEl.scope();
+    if (!paraScope || !paraScope.editor) {
+      return;
+    }
+    let angParagEditor = paraScope.editor;
     let col = angParagEditor.selection.lead.column;
     let row = angParagEditor.selection.lead.row;
     $scope.$broadcast('focusParagraph', paragraph.id, row + 1, col);
+  };
+
+  let saveParagraphViaScope = function(paragraph) {
+    let paraEl = angular.element('#' + paragraph.id + '_paragraphColumn_main');
+    if (!paraEl[0]) {
+      return;
+    }
+    let paraScope = paraEl.scope();
+    if (paraScope && paraScope.saveParagraph) {
+      paraScope.saveParagraph(paragraph);
+    }
   };
 
   $scope.$on('moveParagraphUp', function(event, paragraph) {
@@ -1724,14 +1750,8 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     }
     // save dirtyText of moving paragraphs.
     let prevParagraph = $scope.note.paragraphs[newIndex];
-    angular
-      .element('#' + paragraph.id + '_paragraphColumn_main')
-      .scope()
-      .saveParagraph(paragraph);
-    angular
-      .element('#' + prevParagraph.id + '_paragraphColumn_main')
-      .scope()
-      .saveParagraph(prevParagraph);
+    saveParagraphViaScope(paragraph);
+    saveParagraphViaScope(prevParagraph);
     websocketMsgSrv.moveParagraph(paragraph.id, newIndex);
   });
 
@@ -1749,14 +1769,8 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     }
     // save dirtyText of moving paragraphs.
     let nextParagraph = $scope.note.paragraphs[newIndex];
-    angular
-      .element('#' + paragraph.id + '_paragraphColumn_main')
-      .scope()
-      .saveParagraph(paragraph);
-    angular
-      .element('#' + nextParagraph.id + '_paragraphColumn_main')
-      .scope()
-      .saveParagraph(nextParagraph);
+    saveParagraphViaScope(paragraph);
+    saveParagraphViaScope(nextParagraph);
     websocketMsgSrv.moveParagraph(paragraph.id, newIndex);
   });
 
@@ -1875,8 +1889,14 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
         if ($scope.allowLeave === true) {
           return;
         }
-        let thisScope = angular.element(
-          '#' + par.id + '_paragraphColumn_main').scope();
+        let paraEl = angular.element('#' + par.id + '_paragraphColumn_main');
+        if (!paraEl[0]) {
+          return true;
+        }
+        let thisScope = paraEl.scope();
+        if (!thisScope) {
+          return true;
+        }
 
         if (thisScope.dirtyText === undefined ||
           thisScope.originalText === undefined ||
