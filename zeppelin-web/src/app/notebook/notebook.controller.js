@@ -286,7 +286,7 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
 
   // ---- Large note performance helpers ----
 
-  const NOTE_SIZE_WARNING_MB = 2;
+  const NOTE_SIZE_WARNING_MB = 3;
   const NOTE_SIZE_CRITICAL_MB = 5;
 
   function computeNoteStats(note) {

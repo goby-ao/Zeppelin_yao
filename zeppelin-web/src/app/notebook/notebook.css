@@ -170,8 +170,11 @@ body {
   margin-bottom: 0;
   padding-top: 8px;
   padding-bottom: 8px;
+  padding-right: 6px;
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
+  gap: 6px;
 }
 
 .noteAction li {
@@ -180,15 +183,61 @@ body {
   color: #333333;
 }
 
+/* ---- Start: anti-zoom layout fixes ---- */
+
+/* Title: allow shrinking when space is tight, ellipsis on overflow */
 .notebook-actionBar-title {
   width: auto;
-  max-width: 60%;
-  flex-shrink: 0;
+  max-width: 55%;
+  flex: 0 1 auto;
   display: inline-flex;
   align-items: center;
   min-width: 0;
   gap: 8px;
+  overflow: hidden;
 }
+
+.notebook-actionBar-title .zp-note-title-display {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.notebook-actionBar-title .zp-note-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+/* Middle button-group container: shrinkable, no internal wrap */
+.noteAction h3 > div:nth-child(2) {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Each button group: prevent internal button wrapping */
+.noteAction h3 > div:nth-child(2) > .btn-group,
+.noteAction h3 > div:nth-child(2) > span {
+  display: inline-flex;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Right controls: no shrink, no wrap */
+.noteAction h3 > div:nth-child(3) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ---- End: anti-zoom layout fixes ---- */
 
 @media (max-width: 650px) {
   .notebook-actionBar-title {

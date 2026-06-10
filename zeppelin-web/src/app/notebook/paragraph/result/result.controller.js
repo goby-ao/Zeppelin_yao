@@ -153,6 +153,11 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
   const PLAIN_TEXT_COLLAPSE_LINE_THRESHOLD = 20;
   const PLAIN_TEXT_BOTTOM_THRESHOLD = 24;
 
+  // Adaptive table height constants
+  const TABLE_MIN_HEIGHT = 118;
+  const TABLE_SCROLLBAR_RESERVE = 20;
+  const TABLE_HEIGHT_PADDING = 6;
+
   // Data of the result
   let data;
 
@@ -814,6 +819,107 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
     commitParagraphResult(paragraph.title, paragraph.text, newConfig, newParams);
   };
 
+  // ---- Adaptive table height helpers ----
+
+  function applyAdaptiveTableHeight(graphElemId, rowCount) {
+    $timeout(function() {
+      var graphElem = angular.element('#' + graphElemId);
+      if (!graphElem.length) { return; }
+
+      var gridElem = graphElem.find('.ui-grid');
+      if (!gridElem.length) { return; }
+
+      // ---- 1. 逐行测量实际内容高度 ----
+      var contentHeight = 0;
+      var rows = gridElem.find('.ui-grid-row');
+      if (rows.length) {
+        rows.each(function() {
+          contentHeight += angular.element(this).outerHeight(true) || 0;
+        });
+      }
+      if (!contentHeight && rowCount > 0) {
+        contentHeight = rowCount * 30;
+      }
+
+      // ---- 2. 测量 ui-grid 框架高度（列头 + 滚动条 + 分页脚） ----
+      var header = gridElem.find('.ui-grid-header');
+      var headerHeight = header.length ? header.outerHeight(true) : 30;
+
+      var hScrollbar = gridElem.find('.ui-grid-horizontal-scrollbar');
+      var scrollbarHeight = (hScrollbar.length && hScrollbar.is(':visible'))
+        ? hScrollbar.outerHeight(true) : 0;
+
+      var footerHeight = 0;
+      if ($scope.config && $scope.config.tableOptionValue &&
+          $scope.config.tableOptionValue.showPagination) {
+        var footer = gridElem.find('.ui-grid-footer');
+        if (footer.length && footer.is(':visible')) {
+          footerHeight = footer.outerHeight(true);
+        }
+      }
+
+      // ---- 3. 计算目标高度 ----
+      var totalHeight = contentHeight + headerHeight + scrollbarHeight +
+                        footerHeight + TABLE_SCROLLBAR_RESERVE + TABLE_HEIGHT_PADDING;
+      var maxHeight = ($scope.config && $scope.config.graph &&
+                       $scope.config.graph.height) || 420;
+      var finalHeight = Math.max(TABLE_MIN_HEIGHT, Math.min(totalHeight, maxHeight));
+
+      var currentHeight = graphElem.height();
+      if (Math.abs(currentHeight - finalHeight) < 3) {
+        return;
+      }
+
+      var heightPx = finalHeight + 'px';
+
+      // ---- 4. 解除高度枷锁 ----
+      var resizeWrapperId = graphElemId.replace(/_table$/, '_resize');
+      var resizeWrapper = angular.element('#' + resizeWrapperId);
+
+      [graphElem, resizeWrapper, gridElem].forEach(function(el) {
+        if (el && el.length) {
+          el[0].style.minHeight = '';
+        }
+      });
+
+      // ---- 5. 设置 graphElem / gridElem 高度 ----
+      graphElem.css('height', heightPx);
+      gridElem.css('height', heightPx);
+
+      // ---- 6. Resizable wrapper ----
+      if (resizeWrapper.length) {
+        try {
+          resizeWrapper.resizable('option', 'maxHeight', finalHeight);
+          resizeWrapper.resizable('option', 'minHeight', finalHeight);
+        } catch (e) { /* ignore */ }
+        resizeWrapper.css({height: heightPx, overflow: 'hidden'});
+        var handle = resizeWrapper.find('.ui-resizable-handle');
+        if (handle.length) {
+          handle.css('bottom', '0');
+        }
+        var outerResult = resizeWrapper.parent();
+        if (outerResult.length && !/paragraphColumn/.test(outerResult[0].id || '')) {
+          outerResult.css({height: heightPx, overflow: 'hidden'});
+        }
+      }
+
+      // ---- 7. ui-grid resize ----
+      var builtInViz = builtInVisualizations[$scope.graphMode];
+      if (builtInViz && builtInViz.instance && builtInViz.instance.getGridApi) {
+        var gridApi = builtInViz.instance.getGridApi();
+        if (gridApi && gridApi.core) {
+          gridApi.core.handleWindowResize();
+        }
+      }
+
+      // ---- 8. 通知段落 ----
+      try {
+        $scope.$broadcast('paragraphResized', paragraph && paragraph.id);
+        window.dispatchEvent(new Event('resize'));
+      } catch (e) { /* ignore */ }
+    }, 150, false);
+  }
+
   const renderGraph = function(graphElemId, graphMode, refresh) {
     // set graph height
     const height = $scope.config.graph.height;
@@ -900,6 +1006,11 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
             onDestroyElement: builtInViz.instance.targetEl,
             handler: () => builtInViz.instance.resize(),
           });
+
+          // Adaptive table height
+          if (graphMode === 'table' && tableData && angular.isArray(tableData.rows)) {
+            applyAdaptiveTableHeight(loadedElem[0].id, tableData.rows.length);
+          }
         } catch (err) {
           console.error('Graph drawing error %o', err);
         }
@@ -922,11 +1033,21 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
         builtInViz.instance.render(transformed);
         builtInViz.instance.renderSetting(visualizationSettingTargetEl);
         builtInViz.instance.activate();
+
+        // Adaptive table height
+        if (graphMode === 'table' && tableData && angular.isArray(tableData.rows)) {
+          applyAdaptiveTableHeight(loadedElem[0].id, tableData.rows.length);
+        }
       };
     } else {
       afterLoaded = function(loadedElem) {
         loadedElem.height(height);
         builtInViz.instance.activate();
+
+        // Adaptive table height
+        if (graphMode === 'table' && tableData && angular.isArray(tableData.rows)) {
+          applyAdaptiveTableHeight(loadedElem[0].id, tableData.rows.length);
+        }
       };
     }
 
