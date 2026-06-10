@@ -149,7 +149,7 @@ limitations under the License.
 
   <!-- Include the paragraphs according to the note, pass the note to init function -->
   <div id="{{currentParagraph.id}}_paragraphColumn_main"
-       ng-repeat="currentParagraph in note.paragraphs"
+       ng-repeat="currentParagraph in note.paragraphs track by currentParagraph.id"
        ng-controller="ParagraphCtrl"
        ng-init="init(currentParagraph, note)"
        ng-class="columnWidthClass(currentParagraph.config.colWidth)"
