@@ -51,7 +51,7 @@ limitations under the License.
       </span>
     </div>
     <div>
-      <!-- 克隆 / 导出 / 重载 -->
+      <!-- 克隆 / 重载 -->
       <span class="labelBtn btn-group">
         <!--
         <button type="button"
@@ -72,14 +72,7 @@ limitations under the License.
                 ng-disabled="revisionView">
           <i class="fa fa-copy"></i>
         </button>
-        <button type="button"
-                class="btn btn-default btn-sm"
-                ng-hide="viewOnly"
-                ng-click="exportNote()"
-                tooltip-placement="bottom" uib-tooltip="导出此笔记 (zpln)"
-                ng-disabled="revisionView">
-          <i class="fa fa-download"></i>
-        </button>
+        <!-- 暂时隐藏笔记导出入口，保留 exportNote 逻辑便于后续恢复。 -->
         <button type="button"
                 class="btn btn-default btn-sm"
                 ng-hide="viewOnly"
@@ -146,7 +139,7 @@ limitations under the License.
       -->
 
       <!-- 搜索 -->
-      <span class="labelBtn btn-group" style="margin-left: 6px;">
+      <span id="searchGroup" class="labelBtn btn-group" style="margin-left: 6px;">
         <button type="button" class="btn btn-default btn-sm dropdown-toggle"
                 data-toggle="dropdown" tooltip-placement="bottom" uib-tooltip="搜索代码"
                 ng-click="searchClicked()">

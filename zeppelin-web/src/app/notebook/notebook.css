@@ -217,7 +217,7 @@ body {
   gap: 4px;
   flex-shrink: 1;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* Each button group: prevent internal button wrapping */
@@ -602,6 +602,7 @@ body {
   border-radius: 0;
   padding: 0;
   border-width: 0;
+  z-index: 10050;
 }
 
 .search-dropdown li {

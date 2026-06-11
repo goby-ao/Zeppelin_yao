@@ -1368,14 +1368,15 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   let makeSearchBoxVisible = function() {
     if ($scope.search.searchBoxOpened) {
       $scope.search.searchBoxOpened = false;
-      console.log('make 0');
       $scope.search.left = '0px';
     } else {
       $scope.search.searchBoxOpened = true;
-      let searchGroupRect = angular.element('#searchGroup')[0].getBoundingClientRect();
-      console.log('make visible');
+      let searchGroup = angular.element('#searchGroup')[0];
+      if (!searchGroup) {
+        return;
+      }
+      let searchGroupRect = searchGroup.getBoundingClientRect();
       let dropdownRight = searchGroupRect.left + $scope.search.searchBoxWidth;
-      console.log(dropdownRight + ' ' + window.innerWidth);
       if (dropdownRight + 5 > window.innerWidth) {
         $scope.search.left = window.innerWidth - dropdownRight - 15 + 'px';
       }
@@ -1393,7 +1394,7 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     } else {
       elem.addClass('open');
     }
-    $timeout(makeSearchBoxVisible());
+    $timeout(makeSearchBoxVisible);
   });
 
   $scope.restartInterpreter = function(interpreter) {
