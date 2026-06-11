@@ -2506,6 +2506,12 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     }
   });
 
+  $scope.$on('clearParagraphOutput', function(event, paragraphId) {
+    if (paragraphId === $scope.paragraph.id) {
+      $scope.paragraph.results = {};
+    }
+  });
+
   $scope.$on('appendParagraphOutput', function(event, data) {
     if (data.paragraphId === $scope.paragraph.id) {
       if (!$scope.paragraph.results) {

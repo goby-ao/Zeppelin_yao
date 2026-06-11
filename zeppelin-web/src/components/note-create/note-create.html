@@ -23,70 +23,63 @@ limitations under the License.
       </div>
       <div class="modal-body note-create-body">
         <div class="form-group">
-          <label for="noteName" ng-show="!noteCreateCtrl.clone">笔记名称</label>
-          <label for="noteName" ng-show="noteCreateCtrl.clone">克隆为</label>
+          <div class="note-create-label-row">
+            <label for="noteName" ng-show="!noteCreateCtrl.clone">笔记名称</label>
+            <label for="noteName" ng-show="noteCreateCtrl.clone">克隆为</label>
+            <span class="note-create-hint">
+              <i class="fa fa-info-circle"></i>
+              可使用 <code>/</code> 创建目录，例如：<code>/目录A/笔记名</code>
+            </span>
+          </div>
           <input placeholder="请输入笔记名称" type="text"
                  class="form-control note-create-input"
                  id="noteName" ng-model="note.notename"
                  ng-change="onNoteNameChange()"
                  ng-enter="noteCreateCtrl.handleNameEnter()" />
-          <div class="note-create-hint">
-            <i class="fa fa-info-circle"></i>
-            可使用 <code>/</code> 创建目录，例如：<code>/目录A/笔记名</code>
-          </div>
         </div>
         <div class="form-group" ng-show="!noteCreateCtrl.clone">
-          <div class="note-create-engine-header">
-            <div class="note-create-engine-copy">
-              <label>默认解释器（执行引擎）</label>
+          <label>默认执行引擎</label>
+          <div class="note-create-engine-box">
+            <!-- Cluster selector — segmented control, filters available interpreters -->
+            <div class="note-create-pill-row">
+              <span class="note-create-pill-label"><i class="fa fa-check-square-o"></i> 运行集群:</span>
+              <div class="note-create-seg-group">
+                <button type="button" class="note-create-seg-item"
+                        ng-repeat="cluster in noteCreateCtrl.clusterOptions"
+                        ng-class="{'active': noteCreateCtrl.selectedCluster === cluster.key}"
+                        ng-click="noteCreateCtrl.selectCluster(cluster.key)">
+                  {{cluster.label}}
+                </button>
+              </div>
             </div>
-            <div class="note-create-cluster-switch" aria-label="选择计算集群">
-              <span class="note-create-cluster-label">集群选择:</span>
-              <button type="button"
-                      ng-repeat="cluster in noteCreateCtrl.clusterOptions"
-                      ng-class="{'active': noteCreateCtrl.selectedCluster === cluster.key}"
-                      ng-click="noteCreateCtrl.selectCluster(cluster.key)">
-                {{cluster.label}}
-              </button>
+
+            <!-- Quick tags — shortcuts to fill the dropdown -->
+            <div class="note-create-pill-row">
+              <span class="note-create-pill-label"><i class="fa fa-check-square-o"></i> 常用引擎:</span>
+              <button type="button" class="note-create-pill"
+                      ng-class="{'active': noteCreateCtrl.quickTag === 'sh'}"
+                      ng-click="noteCreateCtrl.selectQuickTag('sh')">Shell</button>
+              <button type="button" class="note-create-pill"
+                      ng-class="{'active': noteCreateCtrl.quickTag === 'spark'}"
+                      ng-click="noteCreateCtrl.selectQuickTag('spark')">Spark</button>
+              <button type="button" class="note-create-pill"
+                      ng-class="{'active': noteCreateCtrl.quickTag === 'hive'}"
+                      ng-click="noteCreateCtrl.selectQuickTag('hive')">Hive</button>
+              <button type="button" class="note-create-pill"
+                      ng-class="{'active': noteCreateCtrl.quickTag === 'python'}"
+                      ng-click="noteCreateCtrl.selectQuickTag('python')">Python</button>
             </div>
+
+            <!-- Main dropdown — the primary control -->
+            <select id="defaultInterpreter"
+                    name="defaultInterpreter"
+                    class="form-control note-create-input"
+                    ng-model="note.defaultInterpreter"
+                    ng-change="noteCreateCtrl.onInterpreterChange()"
+                    ng-options="option.name for option in interpreterSettings">
+              <option value="">-- 其它引擎 --</option>
+            </select>
           </div>
-          <div class="interpreter-quick-tags">
-            <button type="button" class="interpreter-tag interpreter-tag-shell"
-                    ng-class="{'active': noteCreateCtrl.quickTag === 'sh'}"
-                    ng-click="noteCreateCtrl.selectQuickTag('sh')">
-              <span class="interpreter-tag-main">
-                <span>Shell</span>
-              </span>
-            </button>
-            <button type="button" class="interpreter-tag interpreter-tag-python"
-                    ng-class="{'active': noteCreateCtrl.quickTag === 'python'}"
-                    ng-click="noteCreateCtrl.selectQuickTag('python')">
-              <span class="interpreter-tag-main">
-                <span>Python</span>
-              </span>
-            </button>
-            <button type="button" class="interpreter-tag interpreter-tag-spark"
-                    ng-class="{'active': noteCreateCtrl.quickTag === 'spark'}"
-                    ng-click="noteCreateCtrl.selectQuickTag('spark')">
-              <span class="interpreter-tag-main">
-                <span>Spark</span>
-              </span>
-            </button>
-            <button type="button" class="interpreter-tag interpreter-tag-hive"
-                    ng-class="{'active': noteCreateCtrl.quickTag === 'hive'}"
-                    ng-click="noteCreateCtrl.selectQuickTag('hive')">
-              <span class="interpreter-tag-main">
-                <span>Hive</span>
-              </span>
-            </button>
-          </div>
-          <select id="defaultInterpreter"
-                  name="defaultInterpreter"
-                  class="form-control note-create-input"
-                  ng-model="note.defaultInterpreter"
-                  ng-change="noteCreateCtrl.onInterpreterChange()"
-                  ng-options="option.name for option in interpreterSettings">
-          </select>
         </div>
       </div>
       <div class="modal-footer note-create-footer">

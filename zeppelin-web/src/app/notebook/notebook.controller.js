@@ -701,6 +701,14 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     noteActionService.clearAllParagraphOutput(noteId);
   };
 
+  $scope.$on('clearAllParagraphOutput', function(event, noteId) {
+    if ($scope.note && $scope.note.id === noteId && $scope.note.paragraphs) {
+      _.forEach($scope.note.paragraphs, function(p) {
+        p.results = {};
+      });
+    }
+  });
+
   $scope.toggleAllEditor = function() {
     if ($scope.editorToggled) {
       $scope.$broadcast('openEditor');

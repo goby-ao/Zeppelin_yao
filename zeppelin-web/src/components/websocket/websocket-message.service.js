@@ -236,10 +236,14 @@ function WebsocketMessageService($rootScope, websocketEvents) {
 
     clearParagraphOutput: function(paragraphId) {
       websocketEvents.sendNewEvent({op: 'PARAGRAPH_CLEAR_OUTPUT', data: {id: paragraphId}});
+      // optimistic UI update — clear results locally without waiting for server response
+      $rootScope.$broadcast('clearParagraphOutput', paragraphId);
     },
 
     clearAllParagraphOutput: function(noteId) {
       websocketEvents.sendNewEvent({op: 'PARAGRAPH_CLEAR_ALL_OUTPUT', data: {id: noteId}});
+      // optimistic UI update — clear results locally without waiting for server response
+      $rootScope.$broadcast('clearAllParagraphOutput', noteId);
     },
 
     completion: function(paragraphId, buf, cursor) {
