@@ -120,8 +120,8 @@ function noteActionService(websocketMsgSrv, $location, noteRenameService, noteLi
     BootstrapDialog.confirm({
       closable: true,
       title: '清空输出',
-      message: '确认清空所有段落的输出结果？',
-      btnOKLabel: '确认清空',
+      message: '确认清空所有 <b>输出结果</b> ？(仅清空输出结果，提升加载性能)',
+      btnOKLabel: '确认',
       btnCancelLabel: '取消',
       callback: function(result) {
         if (result) {

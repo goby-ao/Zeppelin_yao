@@ -48,7 +48,7 @@
 }
 
 .note-create-body {
-  padding: 16px 24px 8px;
+  padding: 16px 24px 0px;
 }
 
 .note-create-body label {
@@ -68,63 +68,93 @@
 
 .note-create-engine-box {
   padding: 16px;
+  padding-top: 4px;
   border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  background: #f9fafb;
+  border-radius: 8px;
 }
 
 .note-create-engine-box .note-create-input {
-  margin-top: 14px;
-  font-size: 12px;
+  height: 36px;
+  margin-top: 8px;
+  background: #fff;
+  font-size: 13px;
 }
 
-/* ── pill rows ─────────────────────────────────────────────── */
-
-.note-create-pill-row {
+.note-create-engine-section {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 16px;
 }
 
-.note-create-pill-row:first-child {
+.note-create-engine-section:first-child {
   margin-top: 0;
 }
 
-.note-create-pill-label {
+.note-create-section-label {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
   font-size: 12px;
-  font-weight: 500;
-  color: #4e525a;
-  min-width: 68px;
+  font-weight: 600;
+  color: #4b5563;
+  line-height: 1;
   user-select: none;
-  white-space: nowrap;
 }
 
-/* ── segmented control (cluster row) ─────────────────────────── */
+.note-create-cluster-section {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
 
 .note-create-seg-group {
+  position: relative;
   display: inline-flex;
-  background: rgba(0, 0, 0, 0.04);
-  padding: 3px;
-  border-radius: 10px;
+  background: #e9edf3;
+  padding: 2px;
+  border-radius: 7px;
+}
+
+.note-create-seg-group::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 2;
+  display: block;
+  padding: 6px 10px;
+  border-radius: 5px;
+  background: rgba(17, 24, 39, 0.95);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(3px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.note-create-seg-group:hover::after {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .note-create-seg-item {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: 74px;
   height: 28px;
-  padding: 0 14px;
+  padding: 0 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: 5px;
   background: transparent;
-  color: #6b7280;
+  color: #5f6673;
   font-size: 12px;
-  font-weight: 400;
+  font-weight: 600;
   line-height: 1;
   cursor: pointer;
   user-select: none;
@@ -132,57 +162,169 @@
 }
 
 .note-create-seg-item:hover {
-  color: #374151;
-  background: rgba(0, 0, 0, 0.04);
+  color: #1f2937;
+  background: rgba(255, 255, 255, 0.65);
 }
 
 .note-create-seg-item.active {
-  background: #fff;
-  color: #2f54eb;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-  font-weight: 500;
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.18);
 }
 
-/* ── tag buttons (quick-tag row) ──────────────────────────────── */
+.note-create-engine-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
 
-.note-create-pill {
+.note-create-engine-option {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  height: 30px;
-  padding: 0 20px;
-  border: 1px solid #e5e7eb;
+  gap: 6px;
+  min-width: 0;
+  height: 52px;
+  border: 1px solid #dfe4ec;
   border-radius: 8px;
-  background: #f8f9fa;
-  color: #576075;
-  font-size: 13px;
+  background: #fff;
+  color: #374151;
+  padding: 15px;
+  font-size: 12px;
   font-weight: 500;
-  line-height: 1;
+  line-height: 1.1;
   cursor: pointer;
   user-select: none;
-  transition: all 0.2s ease;
+  overflow: hidden;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
 
-.note-create-pill:hover {
-  background: #2f54eb;
-  border-color: #d1d5db;
-  color: #FFFFFF;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+.note-create-engine-option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #94a3b8;
+  opacity: 0.28;
 }
 
-.note-create-pill.active {
-  background: #eff6ff;
+.note-create-engine-option:hover {
+  transform: translateY(-1px);
+  border-color: #b9c2d0;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.note-create-engine-option:hover::before {
+  opacity: 0.48;
+}
+
+.note-create-engine-option.active {
+  background: #f8fbff;
   border-color: #2563eb;
-  color: #2563eb;
-  font-weight: 500;
-  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.16);
 }
 
-.note-create-pill.active::before {
-  content: '✓';
-  font-size: 11px;
+.note-create-engine-option.active::before {
+  height: 3px;
+  opacity: 0.95;
+}
+
+.note-create-engine-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 28px;
+  border-radius: 8px;
+  background: #edf2f7;
+  color: #475569;
+  font-size: 14px;
+}
+
+.note-create-engine-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.note-create-engine-name {
+  display: block;
+  max-width: 100%;
+  color: #2f3747;
+  font-size: 13px;
   font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-create-engine-check {
+  position: absolute;
+  top: 5px;
+  right: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #fff;
+  font-size: 10px;
+  opacity: 0;
+  transform: scale(0.86);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.note-create-engine-option.active .note-create-engine-check {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.note-create-engine-option.active .note-create-engine-name {
+  color: #1d4ed8;
+}
+
+.engine-shell::before {
+  background: #64748b;
+}
+
+.engine-shell .note-create-engine-icon {
+  background: #eef2f7;
+  color: #475569;
+}
+
+.engine-spark::before {
+  background: #f97316;
+}
+
+.engine-spark .note-create-engine-icon {
+  background: #fff3e8;
+  color: #ea580c;
+}
+
+.engine-hive::before {
+  background: #0f9f8f;
+}
+
+.engine-hive .note-create-engine-icon {
+  background: #e8faf7;
+  color: #0f766e;
+}
+
+.engine-python::before {
+  background: #3b82f6;
+}
+
+.engine-python .note-create-engine-icon {
+  background: #eff6ff;
+  color: #2563eb;
 }
 
 .note-create-input {
@@ -235,7 +377,7 @@
 }
 
 .note-create-footer {
-  padding: 8px 24px 24px;
+  padding: 1px 24px 24px;
   border-top: none;
 }
 

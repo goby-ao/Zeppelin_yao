@@ -753,10 +753,6 @@ table.table-striped {
   transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease, transform 80ms ease-out;
 }
 
-.zp-main-action i {
-  margin-right: 8px;
-}
-
 .paragraph .zp-toolbar .zp-run-action {
   display: -ms-inline-flexbox !important;
   display: inline-flex !important;

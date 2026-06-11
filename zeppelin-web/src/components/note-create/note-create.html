@@ -38,47 +38,77 @@ limitations under the License.
                  ng-enter="noteCreateCtrl.handleNameEnter()" />
         </div>
         <div class="form-group" ng-show="!noteCreateCtrl.clone">
-          <label>默认执行引擎</label>
           <div class="note-create-engine-box">
-            <!-- Cluster selector — segmented control, filters available interpreters -->
-            <div class="note-create-pill-row">
-              <span class="note-create-pill-label"><i class="fa fa-check-square-o"></i> 运行集群:</span>
-              <div class="note-create-seg-group">
+            <div class="note-create-engine-section note-create-cluster-section">
+              <span class="note-create-section-label">运行集群</span>
+              <div class="note-create-seg-group" data-tooltip="小提示：仅少数项目需选择 hadoop3">
                 <button type="button" class="note-create-seg-item"
                         ng-repeat="cluster in noteCreateCtrl.clusterOptions"
                         ng-class="{'active': noteCreateCtrl.selectedCluster === cluster.key}"
-                        ng-click="noteCreateCtrl.selectCluster(cluster.key)">
+                        ng-click="noteCreateCtrl.selectCluster(cluster.key)"
+                        aria-pressed="{{noteCreateCtrl.selectedCluster === cluster.key}}">
                   {{cluster.label}}
                 </button>
               </div>
             </div>
 
-            <!-- Quick tags — shortcuts to fill the dropdown -->
-            <div class="note-create-pill-row">
-              <span class="note-create-pill-label"><i class="fa fa-check-square-o"></i> 常用引擎:</span>
-              <button type="button" class="note-create-pill"
-                      ng-class="{'active': noteCreateCtrl.quickTag === 'sh'}"
-                      ng-click="noteCreateCtrl.selectQuickTag('sh')">Shell</button>
-              <button type="button" class="note-create-pill"
-                      ng-class="{'active': noteCreateCtrl.quickTag === 'spark'}"
-                      ng-click="noteCreateCtrl.selectQuickTag('spark')">Spark</button>
-              <button type="button" class="note-create-pill"
-                      ng-class="{'active': noteCreateCtrl.quickTag === 'hive'}"
-                      ng-click="noteCreateCtrl.selectQuickTag('hive')">Hive</button>
-              <button type="button" class="note-create-pill"
-                      ng-class="{'active': noteCreateCtrl.quickTag === 'python'}"
-                      ng-click="noteCreateCtrl.selectQuickTag('python')">Python</button>
+            <div class="note-create-engine-section">
+              <span class="note-create-section-label">常用引擎</span>
+              <div class="note-create-engine-grid">
+                <button type="button" class="note-create-engine-option engine-spark"
+                        ng-class="{'active': noteCreateCtrl.quickTag === 'spark'}"
+                        ng-click="noteCreateCtrl.selectQuickTag('spark')"
+                        aria-pressed="{{noteCreateCtrl.quickTag === 'spark'}}">
+                  <span class="note-create-engine-icon"><i class="fa fa-bolt"></i></span>
+                  <span class="note-create-engine-text">
+                    <span class="note-create-engine-name">Spark</span>
+                  </span>
+                  <span class="note-create-engine-check"><i class="fa fa-check"></i></span>
+                </button>
+                <button type="button" class="note-create-engine-option engine-hive"
+                        ng-class="{'active': noteCreateCtrl.quickTag === 'hive'}"
+                        ng-click="noteCreateCtrl.selectQuickTag('hive')"
+                        aria-pressed="{{noteCreateCtrl.quickTag === 'hive'}}">
+                  <span class="note-create-engine-icon"><i class="fa fa-database"></i></span>
+                  <span class="note-create-engine-text">
+                    <span class="note-create-engine-name">Hive</span>
+                  </span>
+                  <span class="note-create-engine-check"><i class="fa fa-check"></i></span>
+                </button>
+                <button type="button" class="note-create-engine-option engine-shell"
+                        ng-class="{'active': noteCreateCtrl.quickTag === 'sh'}"
+                        ng-click="noteCreateCtrl.selectQuickTag('sh')"
+                        aria-pressed="{{noteCreateCtrl.quickTag === 'sh'}}">
+                  <span class="note-create-engine-icon"><i class="fa fa-terminal"></i></span>
+                  <span class="note-create-engine-text">
+                    <span class="note-create-engine-name">Shell</span>
+                  </span>
+                  <span class="note-create-engine-check"><i class="fa fa-check"></i></span>
+                </button>
+                <button type="button" class="note-create-engine-option engine-python"
+                        ng-class="{'active': noteCreateCtrl.quickTag === 'python'}"
+                        ng-click="noteCreateCtrl.selectQuickTag('python')"
+                        aria-pressed="{{noteCreateCtrl.quickTag === 'python'}}">
+                  <span class="note-create-engine-icon"><i class="fa fa-code"></i></span>
+                  <span class="note-create-engine-text">
+                    <span class="note-create-engine-name">Python</span>
+                  </span>
+                  <span class="note-create-engine-check"><i class="fa fa-check"></i></span>
+                </button>
+              </div>
             </div>
 
-            <!-- Main dropdown — the primary control -->
-            <select id="defaultInterpreter"
-                    name="defaultInterpreter"
-                    class="form-control note-create-input"
-                    ng-model="note.defaultInterpreter"
-                    ng-change="noteCreateCtrl.onInterpreterChange()"
-                    ng-options="option.name for option in interpreterSettings">
-              <option value="">-- 其它引擎 --</option>
-            </select>
+            <div class="note-create-engine-section note-create-other-section">
+              <span class="note-create-section-label">其它引擎</span>
+              <select id="defaultInterpreter"
+                      name="defaultInterpreter"
+                      class="form-control note-create-input"
+                      ng-model="note.defaultInterpreter"
+                      ng-change="noteCreateCtrl.onInterpreterChange()"
+                      ng-options="option.name for option in interpreterSettings">
+                <option value="">-- 其它引擎 --</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>

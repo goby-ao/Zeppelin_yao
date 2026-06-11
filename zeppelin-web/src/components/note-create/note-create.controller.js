@@ -16,7 +16,6 @@ import './note-create.css';
 import {
   NOTE_CLUSTERS,
   getQuickNoteBinding,
-  getQuickNoteMagic,
   getSavedNoteCluster,
   isClusterAwareInterpreter,
   saveNoteCluster,
@@ -135,10 +134,6 @@ function NoteCreateCtrl($scope, noteListFactory, $routeParams, websocketMsgSrv) 
     if (isClusterAwareInterpreter(vm.quickTag)) {
       vm.selectQuickTag(vm.quickTag);
     }
-  };
-
-  vm.getQuickTagMagic = function(tag) {
-    return getQuickNoteMagic(tag, vm.selectedCluster);
   };
 
   vm.onInterpreterChange = function() {
