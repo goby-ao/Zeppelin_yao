@@ -232,6 +232,50 @@ export default class TableVisualization extends Visualization {
     });
   }
 
+  shouldCopySelectedRow() {
+    if (this.isCopyEnabled()) {
+      return true;
+    }
+
+    return this.hasCopyEnableFlag();
+  }
+
+  hasCopyEnableFlag() {
+    const paragraphText = this.getParagraphText();
+    const firstTwoLines = paragraphText.split(/\r?\n/).slice(0, 2);
+    return firstTwoLines.some((line) => line.indexOf('--;;;') !== -1);
+  }
+
+  getParagraphText() {
+    let scope = this.getScope();
+
+    while (scope) {
+      // Prefer the live editor value from the result scope chain. This reflects
+      // the code in the input box before it is persisted back to paragraph.text.
+      if (angular.isFunction(scope.getEditorValue)) {
+        return scope.getEditorValue() || '';
+      }
+
+      if (scope.paragraph && scope.paragraph.text) {
+        return scope.paragraph.text;
+      }
+
+      scope = scope.$parent;
+    }
+
+    return '';
+  }
+
+  copySelectedRow(row) {
+    const copyableColumns = this.getCopyableColumns(row.grid);
+    let aux = document.createElement('input');
+    aux.setAttribute('value', this.getCopiedRowValues(row, copyableColumns).join('\t'));
+    document.body.appendChild(aux);
+    aux.select();
+    document.execCommand('copy');
+    document.body.removeChild(aux);
+  }
+
   updateColDefType(colDef, type) {
     if (type === colDef.type) {
       return;
@@ -398,21 +442,15 @@ export default class TableVisualization extends Visualization {
 
       // add copy to clipboard by yao
       gridApi.selection.on.rowSelectionChanged(scope, function(row) {
-        if (!self.isCopyEnabled()) {
+        if (!self.shouldCopySelectedRow()) {
           return;
         }
 
-        const copyableColumns = self.getCopyableColumns(row.grid);
-        let aux = document.createElement('input');
-        aux.setAttribute('value', self.getCopiedRowValues(row, copyableColumns).join('\t'));
-        document.body.appendChild(aux);
-        aux.select();
-        document.execCommand('copy');
-        document.body.removeChild(aux);
+        self.copySelectedRow(row);
       });
 
       gridApi.selection.on.rowSelectionChangedBatch(scope, function(rows) {
-        if (!self.isCopyEnabled()) {
+        if (!self.shouldCopySelectedRow()) {
           return;
         }
 

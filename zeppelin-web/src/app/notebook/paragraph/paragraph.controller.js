@@ -1380,16 +1380,20 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
         'DISTINCT', 'ALL', 'ANY', 'SOME', 'UNION', 'UNION ALL', 'INTERSECT', 'EXCEPT',
         'COUNT', 'SUM', 'AVG', 'MAX', 'MIN', 'COALESCE', 'NULLIF', 'CAST', 'CONVERT',
-        'ASC', 'DESC', 'PRIMARY KEY', 'FOREIGN KEY', 'REFERENCES', 'CONSTRAINT', 'DEFAULT',
-        'WITH', 'RECURSIVE', 'OVER', 'PARTITION BY', 'ROW', 'ROWS', 'PRECEDING', 'FOLLOWING',
-        'UNBOUNDED', 'CURRENT ROW', 'RANGE', 'GROUPS',
+        'ASC', 'DESC', 'PRIMARY KEY', 'DEFAULT',
+        'WITH', 'RECURSIVE', 'OVER', 'PARTITION BY', 'ROW', 'ROWS', 'RANGE', 'GROUPS',
         'SHOW', 'DESCRIBE', 'DESC', 'EXPLAIN', 'USE', 'GRANT', 'REVOKE', 'COMMIT', 'ROLLBACK',
-        'BEGIN', 'START TRANSACTION', 'SAVEPOINT', 'BOOLEAN', 'TRUE', 'FALSE',
+        'BOOLEAN', 'TRUE', 'FALSE',
+
+
+        // ===== 平台常用 =====
+        'dayid', 'monthid', 'mgwh_rd_ods','mgwh_rd_dwd','mgwh_rd_dim','mgwh_rd_dwm','mgwh_rd_app','mgwh_rd_rpt',
+        'mgwh_rd_video','mgwh_rd_music',
 
         // ===== Hive 数据类型 =====
         'STRING', 'INT', 'BIGINT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'DATE', 'TIMESTAMP',
         'VARCHAR', 'CHAR', 'TEXT', 'BLOB', 'BINARY', 'BOOLEAN',
-        'ARRAY', 'MAP', 'STRUCT', 'UNIONTYPE',
+        'ARRAY', 'MAP', 'STRUCT',
         'TINYINT', 'SMALLINT', 'INT', 'BIGINT', 'FLOAT', 'DOUBLE', 'DECIMAL',
         'TIMESTAMP', 'DATE', 'INTERVAL', 'BINARY',
 
@@ -1463,7 +1467,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'SORT BY', 'DISTRIBUTE BY', 'CLUSTER BY',
         'LATERAL VIEW', 'LATERAL VIEW OUTER', 'LATERAL TABLE',
         'TABLESAMPLE', 'TABLESAMPLE (BUCKET', 'TABLESAMPLE (PERCENT',
-        'WITH', 'CTE', 'RECURSIVE',
+        'WITH',
 
         // ===== Hive DML - 事务操作 (ACID) =====
         'UPDATE', 'DELETE FROM', 'USING',
@@ -1554,22 +1558,11 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'CRC32', 'MD5', 'SHA1', 'SHA2', 'AES_ENCRYPT', 'AES_DECRYPT',
         'VERSION', 'BUILD_USER', 'CURRENT_DATABASE',
 
-        // ===== Hive 索引操作 =====
-        'CREATE INDEX', 'DROP INDEX', 'ALTER INDEX', 'SHOW INDEX',
-        'WITH DEFERRED REBUILD',
-
-        // ===== Hive 权限操作 =====
-        'GRANT', 'REVOKE', 'SHOW GRANT', 'SHOW ROLE GRANT',
-        'CREATE ROLE', 'DROP ROLE', 'SHOW ROLES', 'SET ROLE',
-
         // ===== Hive 资源操作 =====
         'ADD JAR', 'ADD FILE', 'ADD ARCHIVE',
         'LIST JAR', 'LIST FILE', 'LIST ARCHIVE',
         'DELETE JAR', 'DELETE FILE', 'DELETE ARCHIVE',
         'CREATE TEMPORARY FUNCTION',
-
-        // ===== Hive 锁操作 =====
-        'LOCK TABLE', 'UNLOCK TABLE', 'SHOW LOCKS', 'SHOW COMPACTIONS',
 
         // ===== Hive 统计信息 =====
         'ANALYZE TABLE', 'ANALYZE TABLE COMPUTE STATISTICS',
@@ -1585,8 +1578,6 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'TRUE', 'FALSE', 'NULL', 'UNKNOWN',
 
         // ===== 其他 SQL 关键字 =====
-        'PIVOT', 'UNPIVOT', 'FETCH', 'NEXT', 'ONLY',
-        'WINDOW', 'TIES', 'NO OTHERS',
         'IF', 'IFNULL', 'NVL', 'DECODE', 'GREATEST', 'LEAST',
         'CONCAT', 'SUBSTR', 'SUBSTRING', 'LENGTH', 'TRIM', 'UPPER', 'LOWER', 'REPLACE',
         'ROUND', 'FLOOR', 'CEIL', 'ABS', 'MOD', 'POWER', 'SQRT', 'LOG', 'LN', 'EXP',
@@ -1623,10 +1614,10 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'hdfs', 'hadoop', 'hdfs dfs', 'hdfs dfs -ls', 'hdfs dfs -cat', 'hdfs dfs -put',
         'hdfs dfs -get', 'hdfs dfs -cp', 'hdfs dfs -mv', 'hdfs dfs -rm',
         'hdfs dfs -mkdir', 'hdfs dfs -mkdir -p', 'hdfs dfs -touchz', 'hdfs dfs -stat',
-        'hdfs dfs -du', 'hdfs dfs -du -s', 'hdfs dfs -du -h', 'hdfs dfs -count',
-        'hdfs dfs -chmod', 'hdfs dfs -chown', 'hdfs dfs -expunge',
+        'hdfs dfs -du', 'hdfs dfs -du -s', 'hdfs dfs -du -h', 'hdfs dfs -count -h',
+        'hdfs dfs -chmod', 'hdfs dfs -chown',
         'hdfs dfs -getmerge', 'hdfs dfs -setrep', 'hdfs dfs -test',
-        'hdfs dfs -text', 'hdfs dfs -tail', 'hdfs dfs -checksum',
+        'hdfs dfs -text', 'hdfs dfs -checksum',
         'hadoop fs', 'hadoop fs -ls', 'hadoop fs -cat', 'hadoop fs -put', 'hadoop fs -get',
         'hadoop fs -rm', 'hadoop fs -mkdir',
         'hadoop fs -du', 'hadoop fs -du -s', 'hadoop fs -count',
@@ -1634,7 +1625,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'hdfs dfsadmin', 'hdfs dfsadmin -report',
         'yarn', 'yarn application', 'yarn application -list', 'yarn application -kill',
         'yarn logs',
-        'beeline', 'hive', 'hive -e', 'hive -f', 'spark-submit', 'spark-shell',
+        'beeline', 'hive', 'hive -e', 'hive -f', 'spark-submit',
       ];
 
       let localCompleter = {
