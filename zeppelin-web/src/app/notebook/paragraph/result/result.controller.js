@@ -209,8 +209,8 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
     let scope = $scope;
 
     while (scope) {
-      // Prefer the live code input value, so "#;;;" works before paragraph.text
-      // is persisted after editing.
+      // Prefer the live code input value, so copy-enable flags work before
+      // paragraph.text is persisted after editing.
       if (angular.isFunction(scope.getEditorValue)) {
         return scope.getEditorValue() || '';
       }
@@ -228,7 +228,11 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
   $scope.hasPlainTextCopyEnableFlag = function() {
     const paragraphText = getParagraphInputText();
     const firstTwoLines = paragraphText.split(/\r?\n/).slice(0, 2);
-    return firstTwoLines.some((line) => line.indexOf('#;;;') !== -1);
+    return firstTwoLines.some((line) => {
+      return line.indexOf('#;;;') !== -1 ||
+        line.indexOf('--;;;') !== -1 ||
+        line.indexOf('--##') !== -1;
+    });
   };
 
   $scope.shouldDisablePlainTextCopy = function() {

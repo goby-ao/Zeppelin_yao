@@ -65,6 +65,24 @@ describe('Controller: ResultCtrl', function() {
     expect(scope.shouldDisablePlainTextCopy()).toBe(false);
   });
 
+  it('should allow plain text copy when SQL table copy flag is configured', function() {
+    rootScope.disableCopyEnabled = true;
+    scope.$parent.getEditorValue = function() {
+      return '%sql\n--;;; allow copy\nselect 1';
+    };
+
+    expect(scope.shouldDisablePlainTextCopy()).toBe(false);
+  });
+
+  it('should allow plain text copy when SQL copy shortcut flag is configured', function() {
+    rootScope.disableCopyEnabled = true;
+    scope.$parent.getEditorValue = function() {
+      return '%sql\n--## allow copy\nselect 1';
+    };
+
+    expect(scope.shouldDisablePlainTextCopy()).toBe(false);
+  });
+
   it('should ignore plain text copy enable flag after the first two input lines', function() {
     rootScope.disableCopyEnabled = true;
     scope.$parent.getEditorValue = function() {
