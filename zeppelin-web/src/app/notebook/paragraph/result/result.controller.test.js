@@ -2,8 +2,11 @@ describe('Controller: ResultCtrl', function() {
   beforeEach(angular.mock.module('zeppelinWebApp'));
 
   let scope;
+  let rootScope;
   let controller;
   let resultMock = {
+    type: 'TEXT',
+    data: '',
   };
   let configMock = {
   };
@@ -22,6 +25,7 @@ describe('Controller: ResultCtrl', function() {
   };
 
   beforeEach(inject(function($controller, $rootScope) {
+    rootScope = $rootScope;
     scope = $rootScope.$new();
     scope.$parent = $rootScope.$new(true, $rootScope);
     scope.$parent.paragraph = paragraphMock;
@@ -37,5 +41,36 @@ describe('Controller: ResultCtrl', function() {
   it('scope should be initialized', function() {
     expect(scope).toBeDefined();
     expect(controller).toBeDefined();
+  });
+
+  it('should allow plain text copy when copy disable switch is off', function() {
+    rootScope.disableCopyEnabled = false;
+
+    expect(scope.shouldDisablePlainTextCopy()).toBe(false);
+  });
+
+  it('should disable plain text copy without enable flag', function() {
+    rootScope.disableCopyEnabled = true;
+    scope.$parent.paragraph.text = '%sh\necho test';
+
+    expect(scope.shouldDisablePlainTextCopy()).toBe(true);
+  });
+
+  it('should allow plain text copy when first two input lines contain enable flag', function() {
+    rootScope.disableCopyEnabled = true;
+    scope.$parent.getEditorValue = function() {
+      return '%sh\n#;;; allow copy\necho test';
+    };
+
+    expect(scope.shouldDisablePlainTextCopy()).toBe(false);
+  });
+
+  it('should ignore plain text copy enable flag after the first two input lines', function() {
+    rootScope.disableCopyEnabled = true;
+    scope.$parent.getEditorValue = function() {
+      return '%sh\necho test\n#;;; allow copy';
+    };
+
+    expect(scope.shouldDisablePlainTextCopy()).toBe(true);
   });
 });

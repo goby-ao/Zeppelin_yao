@@ -205,6 +205,40 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
       : {'pointer-events': 'none'};
   };
 
+  function getParagraphInputText() {
+    let scope = $scope;
+
+    while (scope) {
+      // Prefer the live code input value, so "#;;;" works before paragraph.text
+      // is persisted after editing.
+      if (angular.isFunction(scope.getEditorValue)) {
+        return scope.getEditorValue() || '';
+      }
+
+      if (scope.paragraph && scope.paragraph.text) {
+        return scope.paragraph.text;
+      }
+
+      scope = scope.$parent;
+    }
+
+    return paragraph && paragraph.text ? paragraph.text : '';
+  }
+
+  $scope.hasPlainTextCopyEnableFlag = function() {
+    const paragraphText = getParagraphInputText();
+    const firstTwoLines = paragraphText.split(/\r?\n/).slice(0, 2);
+    return firstTwoLines.some((line) => line.indexOf('#;;;') !== -1);
+  };
+
+  $scope.shouldDisablePlainTextCopy = function() {
+    if ($rootScope.disableCopyEnabled !== true) {
+      return false;
+    }
+
+    return !$scope.hasPlainTextCopyEnableFlag();
+  };
+
   $scope.init = function(result, config, paragraph, index) {
     // register helium plugin vis packages
     let visPackages = heliumService.getVisualizationCachedPackages();

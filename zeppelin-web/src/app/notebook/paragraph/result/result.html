@@ -122,7 +122,7 @@ limitations under the License.
         <div id="p{{id}}_text"
              ng-style="getPlainTextOutputStyle()"
              class="text plainTextContent"
-             ng-class="{'no-copy': $root.disableCopyEnabled}"></div>
+             ng-class="{'no-copy': shouldDisablePlainTextCopy()}"></div>
       </div>
     </div>
 

@@ -243,7 +243,9 @@ export default class TableVisualization extends Visualization {
   hasCopyEnableFlag() {
     const paragraphText = this.getParagraphText();
     const firstTwoLines = paragraphText.split(/\r?\n/).slice(0, 2);
-    return firstTwoLines.some((line) => line.indexOf('--;;;') !== -1);
+    return firstTwoLines.some((line) => {
+      return line.indexOf('--;;;') !== -1 || line.indexOf('--##') !== -1;
+    });
   }
 
   getParagraphText() {
