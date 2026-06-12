@@ -17,8 +17,9 @@ import moment from 'moment';
 import {isParagraphRunning} from './paragraph/paragraph.status';
 import {
   QUICK_NOTE_ROOT,
-  RECENT_NOTES_KEY,
+  getCurrentZeppelinClusterName,
   getQuickNoteBinding,
+  getRecentNotesStorageKey,
 } from '../quick-note.config';
 
 angular.module('zeppelinWebApp').controller('NotebookCtrl', NotebookCtrl);
@@ -228,7 +229,8 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     }
 
     try {
-      let raw = window.localStorage.getItem(RECENT_NOTES_KEY);
+      let recentNotesKey = getRecentNotesStorageKey(getCurrentZeppelinClusterName());
+      let raw = window.localStorage.getItem(recentNotesKey);
       let notes = raw ? angular.fromJson(raw) : [];
       if (!angular.isArray(notes)) {
         notes = [];
@@ -250,7 +252,7 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
         entry.starred = true;
       }
       notes.unshift(entry);
-      window.localStorage.setItem(RECENT_NOTES_KEY, angular.toJson(notes.slice(0, 20)));
+      window.localStorage.setItem(recentNotesKey, angular.toJson(notes.slice(0, 20)));
     } catch (e) {
       // LocalStorage can be unavailable in private mode or restricted iframe contexts.
     }
@@ -261,7 +263,8 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
       return;
     }
     try {
-      let raw = window.localStorage.getItem(RECENT_NOTES_KEY);
+      let recentNotesKey = getRecentNotesStorageKey(getCurrentZeppelinClusterName());
+      let raw = window.localStorage.getItem(recentNotesKey);
       let notes = raw ? angular.fromJson(raw) : [];
       if (!angular.isArray(notes)) {
         return;
@@ -270,7 +273,7 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
         return item && item.id !== noteId;
       });
       if (filtered.length !== notes.length) {
-        window.localStorage.setItem(RECENT_NOTES_KEY, angular.toJson(filtered));
+        window.localStorage.setItem(recentNotesKey, angular.toJson(filtered));
       }
     } catch (e) {
       // ignore localStorage errors

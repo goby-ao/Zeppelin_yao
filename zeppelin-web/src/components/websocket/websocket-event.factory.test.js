@@ -1,4 +1,5 @@
 describe('Factory: websocketEvents', function() {
+  const RECENT_NOTES_STORAGE_KEY = 'zp_recent_notes.ns3';
   let onMessageHandler;
   let location;
   let rootScope;
@@ -47,7 +48,7 @@ describe('Factory: websocketEvents', function() {
 
   afterEach(function() {
     delete rootScope.ticket;
-    window.localStorage.removeItem('zp_recent_notes');
+    window.localStorage.removeItem(RECENT_NOTES_STORAGE_KEY);
   });
 
   it('does not show an empty error details dialog', function() {
@@ -92,7 +93,7 @@ describe('Factory: websocketEvents', function() {
     location.path('/notebook/2MW7UC6MZ');
 
     // Seed recent notes with the deleted note so we can verify cleanup
-    window.localStorage.setItem('zp_recent_notes', angular.toJson([
+    window.localStorage.setItem(RECENT_NOTES_STORAGE_KEY, angular.toJson([
       {id: '2MW7UC6MZ', name: 'QuickNote_hadoop3_spark', time: 1},
       {id: 'OTHER_NOTE', name: 'other', time: 2},
     ]));
@@ -110,7 +111,7 @@ describe('Factory: websocketEvents', function() {
     expect(location.path()).toEqual('/');
 
     // Should have removed the deleted note from recent notes
-    let recentNotes = angular.fromJson(window.localStorage.getItem('zp_recent_notes'));
+    let recentNotes = angular.fromJson(window.localStorage.getItem(RECENT_NOTES_STORAGE_KEY));
     expect(recentNotes.length).toEqual(1);
     expect(recentNotes[0].id).toEqual('OTHER_NOTE');
   });

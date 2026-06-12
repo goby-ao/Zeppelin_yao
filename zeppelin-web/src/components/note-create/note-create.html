@@ -41,7 +41,7 @@ limitations under the License.
           <div class="note-create-engine-box">
             <div class="note-create-engine-section note-create-cluster-section">
               <span class="note-create-section-label">运行集群</span>
-              <div class="note-create-seg-group" data-tooltip="提示：仅少数项目需选择 hadoop3">
+              <div class="note-create-seg-group" ng-attr-data-tooltip="{{noteCreateCtrl.clusterTooltip}}">
                 <button type="button" class="note-create-seg-item"
                         ng-repeat="cluster in noteCreateCtrl.clusterOptions"
                         ng-class="{'active': noteCreateCtrl.selectedCluster === cluster.key}"

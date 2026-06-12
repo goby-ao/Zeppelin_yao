@@ -13,13 +13,15 @@
  */
 
 import {
-  NOTE_CLUSTERS,
   QUICK_NOTE_ROOT,
-  RECENT_NOTES_KEY,
+  getCurrentZeppelinClusterName,
+  getEnabledNoteClusters,
   getQuickNoteBinding,
   getQuickNoteKey,
   getQuickNoteMagic,
+  getRecentNotesStorageKey,
   getSavedNoteCluster,
+  normalizeNoteCluster,
   saveNoteCluster,
 } from '../quick-note.config';
 
@@ -49,9 +51,14 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
   $scope.notesLoaded = false;
   $scope.TRASH_FOLDER_ID = TRASH_FOLDER_ID;
   $scope.query = {q: ''};
+  $scope.zeppelinClusterName = getCurrentZeppelinClusterName();
+  $scope.quickNoteClusters = getEnabledNoteClusters($scope.zeppelinClusterName);
+  $scope.quickNoteCluster = getSavedNoteCluster($scope.zeppelinClusterName);
   $scope.recentNotes = readRecentNotes();
-  $scope.quickNoteClusters = NOTE_CLUSTERS;
-  $scope.quickNoteCluster = getSavedNoteCluster();
+
+  $scope.$on('zeppelinClusterNameChanged', function(event, clusterName) {
+    refreshQuickNoteClusterConfig(clusterName);
+  });
 
   $scope.toggleStar = function(note, $event) {
     $event.preventDefault();
@@ -72,7 +79,7 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
 
   function saveRecentNotes(notes) {
     try {
-      window.localStorage.setItem(RECENT_NOTES_KEY, angular.toJson(notes));
+      window.localStorage.setItem(getRecentNotesStorageKey($scope.zeppelinClusterName), angular.toJson(notes));
     } catch (e) {
       // ignore localStorage errors
     }
@@ -110,7 +117,7 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
 
   $scope.quickCreate = function(interpreter) {
     let userName = getCurrentUserName();
-    let quickNoteKey = getQuickNoteKey(interpreter, $scope.quickNoteCluster);
+    let quickNoteKey = getQuickNoteKey(interpreter, $scope.quickNoteCluster, $scope.zeppelinClusterName);
     let noteName = QUICK_NOTE_ROOT + '/' + userName + '/QuickNote_' + quickNoteKey;
     let existingNote = findNoteByPath(noteName);
 
@@ -123,12 +130,12 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
   };
 
   $scope.setQuickNoteCluster = function(cluster) {
-    $scope.quickNoteCluster = cluster;
-    saveNoteCluster(cluster);
+    $scope.quickNoteCluster = normalizeNoteCluster(cluster, $scope.zeppelinClusterName);
+    saveNoteCluster($scope.quickNoteCluster, $scope.zeppelinClusterName);
   };
 
   $scope.getQuickNoteMagic = function(interpreter) {
-    return getQuickNoteMagic(interpreter, $scope.quickNoteCluster);
+    return getQuickNoteMagic(interpreter, $scope.quickNoteCluster, $scope.zeppelinClusterName);
   };
 
   $scope.formatRecentTime = function(time) {
@@ -157,7 +164,7 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
 
   function readRecentNotes() {
     try {
-      let raw = window.localStorage.getItem(RECENT_NOTES_KEY);
+      let raw = window.localStorage.getItem(getRecentNotesStorageKey($scope.zeppelinClusterName));
       let notes = raw ? angular.fromJson(raw) : [];
       if (!angular.isArray(notes)) {
         notes = [];
@@ -185,7 +192,18 @@ function HomeCtrl($scope, noteListFactory, websocketMsgSrv, $rootScope, $locatio
   }
 
   function getDefaultInterpreterGroup(interpreter) {
-    return getQuickNoteBinding(interpreter, $scope.quickNoteCluster);
+    return getQuickNoteBinding(interpreter, $scope.quickNoteCluster, $scope.zeppelinClusterName);
+  }
+
+  function refreshQuickNoteClusterConfig(clusterName) {
+    $scope.zeppelinClusterName = clusterName || getCurrentZeppelinClusterName();
+    $scope.quickNoteClusters = getEnabledNoteClusters($scope.zeppelinClusterName);
+    $scope.quickNoteCluster = normalizeNoteCluster(
+      getSavedNoteCluster($scope.zeppelinClusterName),
+      $scope.zeppelinClusterName
+    );
+    saveNoteCluster($scope.quickNoteCluster, $scope.zeppelinClusterName);
+    $scope.recentNotes = readRecentNotes();
   }
 
   function findNoteByPath(notePath) {

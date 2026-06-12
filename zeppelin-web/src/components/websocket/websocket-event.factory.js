@@ -13,8 +13,10 @@
  */
 
 import {
-  RECENT_NOTES_KEY,
   QUICK_NOTE_ROOT,
+  getCurrentZeppelinClusterName,
+  getRecentNotesStorageKey,
+  setCurrentZeppelinClusterNameFromConfigurations,
 } from '../../app/quick-note.config';
 
 angular.module('zeppelinWebApp').factory('websocketEvents', WebsocketEventFactory);
@@ -217,7 +219,10 @@ function WebsocketEventFactory($rootScope, $websocket, $location, baseUrlSrv, sa
     } else if (op === 'SESSION_LOGOUT') {
       $rootScope.$broadcast('session_logout', data);
     } else if (op === 'CONFIGURATIONS_INFO') {
+      let zeppelinClusterName = setCurrentZeppelinClusterNameFromConfigurations(data.configurations);
+      $rootScope.zeppelinClusterName = zeppelinClusterName;
       $rootScope.$broadcast('configurationsInfo', data);
+      $rootScope.$broadcast('zeppelinClusterNameChanged', zeppelinClusterName);
     } else if (op === 'INTERPRETER_SETTINGS') {
       $rootScope.$broadcast('interpreterSettings', data);
     } else if (op === 'PARAGRAPH_ADDED') {
@@ -290,7 +295,7 @@ function WebsocketEventFactory($rootScope, $websocket, $location, baseUrlSrv, sa
       return;
     }
     try {
-      let raw = window.localStorage.getItem(RECENT_NOTES_KEY);
+      let raw = window.localStorage.getItem(getRecentNotesStorageKey(getCurrentZeppelinClusterName()));
       let notes = raw ? angular.fromJson(raw) : [];
       if (!angular.isArray(notes)) {
         return;
@@ -299,7 +304,10 @@ function WebsocketEventFactory($rootScope, $websocket, $location, baseUrlSrv, sa
         return item && item.id !== noteId;
       });
       if (filtered.length !== notes.length) {
-        window.localStorage.setItem(RECENT_NOTES_KEY, angular.toJson(filtered));
+        window.localStorage.setItem(
+          getRecentNotesStorageKey(getCurrentZeppelinClusterName()),
+          angular.toJson(filtered)
+        );
       }
     } catch (e) {
       // ignore localStorage errors
