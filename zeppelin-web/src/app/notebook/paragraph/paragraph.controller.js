@@ -74,6 +74,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   $scope.paragraph.results = {};
   $scope.paragraph.results.msg = [];
   $scope.originalText = '';
+  $scope.pendingText = undefined;
   $scope.editor = null;
   $scope.cursorPosition = null;
   $scope.diffMatchPatch = new DiffMatchPatch();
@@ -426,10 +427,70 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   }
 
   function getCurrentParagraphText(paragraph) {
-    if ($scope.dirtyText !== undefined && $scope.dirtyText !== null) {
+    let paragraphText = getLatestParagraphText(paragraph);
+    return paragraphText || '';
+  }
+
+  function hasParagraphText(paragraphText) {
+    return paragraphText !== undefined && paragraphText !== null;
+  }
+
+  function getEditorText() {
+    if ($scope.editor && angular.isFunction($scope.editor.getValue)) {
+      return $scope.editor.getValue();
+    }
+    return undefined;
+  }
+
+  function getLatestParagraphText(paragraph) {
+    if (hasParagraphText($scope.dirtyText)) {
       return $scope.dirtyText;
     }
-    return paragraph && paragraph.text ? paragraph.text : '';
+    let editorText = getEditorText();
+    if (hasParagraphText(editorText)) {
+      return editorText;
+    }
+    return paragraph ? paragraph.text : undefined;
+  }
+
+  function getLocalTextUpdate() {
+    if (hasParagraphText($scope.dirtyText) && $scope.dirtyText !== $scope.originalText) {
+      return $scope.dirtyText;
+    }
+    if (hasParagraphText($scope.pendingText)) {
+      return $scope.pendingText;
+    }
+    return undefined;
+  }
+
+  function markParagraphTextPending(paragraphText) {
+    if (!hasParagraphText(paragraphText)) {
+      return;
+    }
+    $scope.paragraph.text = paragraphText;
+    if (paragraphText === $scope.originalText) {
+      $scope.dirtyText = undefined;
+      $scope.pendingText = undefined;
+      return;
+    }
+    $scope.dirtyText = paragraphText;
+    $scope.pendingText = paragraphText;
+  }
+
+  function confirmParagraphText(paragraphText) {
+    $scope.paragraph.text = paragraphText;
+    $scope.originalText = angular.copy(paragraphText);
+    if ($scope.dirtyText === paragraphText) {
+      $scope.dirtyText = undefined;
+    }
+    if ($scope.pendingText === paragraphText) {
+      $scope.pendingText = undefined;
+    }
+    if (!hasParagraphText($scope.dirtyText) &&
+        !hasParagraphText($scope.pendingText) &&
+        angular.isFunction($scope.unBindBeforeUnload)) {
+      $scope.unBindBeforeUnload();
+    }
   }
 
   function getExplicitParagraphMagic(paragraphText) {
@@ -1001,18 +1062,17 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   };
 
   $scope.saveParagraph = function(paragraph) {
-    const dirtyText = paragraph.text;
-    if (dirtyText === undefined || dirtyText === $scope.originalText) {
+    const dirtyText = getLatestParagraphText(paragraph);
+    if (!hasParagraphText(dirtyText) ||
+        dirtyText === $scope.originalText ||
+        dirtyText === $scope.pendingText) {
       return;
     }
 
     $scope.bindBeforeUnload();
+    markParagraphTextPending(dirtyText);
 
-    commitParagraph(paragraph).then(function() {
-      $scope.originalText = dirtyText;
-      $scope.dirtyText = undefined;
-      $scope.unBindBeforeUnload();
-    });
+    return commitParagraph(paragraph, dirtyText);
   };
 
   $scope.toggleEnableDisable = function(paragraph) {
@@ -1033,6 +1093,12 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
       return;
     }
 
+    if (propagated) {
+      confirmParagraphText(paragraphText);
+    } else {
+      markParagraphTextPending(paragraphText);
+    }
+
     const magic = SpellResult.extractMagic(paragraphText);
 
     if (heliumService.getSpellByMagic(magic)) {
@@ -1040,9 +1106,6 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     } else {
       $scope.runParagraphUsingBackendInterpreter(paragraphText);
     }
-
-    $scope.originalText = angular.copy(paragraphText);
-    $scope.dirtyText = undefined;
 
     if ($scope.paragraph.config.editorSetting.editOnDblClick) {
       closeEditorAndOpenTable($scope.paragraph);
@@ -1303,6 +1366,9 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     let session = editor.getSession();
     let dirtyText = session.getValue();
     $scope.dirtyText = dirtyText;
+    if (hasParagraphText($scope.pendingText) && $scope.pendingText !== dirtyText) {
+      $scope.pendingText = undefined;
+    }
     if ($scope.dirtyText !== $scope.originalText) {
       if ($scope.collaborativeMode) {
         $scope.sendPatch();
@@ -1382,13 +1448,13 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'COUNT', 'SUM', 'AVG', 'MAX', 'MIN', 'COALESCE', 'NULLIF', 'CAST', 'CONVERT',
         'ASC', 'DESC', 'PRIMARY KEY', 'DEFAULT',
         'WITH', 'RECURSIVE', 'OVER', 'PARTITION BY', 'ROW', 'ROWS', 'RANGE', 'GROUPS',
-        'SHOW', 'DESCRIBE', 'DESC', 'EXPLAIN', 'USE', 'GRANT', 'REVOKE', 'COMMIT', 'ROLLBACK',
+        'SHOW', 'DESC', 'EXPLAIN', 'USE', 'GRANT', 'REVOKE', 'COMMIT', 'ROLLBACK',
         'BOOLEAN', 'TRUE', 'FALSE',
 
 
         // ===== 平台常用 =====
-        'dayid', 'monthid', 'mgwh_rd_ods','mgwh_rd_dwd','mgwh_rd_dim','mgwh_rd_dwm','mgwh_rd_app','mgwh_rd_rpt',
-        'mgwh_rd_video','mgwh_rd_music',
+        'dayid', 'monthid', 'mgwh_rd_ods', 'mgwh_rd_dwd', 'mgwh_rd_dim', 'mgwh_rd_dwm', 'mgwh_rd_app',
+        'mgwh_rd_rpt', 'mgwh_rd_video', 'mgwh_rd_music',
 
         // ===== Hive 数据类型 =====
         'STRING', 'INT', 'BIGINT', 'FLOAT', 'DOUBLE', 'DECIMAL', 'DATE', 'TIMESTAMP',
@@ -1403,7 +1469,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'ALTER TABLE', 'ALTER TABLE RENAME TO', 'ALTER TABLE SET TBLPROPERTIES',
         'ALTER TABLE ADD COLUMNS', 'ALTER TABLE REPLACE COLUMNS', 'ALTER TABLE CHANGE COLUMN',
         'ALTER TABLE DROP COLUMN', 'ALTER TABLE SET SERDE', 'ALTER TABLE SET SERDEPROPERTIES',
-        'TRUNCATE TABLE', 'DESCRIBE TABLE', 'DESCRIBE FORMATTED', 'DESCRIBE EXTENDED',
+        'TRUNCATE TABLE', 'DESCRIBE FORMATTED', 'DESCRIBE EXTENDED',
         'DESCRIBE DATABASE', 'DESCRIBE FUNCTION',
         'SHOW TABLES', 'SHOW TABLES LIKE', 'SHOW TABLE EXTENDED',
         'SHOW CREATE TABLE', 'SHOW COLUMNS', 'SHOW PARTITIONS', 'SHOW TABLE PROPERTIES',
@@ -2142,14 +2208,14 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     return cell;
   };
 
-  const commitParagraph = function(paragraph) {
+  const commitParagraph = function(paragraph, paragraphText) {
     const {
       id,
       title,
-      text,
       config,
       settings: {params},
     } = paragraph;
+    const text = hasParagraphText(paragraphText) ? paragraphText : getLatestParagraphText(paragraph);
 
     return websocketMsgSrv.commitParagraph(id, title, text, config, params,
       $route.current.pathParams.noteId);
@@ -2314,19 +2380,19 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   }
 
   $scope.updateAllScopeTexts = function(oldPara, newPara) {
-    if (oldPara.text !== newPara.text) {
-      if ($scope.dirtyText) {         // check if editor has local update
-        if ($scope.dirtyText === newPara.text) {  // when local update is the same from remote, clear local update
-          $scope.paragraph.text = newPara.text;
-          $scope.dirtyText = undefined;
-          $scope.originalText = angular.copy(newPara.text);
-        } else { // if there're local update, keep it.
-          $scope.paragraph.text = newPara.text;
-        }
+    let localTextUpdate = getLocalTextUpdate();
+    if (hasParagraphText(localTextUpdate)) {
+      if (localTextUpdate === newPara.text) {
+        confirmParagraphText(newPara.text);
       } else {
-        $scope.paragraph.text = newPara.text;
-        $scope.originalText = angular.copy(newPara.text);
+        // Keep local editor text when stale remote paragraph updates arrive out of order.
+        $scope.paragraph.text = localTextUpdate;
       }
+      return;
+    }
+
+    if (oldPara.text !== newPara.text) {
+      confirmParagraphText(newPara.text);
     }
   };
 

@@ -1567,11 +1567,6 @@ table.table-striped {
   background: #ffffff;
 }
 
-.paragraph .zp-paragraph-editor-shell .ace_content,
-.paragraph .zp-paragraph-editor-shell .ace_line {
-  line-height: 1.6;
-}
-
 .paragraph .zp-paragraph-editor-shell .ace_placeholder {
   color: #9ca3af;
 }
