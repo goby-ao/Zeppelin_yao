@@ -59,11 +59,39 @@ limitations under the License.
             </div>
           </ul>
         </li>
-        <!-- menu: Job -->
-        <li>
-          <a class="navbar-menu navbar-menu-job" href="#/jobmanager">
-            <span>任务</span>
+        <li class="dropdown navbar-recent-dropdown" uib-dropdown on-toggle="navbar.refreshRecentNotes()">
+          <a href="#" class="navbar-menu navbar-menu-recent dropdown-toggle"
+             data-toggle="dropdown" uib-dropdown-toggle>
+            <span>最近访问</span>
+            <span class="caret"></span>
           </a>
+          <ul class="dropdown-menu navbar-recent-menu" role="menu">
+            <li class="navbar-recent-menu-title">
+              <span>最近打开的笔记</span>
+              <small>快速跳转</small>
+            </li>
+            <li class="divider hidden-xs"></li>
+            <li ng-if="navbar.recentNotes.length === 0" class="navbar-recent-empty">
+              <div>
+                <i class="fa fa-clock-o"></i>
+                <span>暂无最近访问记录</span>
+              </div>
+            </li>
+            <li ng-repeat="recentNote in navbar.recentNotes track by recentNote.id"
+                ng-class="{'active': navbar.isRecentActive(recentNote.id)}">
+              <a ng-href="#/notebook/{{recentNote.id}}" class="navbar-recent-link">
+                <span class="navbar-recent-main">
+                  <i class="fa fa-file-text-o navbar-recent-note-icon"></i>
+                  <i ng-if="recentNote.starred" class="fa fa-star navbar-recent-star"></i>
+                  <span class="navbar-recent-name">{{recentNote.name}}</span>
+                </span>
+                <span class="navbar-recent-meta">
+                  <span class="navbar-recent-current" ng-if="navbar.isRecentActive(recentNote.id)">当前</span>
+                  <span class="navbar-recent-time">{{navbar.formatRecentTime(recentNote.time)}}</span>
+                </span>
+              </a>
+            </li>
+          </ul>
         </li>
       </ul>
 

@@ -12,6 +12,8 @@
  * limitations under the License.
  */
 
+import {RECENT_NOTES_KEY} from '../../app/quick-note.config';
+
 angular.module('zeppelinWebApp').controller('NavCtrl', NavCtrl);
 
 function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
@@ -35,7 +37,11 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
   vm.showLoginWindow = showLoginWindow;
   vm.TRASH_FOLDER_ID = TRASH_FOLDER_ID;
   vm.isFilterNote = isFilterNote;
+  vm.recentNotes = [];
   vm.numberOfNotesDisplayed = 10;
+  vm.refreshRecentNotes = refreshRecentNotes;
+  vm.formatRecentTime = formatRecentTime;
+  vm.isRecentActive = isRecentActive;
   let revisionSupported = false;
 
   $scope.query = {q: ''};
@@ -72,6 +78,7 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
 
     getZeppelinVersion();
     getClusterAddr();
+    refreshRecentNotes();
     if ($rootScope.ticket !== undefined) {
       loadNotes();
     }
@@ -91,6 +98,92 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
 
   function isActive(noteId) {
     return ($routeParams.noteId === noteId);
+  }
+
+  function isRecentActive(noteId) {
+    return isActive(String(noteId));
+  }
+
+  function refreshRecentNotes() {
+    vm.recentNotes = readRecentNotes();
+  }
+
+  function readRecentNotes() {
+    try {
+      let raw = window.localStorage.getItem(RECENT_NOTES_KEY);
+      let notes = raw ? angular.fromJson(raw) : [];
+      if (!angular.isArray(notes)) {
+        return [];
+      }
+
+      let availableNoteIds = getAvailableNoteIds();
+      notes = notes.filter(function(note) {
+        if (!note || !note.id || !note.name) {
+          return false;
+        }
+        if (availableNoteIds && !availableNoteIds[note.id]) {
+          return false;
+        }
+        return true;
+      });
+
+      notes = notes.filter(function(note) {
+        return note && note.id && note.name;
+      });
+
+      notes.sort(function(a, b) {
+        if (a.starred && !b.starred) {
+          return -1;
+        }
+        if (!a.starred && b.starred) {
+          return 1;
+        }
+        return (b.time || 0) - (a.time || 0);
+      });
+
+      return notes;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function getAvailableNoteIds() {
+    if (!vm.notes || !angular.isArray(vm.notes.flatList) || vm.notes.flatList.length === 0) {
+      return null;
+    }
+
+    let noteIds = {};
+    vm.notes.flatList.forEach(function(note) {
+      if (note && note.id) {
+        noteIds[note.id] = true;
+      }
+    });
+    return noteIds;
+  }
+
+  function formatRecentTime(time) {
+    if (!time) {
+      return '';
+    }
+
+    let diff = Math.max(0, Date.now() - time);
+    let minute = 60 * 1000;
+    let hour = 60 * minute;
+    let day = 24 * hour;
+
+    if (diff < minute) {
+      return '刚刚';
+    }
+    if (diff < hour) {
+      return Math.floor(diff / minute) + '分钟前';
+    }
+    if (diff < day) {
+      return Math.floor(diff / hour) + '小时前';
+    }
+    if (diff < 7 * day) {
+      return Math.floor(diff / day) + '天前';
+    }
+    return new Date(time).toLocaleDateString();
   }
 
   function listConfigurations() {
@@ -237,10 +330,19 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
     vm.connected = param;
   });
 
+  $scope.$on('setNoteContent', function() {
+    refreshRecentNotes();
+  });
+
+  $scope.$on('setNoteMenu', function() {
+    refreshRecentNotes();
+  });
+
   $scope.$on('loginSuccess', function(event, param) {
     $rootScope.ticket.screenUsername = $rootScope.ticket.principal;
     listConfigurations();
     loadNotes();
+    refreshRecentNotes();
     if (isHomeRoute()) {
       getHomeNote();
     }
