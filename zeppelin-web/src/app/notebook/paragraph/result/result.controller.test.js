@@ -106,6 +106,6 @@ describe('Controller: ResultCtrl', function() {
   });
 
   it('should calculate the pinned viewport by removing sibling and chrome height', function() {
-    expect(calculatePinnedGraphViewportHeight(480, 84, 36)).toBe(360);
+    expect(calculatePinnedGraphViewportHeight(480, 84, 36)).toBe(359);
   });
 });

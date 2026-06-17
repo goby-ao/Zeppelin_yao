@@ -33,7 +33,7 @@ const TableGridFilterTemplate = require('../../../visualization/builtins/visuali
 angular.module('zeppelinWebApp').controller('ResultCtrl', ResultCtrl);
 
 export function calculatePinnedGraphViewportHeight(resultRegionHeight, siblingHeights, displayChromeHeight) {
-  return Math.max(0, Math.floor(resultRegionHeight - siblingHeights - displayChromeHeight));
+  return Math.max(0, Math.floor(resultRegionHeight - siblingHeights - displayChromeHeight) - 1);
 }
 
 export function resolveAdaptiveTableHeight(totalHeight, configuredMaxHeight,
@@ -194,7 +194,7 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
       return null;
     }
 
-    const resultRegionHeight = resultRegion.innerHeight() || resultRegion.height() || 0;
+    const resultRegionHeight = resultRegion.height() || 0;
     if (!resultRegionHeight) {
       return null;
     }
