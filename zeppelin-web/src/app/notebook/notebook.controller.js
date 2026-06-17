@@ -49,6 +49,17 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   $scope.lockedParagraphId = null;
   let highlightTimer = null;
   const PIN_MODE_BODY_CLASS = 'zp-pin-mode-active';
+
+  // Safety watch: guarantee body/html pin class stays in sync with lockedParagraphId.
+  // If any code path (or external DOM mutation) leaves the class behind after
+  // lockedParagraphId is cleared, the full-viewport fixed overlay would block all
+  // pointer events — this watch acts as the last line of defense.
+  $scope.$watch('lockedParagraphId', function(lockedId) {
+    if (!lockedId && document && document.body) {
+      document.body.classList.remove(PIN_MODE_BODY_CLASS);
+      document.documentElement.classList.remove(PIN_MODE_BODY_CLASS);
+    }
+  });
   $scope.cronOption = [
     {name: 'None', value: undefined},
     {name: '1m', value: '0 0/1 * * * ?'},
@@ -2064,7 +2075,7 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
       return;
     }
     setLockedParagraphId(null);
-    $scope.$apply();
+    $scope.$evalAsync();
   }
   document.addEventListener('dblclick', onDblClickUnlock);
 
@@ -2072,7 +2083,7 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   function onEscKey(e) {
     if (e.keyCode === 27 && $scope.lockedParagraphId) {
       setLockedParagraphId(null);
-      $scope.$apply();
+      $scope.$evalAsync();
     }
   }
   document.addEventListener('keydown', onEscKey);
@@ -2102,6 +2113,7 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     document.removeEventListener('keydown', onEscKey);
     document.removeEventListener('wheel', onWheel);
     document.removeEventListener('dblclick', onDblClickUnlock);
+    $scope.lockedParagraphId = null;
     togglePinnedPageClass(false);
     if (highlightTimer) {
       clearTimeout(highlightTimer);
