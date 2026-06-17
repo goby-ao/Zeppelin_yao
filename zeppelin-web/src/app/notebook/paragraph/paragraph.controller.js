@@ -2762,6 +2762,20 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     }
   });
 
+  $scope.$on('paragraphLayoutChanged', function(event, paragraphId) {
+    if ($scope.paragraph.id !== paragraphId || !$scope.editor) {
+      return;
+    }
+
+    $timeout(function() {
+      if (!$scope.editor) {
+        return;
+      }
+      autoAdjustEditorHeight($scope.editor);
+      $scope.editor.resize();
+    }, 0);
+  });
+
   const clearSearchSelection = function() {
     for (let i = 0; i < searchRanges.length; ++i) {
       $scope.editor.session.removeMarker(searchRanges[i].markerId);

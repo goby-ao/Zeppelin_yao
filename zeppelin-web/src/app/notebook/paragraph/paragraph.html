@@ -15,7 +15,8 @@ limitations under the License.
 <div id="{{paragraph.id}}_container"
      ng-class="{'paragraph': !asIframe,
                 'paragraphAsIframe': asIframe,
-                'zp-has-title': paragraph.config.title}"
+                'zp-has-title': paragraph.config.title,
+                'zp-pinned-paragraph': lockedParagraphId === paragraph.id}"
      data-status="{{paragraph.status}}"
      data-editor-mode="{{getEffectiveEditorMode(paragraph)}}"
      data-paragraph-magic="{{paragraph.text | limitTo:48 | lowercase}}">
@@ -42,8 +43,10 @@ limitations under the License.
 
   <div ng-include src="'app/notebook/paragraph/paragraph-control.html'"></div>
 
-  <div>
-    <div ng-if="!paragraph.config.editorHide && !viewOnly"
+  <div class="zp-paragraph-body" ng-class="{'is-editor-hidden': paragraph.config.editorHide || viewOnly}">
+    <div class="zp-paragraph-editor-region"
+         ng-if="!paragraph.config.editorHide && !viewOnly">
+      <div
          class="zp-paragraph-editor-shell"
          ng-class="{'zp-code-collapsible': shouldShowCodeCollapse(paragraph),
                     'zp-code-collapsed': codeCollapsed && shouldShowCodeCollapse(paragraph)}">
@@ -81,6 +84,7 @@ limitations under the License.
         <span>{{codeCollapsed ? '展开代码' : '收起代码'}}</span>
         <span class="zp-code-line-count">{{getCodeLineCount(paragraph)}} 行</span>
       </button>
+      </div>
     </div>
 
     <div ng-include src="'app/notebook/paragraph/paragraph-progress-bar.html'"></div>
@@ -102,7 +106,7 @@ limitations under the License.
         {{cancelUiText.STUCK_HINT_TOOLTIP}}
       </div>
     </div>
-    <div>
+    <div class="zp-paragraph-result-region">
       <dynamic-forms
         id="paragraph.id"
         hide="paragraph.config.hideForm"
@@ -111,18 +115,18 @@ limitations under the License.
         forms="paragraph.settings.forms"
         params="paragraph.settings.params"
         action="runParagraphFromButton"></dynamic-forms>
-    </div>
 
-    <!-- Rendering -->
-    <div class="tableDisplay"
-         ng-show="!paragraph.config.tableHide"
-         ng-controller="ResultCtrl"
-         ng-repeat="result in paragraph.results.msg track by $index"
-         ng-init="init(result, paragraph.config.results[$index], paragraph, $index)"
-         ng-include src="'app/notebook/paragraph/result/result.html'">
-    </div>
-    <div id="{{paragraph.id}}_error" class="error text"
-         ng-bind="paragraph.errorMessage">
+      <!-- Rendering -->
+      <div class="tableDisplay"
+           ng-show="!paragraph.config.tableHide"
+           ng-controller="ResultCtrl"
+           ng-repeat="result in paragraph.results.msg track by $index"
+           ng-init="init(result, paragraph.config.results[$index], paragraph, $index)"
+           ng-include src="'app/notebook/paragraph/result/result.html'">
+      </div>
+      <div id="{{paragraph.id}}_error" class="error text"
+           ng-bind="paragraph.errorMessage">
+      </div>
     </div>
   </div>
 

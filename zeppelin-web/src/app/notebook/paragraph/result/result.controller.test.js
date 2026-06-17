@@ -1,3 +1,8 @@
+import {
+  calculatePinnedGraphViewportHeight,
+  resolveAdaptiveTableHeight,
+} from './result.controller.js';
+
 describe('Controller: ResultCtrl', function() {
   beforeEach(angular.mock.module('zeppelinWebApp'));
 
@@ -90,5 +95,17 @@ describe('Controller: ResultCtrl', function() {
     };
 
     expect(scope.shouldDisablePlainTextCopy()).toBe(true);
+  });
+
+  it('should cap pinned table height by the visible result viewport', function() {
+    expect(resolveAdaptiveTableHeight(520, 420, 260, 118)).toBe(260);
+  });
+
+  it('should allow pinned table height to shrink below the default minimum when viewport is tighter', function() {
+    expect(resolveAdaptiveTableHeight(520, 420, 96, 118)).toBe(96);
+  });
+
+  it('should calculate the pinned viewport by removing sibling and chrome height', function() {
+    expect(calculatePinnedGraphViewportHeight(480, 84, 36)).toBe(360);
   });
 });

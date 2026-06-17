@@ -32,6 +32,25 @@ const TableGridFilterTemplate = require('../../../visualization/builtins/visuali
 
 angular.module('zeppelinWebApp').controller('ResultCtrl', ResultCtrl);
 
+export function calculatePinnedGraphViewportHeight(resultRegionHeight, siblingHeights, displayChromeHeight) {
+  return Math.max(0, Math.floor(resultRegionHeight - siblingHeights - displayChromeHeight));
+}
+
+export function resolveAdaptiveTableHeight(totalHeight, configuredMaxHeight,
+                                           pinnedHeightLimit, minHeight = 118) {
+  const normalizedMaxHeight = Math.max(parseInt(configuredMaxHeight, 10) || 0, 0);
+  if (!normalizedMaxHeight) {
+    return 0;
+  }
+
+  const effectiveMaxHeight = (typeof pinnedHeightLimit === 'number' && pinnedHeightLimit > 0)
+    ? Math.min(normalizedMaxHeight, pinnedHeightLimit)
+    : normalizedMaxHeight;
+  const effectiveMinHeight = Math.min(minHeight, effectiveMaxHeight);
+
+  return Math.max(effectiveMinHeight, Math.min(totalHeight, effectiveMaxHeight));
+}
+
 function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location,
                     $timeout, $compile, $http, $q, $templateCache, $templateRequest, $sce, websocketMsgSrv,
                     baseUrlSrv, ngToast, saveAsService, noteVarShareService, heliumService,
@@ -157,6 +176,46 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
   const TABLE_MIN_HEIGHT = 118;
   const TABLE_SCROLLBAR_RESERVE = 20;
   const TABLE_HEIGHT_PADDING = 6;
+
+  function getVisibleOuterHeight(elem) {
+    return elem && elem.length && elem.is(':visible') ? (elem.outerHeight(true) || 0) : 0;
+  }
+
+  function getPinnedGraphHeightLimit(graphElem) {
+    if (!graphElem || !graphElem.length || !graphElem.closest('.zp-pinned-paragraph').length) {
+      return null;
+    }
+
+    // 置顶态下，结果区本身就是一个固定视口；这里先扣掉同级表单/错误区和表格外围 chrome，
+    // 再把 ui-grid 高度压回真正可见的空间，避免 iframe 里出现“外层结果区 + 内层表格”双滚动。
+    const resultRegion = graphElem.closest('.zp-paragraph-result-region');
+    const currentDisplay = graphElem.closest('.tableDisplay');
+    if (!resultRegion.length || !currentDisplay.length) {
+      return null;
+    }
+
+    const resultRegionHeight = resultRegion.innerHeight() || resultRegion.height() || 0;
+    if (!resultRegionHeight) {
+      return null;
+    }
+
+    let siblingHeights = 0;
+    angular.forEach(resultRegion.children(), function(child) {
+      if (child === currentDisplay[0]) {
+        return;
+      }
+      siblingHeights += getVisibleOuterHeight(angular.element(child));
+    });
+
+    const displayChromeHeight = Math.max(0, getVisibleOuterHeight(currentDisplay) - getVisibleOuterHeight(graphElem));
+    const pinnedHeightLimit = calculatePinnedGraphViewportHeight(
+      resultRegionHeight,
+      siblingHeights,
+      displayChromeHeight
+    );
+
+    return pinnedHeightLimit > 0 ? pinnedHeightLimit : null;
+  }
 
   // Data of the result
   let data;
@@ -859,7 +918,8 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
 
   // ---- Adaptive table height helpers ----
 
-  function applyAdaptiveTableHeight(graphElemId, rowCount) {
+  function applyAdaptiveTableHeight(graphElemId, rowCount, options = {}) {
+    const shouldNotifyParagraph = options.notifyParagraph !== false;
     $timeout(function() {
       var graphElem = angular.element('#' + graphElemId);
       if (!graphElem.length) { return; }
@@ -901,7 +961,13 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
                         footerHeight + TABLE_SCROLLBAR_RESERVE + TABLE_HEIGHT_PADDING;
       var maxHeight = ($scope.config && $scope.config.graph &&
                        $scope.config.graph.height) || 420;
-      var finalHeight = Math.max(TABLE_MIN_HEIGHT, Math.min(totalHeight, maxHeight));
+      var pinnedHeightLimit = getPinnedGraphHeightLimit(graphElem);
+      var finalHeight = resolveAdaptiveTableHeight(
+        totalHeight,
+        maxHeight,
+        pinnedHeightLimit,
+        TABLE_MIN_HEIGHT
+      );
 
       var currentHeight = graphElem.height();
       if (Math.abs(currentHeight - finalHeight) < 3) {
@@ -951,10 +1017,12 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
       }
 
       // ---- 8. 通知段落 ----
-      try {
-        $scope.$broadcast('paragraphResized', paragraph && paragraph.id);
-        window.dispatchEvent(new Event('resize'));
-      } catch (e) { /* ignore */ }
+      if (shouldNotifyParagraph) {
+        try {
+          $scope.$broadcast('paragraphResized', paragraph && paragraph.id);
+          window.dispatchEvent(new Event('resize'));
+        } catch (e) { /* ignore */ }
+      }
     }, 150, false);
   }
 
@@ -1216,6 +1284,10 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
   $scope.$on('paragraphResized', function(event, paragraphId) {
     // paragraph col width changed
     if (paragraphId === paragraph.id) {
+      if (($scope.type === DefaultDisplayType.TABLE || $scope.type === DefaultDisplayType.NETWORK) &&
+          tableData && tableData.rows) {
+        applyAdaptiveTableHeight(`p${$scope.id}_graph`, tableData.rows.length, {notifyParagraph: false});
+      }
       let builtInViz = builtInVisualizations[$scope.graphMode];
       if (builtInViz && builtInViz.instance) {
         $timeout(() => builtInViz.instance.resize(), 200);

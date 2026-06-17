@@ -1164,7 +1164,7 @@ This part should be removed when new version of bootstrap handles this issue.
 }
 
 .modal-dialog, .modal {
-  z-index: 10003 !important;
+  z-index: 11003 !important;
 }
 
 /* ------------------------------------------- */

@@ -118,6 +118,15 @@ limitations under the License.
   <span class="zp-chart-anchor"></span>
 
   <span class="zp-toolbar-code-actions" ng-if="!revisionView">
+    <span class="zp-toolbar-code-btn zp-pin-paragraph-btn"
+          ng-class="{'is-active': lockedParagraphId === paragraph.id}"
+          ng-click="toggleParagraphLock(paragraph.id)"
+          tooltip-placement="bottom"
+          tooltip-append-to-body="true"
+          uib-tooltip="{{lockedParagraphId === paragraph.id ? '取消置顶，恢复页面正常滚动' : '置顶当前代码块，固定在页面顶部'}}">
+      <i class="fa fa-thumb-tack"></i>
+      <span>{{lockedParagraphId === paragraph.id ? '取消置顶' : '置顶'}}</span>
+    </span>
     <span class="zp-toolbar-code-btn"
           ng-if="isSqlMode(paragraph)"
           ng-click="formatSqlCode(paragraph)"
@@ -310,6 +319,12 @@ limitations under the License.
             <span class="icon-control-play shortcut-icon"></span>
             <span class="shortcut-keys">Ctrl+ {{ isMac ? 'Option' : 'Alt'}}+R</span>
             {{paragraph.config.enabled ? "禁用" : "启用"}}运行
+          </a>
+        </li>
+        <li>
+          <a ng-click="toggleParagraphLock(paragraph.id)">
+            <span class="fa fa-thumb-tack shortcut-icon"></span>
+            {{lockedParagraphId === paragraph.id ? '取消置顶' : '置顶显示'}}
           </a>
         </li>
         <li>
