@@ -32,20 +32,22 @@ const TableGridFilterTemplate = require('../../../visualization/builtins/visuali
 
 angular.module('zeppelinWebApp').controller('ResultCtrl', ResultCtrl);
 
-export function calculatePinnedGraphViewportHeight(resultRegionHeight, siblingHeights, displayChromeHeight) {
-  return Math.max(0, Math.floor(resultRegionHeight - siblingHeights - displayChromeHeight) - 1);
+export function calculatePinnedGraphViewportHeight(resultRegionBottom, graphTop,
+                                                   trailingSiblingHeights = 0, bottomReserve = 0) {
+  return Math.max(0, Math.floor(
+    resultRegionBottom - graphTop - trailingSiblingHeights - bottomReserve
+  ) - 1);
 }
 
 export function resolveAdaptiveTableHeight(totalHeight, configuredMaxHeight,
                                            pinnedHeightLimit, minHeight = 118) {
   const normalizedMaxHeight = Math.max(parseInt(configuredMaxHeight, 10) || 0, 0);
-  if (!normalizedMaxHeight) {
+  const hasPinnedHeightLimit = typeof pinnedHeightLimit === 'number' && pinnedHeightLimit > 0;
+  if (!normalizedMaxHeight && !hasPinnedHeightLimit) {
     return 0;
   }
 
-  const effectiveMaxHeight = (typeof pinnedHeightLimit === 'number' && pinnedHeightLimit > 0)
-    ? Math.min(normalizedMaxHeight, pinnedHeightLimit)
-    : normalizedMaxHeight;
+  const effectiveMaxHeight = hasPinnedHeightLimit ? pinnedHeightLimit : normalizedMaxHeight;
   const effectiveMinHeight = Math.min(minHeight, effectiveMaxHeight);
 
   return Math.max(effectiveMinHeight, Math.min(totalHeight, effectiveMaxHeight));
@@ -181,37 +183,50 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
     return elem && elem.length && elem.is(':visible') ? (elem.outerHeight(true) || 0) : 0;
   }
 
+  function getCssPixelValue(elem, propertyName) {
+    if (!elem || !elem.length) {
+      return 0;
+    }
+    return parseFloat($window.getComputedStyle(elem[0])[propertyName]) || 0;
+  }
+
   function getPinnedGraphHeightLimit(graphElem) {
     if (!graphElem || !graphElem.length || !graphElem.closest('.zp-pinned-paragraph').length) {
       return null;
     }
 
-    // 置顶态下，结果区本身就是一个固定视口；这里先扣掉同级表单/错误区和表格外围 chrome，
-    // 再把 ui-grid 高度压回真正可见的空间，避免 iframe 里出现“外层结果区 + 内层表格”双滚动。
+    // 置顶态下结果区是固定视口。这里用真实几何位置计算 graph 到结果区底部的空间，
+    // 避免把旧的空白高度误当作表格 chrome 扣掉，导致拖动后 ui-grid 越算越矮。
     const resultRegion = graphElem.closest('.zp-paragraph-result-region');
     const currentDisplay = graphElem.closest('.tableDisplay');
     if (!resultRegion.length || !currentDisplay.length) {
       return null;
     }
 
-    const resultRegionHeight = resultRegion.height() || 0;
-    if (!resultRegionHeight) {
+    const resultRect = resultRegion[0].getBoundingClientRect();
+    const graphRect = graphElem[0].getBoundingClientRect();
+    if (!resultRect.height || !graphRect.height) {
       return null;
     }
 
-    let siblingHeights = 0;
+    let trailingSiblingHeights = 0;
+    let currentFound = false;
     angular.forEach(resultRegion.children(), function(child) {
       if (child === currentDisplay[0]) {
-        return;
+        currentFound = true;
+      } else if (currentFound) {
+        trailingSiblingHeights += getVisibleOuterHeight(angular.element(child));
       }
-      siblingHeights += getVisibleOuterHeight(angular.element(child));
     });
 
-    const displayChromeHeight = Math.max(0, getVisibleOuterHeight(currentDisplay) - getVisibleOuterHeight(graphElem));
+    const bottomReserve =
+      getCssPixelValue(resultRegion, 'paddingBottom') +
+      getCssPixelValue(graphElem, 'marginBottom');
     const pinnedHeightLimit = calculatePinnedGraphViewportHeight(
-      resultRegionHeight,
-      siblingHeights,
-      displayChromeHeight
+      resultRect.bottom,
+      graphRect.top,
+      trailingSiblingHeights,
+      bottomReserve
     );
 
     return pinnedHeightLimit > 0 ? pinnedHeightLimit : null;
@@ -921,15 +936,19 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
   function applyAdaptiveTableHeight(graphElemId, rowCount, options = {}) {
     const shouldNotifyParagraph = options.notifyParagraph !== false;
     $timeout(function() {
-      var graphElem = angular.element('#' + graphElemId);
-      if (!graphElem.length) { return; }
+      const graphElem = angular.element('#' + graphElemId);
+      if (!graphElem.length) {
+        return;
+      }
 
-      var gridElem = graphElem.find('.ui-grid');
-      if (!gridElem.length) { return; }
+      const gridElem = graphElem.find('.ui-grid');
+      if (!gridElem.length) {
+        return;
+      }
 
       // ---- 1. 逐行测量实际内容高度 ----
-      var contentHeight = 0;
-      var rows = gridElem.find('.ui-grid-row');
+      let contentHeight = 0;
+      const rows = gridElem.find('.ui-grid-row');
       if (rows.length) {
         rows.each(function() {
           contentHeight += angular.element(this).outerHeight(true) || 0;
@@ -940,55 +959,95 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
       }
 
       // ---- 2. 测量 ui-grid 框架高度（列头 + 滚动条 + 分页脚） ----
-      var header = gridElem.find('.ui-grid-header');
-      var headerHeight = header.length ? header.outerHeight(true) : 30;
+      const header = gridElem.find('.ui-grid-header');
+      const headerHeight = header.length ? header.outerHeight(true) : 30;
 
-      var hScrollbar = gridElem.find('.ui-grid-horizontal-scrollbar');
-      var scrollbarHeight = (hScrollbar.length && hScrollbar.is(':visible'))
+      const hScrollbar = gridElem.find('.ui-grid-horizontal-scrollbar');
+      const scrollbarHeight = (hScrollbar.length && hScrollbar.is(':visible'))
         ? hScrollbar.outerHeight(true) : 0;
 
-      var footerHeight = 0;
+      let footerHeight = 0;
       if ($scope.config && $scope.config.tableOptionValue &&
           $scope.config.tableOptionValue.showPagination) {
-        var footer = gridElem.find('.ui-grid-footer');
+        const footer = gridElem.find('.ui-grid-footer');
         if (footer.length && footer.is(':visible')) {
           footerHeight = footer.outerHeight(true);
         }
       }
 
       // ---- 3. 计算目标高度 ----
-      var totalHeight = contentHeight + headerHeight + scrollbarHeight +
-                        footerHeight + TABLE_SCROLLBAR_RESERVE + TABLE_HEIGHT_PADDING;
-      var maxHeight = ($scope.config && $scope.config.graph &&
-                       $scope.config.graph.height) || 420;
-      var pinnedHeightLimit = getPinnedGraphHeightLimit(graphElem);
-      var finalHeight = resolveAdaptiveTableHeight(
+      const totalHeight = contentHeight + headerHeight + scrollbarHeight +
+                          footerHeight + TABLE_SCROLLBAR_RESERVE + TABLE_HEIGHT_PADDING;
+      const maxHeight = ($scope.config && $scope.config.graph &&
+                         $scope.config.graph.height) || 420;
+      const pinnedHeightLimit = getPinnedGraphHeightLimit(graphElem);
+      const finalHeight = resolveAdaptiveTableHeight(
         totalHeight,
         maxHeight,
         pinnedHeightLimit,
         TABLE_MIN_HEIGHT
       );
-
-      var currentHeight = graphElem.height();
-      if (Math.abs(currentHeight - finalHeight) < 3) {
+      if (!finalHeight) {
         return;
       }
 
-      var heightPx = finalHeight + 'px';
+      const currentHeight = graphElem.height();
+      const currentGridHeight = gridElem.height();
+      if (Math.abs(currentHeight - finalHeight) < 3 &&
+          Math.abs(currentGridHeight - finalHeight) < 3) {
+        return;
+      }
+
+      const heightPx = finalHeight + 'px';
 
       // ---- 4. 解除高度枷锁 ----
-      var resizeWrapperId = graphElemId.replace(/_table$/, '_resize');
-      var resizeWrapper = angular.element('#' + resizeWrapperId);
+      const resizeWrapperId = graphElemId
+        .replace(/_graph$/, '_resize')
+        .replace(/_table$/, '_resize');
+      const resizeWrapper = angular.element('#' + resizeWrapperId);
+      const gridHost = gridElem.parent();
+      const heightTargets = [];
+      const addHeightTarget = function(el) {
+        if (!el || !el.length) {
+          return;
+        }
+        const exists = heightTargets.some(function(target) {
+          return target[0] === el[0];
+        });
+        if (!exists) {
+          heightTargets.push(el);
+        }
+      };
 
-      [graphElem, resizeWrapper, gridElem].forEach(function(el) {
+      addHeightTarget(graphElem);
+      addHeightTarget(gridElem);
+
+      if (gridHost.length && graphElem[0].contains(gridHost[0])) {
+        addHeightTarget(gridHost);
+      }
+      if (resizeWrapper.length) {
+        addHeightTarget(resizeWrapper);
+        let parent = graphElem.parent();
+        while (parent.length &&
+               parent[0] !== resizeWrapper[0] &&
+               resizeWrapper[0].contains(parent[0])) {
+          addHeightTarget(parent);
+          parent = parent.parent();
+        }
+      }
+
+      heightTargets.forEach(function(el) {
         if (el && el.length) {
           el[0].style.minHeight = '';
         }
       });
 
-      // ---- 5. 设置 graphElem / gridElem 高度 ----
-      graphElem.css('height', heightPx);
-      gridElem.css('height', heightPx);
+      // ---- 5. 同步 graph / ui-grid / resizable 内层承载节点高度 ----
+      heightTargets.forEach(function(el) {
+        if (el && el.length) {
+          el.css('height', heightPx);
+        }
+      });
 
       // ---- 6. Resizable wrapper ----
       if (resizeWrapper.length) {
@@ -997,20 +1056,16 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
           resizeWrapper.resizable('option', 'minHeight', finalHeight);
         } catch (e) { /* ignore */ }
         resizeWrapper.css({height: heightPx, overflow: 'hidden'});
-        var handle = resizeWrapper.find('.ui-resizable-handle');
+        const handle = resizeWrapper.find('.ui-resizable-handle');
         if (handle.length) {
           handle.css('bottom', '0');
-        }
-        var outerResult = resizeWrapper.parent();
-        if (outerResult.length && !/paragraphColumn/.test(outerResult[0].id || '')) {
-          outerResult.css({height: heightPx, overflow: 'hidden'});
         }
       }
 
       // ---- 7. ui-grid resize ----
-      var builtInViz = builtInVisualizations[$scope.graphMode];
+      const builtInViz = builtInVisualizations[$scope.graphMode];
       if (builtInViz && builtInViz.instance && builtInViz.instance.getGridApi) {
-        var gridApi = builtInViz.instance.getGridApi();
+        const gridApi = builtInViz.instance.getGridApi();
         if (gridApi && gridApi.core) {
           gridApi.core.handleWindowResize();
         }
@@ -1284,13 +1339,19 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
   $scope.$on('paragraphResized', function(event, paragraphId) {
     // paragraph col width changed
     if (paragraphId === paragraph.id) {
-      if (($scope.type === DefaultDisplayType.TABLE || $scope.type === DefaultDisplayType.NETWORK) &&
-          tableData && tableData.rows) {
-        applyAdaptiveTableHeight(`p${$scope.id}_graph`, tableData.rows.length, {notifyParagraph: false});
-      }
+      const shouldAdjustTableHeight =
+        ($scope.type === DefaultDisplayType.TABLE || $scope.type === DefaultDisplayType.NETWORK) &&
+        tableData && tableData.rows;
       let builtInViz = builtInVisualizations[$scope.graphMode];
       if (builtInViz && builtInViz.instance) {
-        $timeout(() => builtInViz.instance.resize(), 200);
+        $timeout(() => {
+          builtInViz.instance.resize();
+          if (shouldAdjustTableHeight) {
+            applyAdaptiveTableHeight(`p${$scope.id}_graph`, tableData.rows.length, {notifyParagraph: false});
+          }
+        }, 200);
+      } else if (shouldAdjustTableHeight) {
+        applyAdaptiveTableHeight(`p${$scope.id}_graph`, tableData.rows.length, {notifyParagraph: false});
       }
     }
   });

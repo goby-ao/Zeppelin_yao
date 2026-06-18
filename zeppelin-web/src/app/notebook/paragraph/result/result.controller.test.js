@@ -101,11 +101,19 @@ describe('Controller: ResultCtrl', function() {
     expect(resolveAdaptiveTableHeight(520, 420, 260, 118)).toBe(260);
   });
 
+  it('should expand pinned table height when the visible result viewport is larger than config', function() {
+    expect(resolveAdaptiveTableHeight(1000, 420, 620, 118)).toBe(620);
+  });
+
   it('should allow pinned table height to shrink below the default minimum when viewport is tighter', function() {
     expect(resolveAdaptiveTableHeight(520, 420, 96, 118)).toBe(96);
   });
 
-  it('should calculate the pinned viewport by removing sibling and chrome height', function() {
+  it('should calculate pinned graph height from geometry instead of stale wrapper blank space', function() {
+    expect(calculatePinnedGraphViewportHeight(750, 323, 0, 6)).toBe(420);
+  });
+
+  it('should calculate the pinned viewport by removing trailing siblings and bottom reserve', function() {
     expect(calculatePinnedGraphViewportHeight(480, 84, 36)).toBe(359);
   });
 });

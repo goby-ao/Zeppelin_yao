@@ -48,6 +48,11 @@ const CANCEL_MAX_WAIT_MS = 150000;
 const CANCEL_RESEND_FEEDBACK_MS = 800;
 const CANCEL_PENDING_BLOCK_MS = 5000;
 const CODE_COLLAPSE_LINE_THRESHOLD = 40;
+const PINNED_EDITOR_MIN_HEIGHT = 64;
+const PINNED_RESULT_MIN_HEIGHT = 96;
+const PINNED_EDITOR_DEFAULT_MAX_RATIO = 0.45;
+const PINNED_EDITOR_FOCUS_RATIO = 0.72;
+const PINNED_SPLIT_STORAGE_PREFIX = 'zeppelin.pinnedParagraphSplit.';
 const QUICK_NOTE_PLACEHOLDERS = {
   hive: '在这里编写 SQL 代码，按 Shift + Enter 直接提交查询。',
   spark: '在这里编写 Spark SQL，按 Shift + Enter 运行查询。',
@@ -102,6 +107,13 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   let cancelResendFeedbackTimer = null;
   let cancelPendingBlockTimer = null;
   let codeCollapseInitialized = false;
+  let pinnedSplitPointerState = null;
+  let pinnedSplitterHandle = null;
+  let pinnedSplitLayoutRaf = null;
+  let pinnedSplitBroadcasting = false;
+  $scope.pinnedEditorRegionStyle = {};
+  $scope.pinnedSplitPreset = 'default';
+  $scope.isPinnedSplitDragging = false;
 
   // transactional info for spell execution
   $scope.spellTransaction = {
@@ -401,6 +413,461 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     }, 0);
   }
 
+  function getParagraphContainerElement() {
+    return angular.element('#' + $scope.paragraph.id + '_container');
+  }
+
+  function getPinnedEditorRegionElement() {
+    return angular.element('#' + $scope.paragraph.id + '_editorRegion');
+  }
+
+  function getPinnedSplitterHandleElement() {
+    return angular.element('#' + $scope.paragraph.id + '_splitterHandle');
+  }
+
+  function getPinnedSplitStorageKey() {
+    if (!$scope.paragraph || !$scope.paragraph.id) {
+      return null;
+    }
+
+    let noteId = $route.current && $route.current.pathParams &&
+      $route.current.pathParams.noteId;
+    if (!noteId && $scope.parentNote) {
+      noteId = $scope.parentNote.id || $scope.parentNote.name || 'note';
+    }
+    return PINNED_SPLIT_STORAGE_PREFIX + (noteId || 'note') + '.' + $scope.paragraph.id;
+  }
+
+  function readPinnedSplitPreference() {
+    let storageKey = getPinnedSplitStorageKey();
+    if (!storageKey || !$window.localStorage) {
+      return null;
+    }
+
+    try {
+      let preference = angular.fromJson($window.localStorage.getItem(storageKey));
+      if (!preference || (!preference.height && !preference.ratio)) {
+        return null;
+      }
+      return preference;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function savePinnedSplitPreference(height, availableHeight) {
+    let storageKey = getPinnedSplitStorageKey();
+    if (!storageKey || !$window.localStorage || !availableHeight) {
+      return;
+    }
+
+    try {
+      $window.localStorage.setItem(storageKey, angular.toJson({
+        height: Math.round(height),
+        ratio: height / availableHeight,
+        updatedAt: Date.now(),
+      }));
+    } catch (e) {
+      // ignore localStorage errors
+    }
+  }
+
+  function clearPinnedSplitPreference() {
+    let storageKey = getPinnedSplitStorageKey();
+    if (!storageKey || !$window.localStorage) {
+      return;
+    }
+
+    try {
+      $window.localStorage.removeItem(storageKey);
+    } catch (e) {
+      // ignore localStorage errors
+    }
+  }
+
+  $scope.isParagraphPinned = function(paragraph) {
+    return !!(paragraph && paragraph.id && $scope.lockedParagraphId === paragraph.id);
+  };
+
+  $scope.isPinnedSplitVisible = function(paragraph) {
+    return $scope.isParagraphPinned(paragraph) &&
+      !(paragraph.config && paragraph.config.editorHide) &&
+      !$scope.viewOnly;
+  };
+
+  function getPinnedSplitAvailableHeight() {
+    let body = getParagraphContainerElement().find('.zp-paragraph-body').first();
+    if (!body.length) {
+      return 0;
+    }
+
+    let bodyHeight = body.innerHeight() || body.height() || 0;
+    let reservedHeight = 0;
+    angular.forEach(body.children(), function(child) {
+      let childEl = angular.element(child);
+      if (childEl.hasClass('zp-paragraph-editor-region') ||
+          childEl.hasClass('zp-paragraph-result-region')) {
+        return;
+      }
+      if (childEl.is(':visible')) {
+        reservedHeight += childEl.outerHeight(true) || 0;
+      }
+    });
+
+    return Math.max(0, Math.floor(bodyHeight - reservedHeight));
+  }
+
+  function clampPinnedEditorHeight(height, availableHeight) {
+    let maxHeight = Math.max(0, availableHeight - PINNED_RESULT_MIN_HEIGHT);
+    let minHeight = Math.min(PINNED_EDITOR_MIN_HEIGHT, maxHeight);
+    if (!maxHeight) {
+      return 0;
+    }
+    return Math.max(minHeight, Math.min(Math.round(height), maxHeight));
+  }
+
+  function getPinnedEditorChromeHeight() {
+    let container = getParagraphContainerElement();
+    let shell = container.find('.zp-paragraph-editor-shell').first();
+    let editorElem = $scope.editor ? angular.element('#' + $scope.editor.container.id) : null;
+    if (shell.length && editorElem && editorElem.length) {
+      let shellChrome = Math.max(0, (shell.outerHeight(true) || 0) - (shell.height() || 0));
+      let editorChrome = Math.max(0, (editorElem.outerHeight(true) || 0) - (editorElem.height() || 0));
+      return shellChrome + editorChrome;
+    }
+    return 42;
+  }
+
+  function getPinnedDefaultEditorHeight(availableHeight) {
+    let lineHeight = ($scope.editor && $scope.editor.renderer && $scope.editor.renderer.lineHeight) || 16;
+    let contentHeight = getCodeLineCount($scope.paragraph) * lineHeight + getPinnedEditorChromeHeight();
+    let cappedHeight = Math.min(contentHeight, availableHeight * PINNED_EDITOR_DEFAULT_MAX_RATIO);
+    return clampPinnedEditorHeight(cappedHeight, availableHeight);
+  }
+
+  function getPinnedEditorHeightFromPreference(preference, availableHeight) {
+    if (!preference) {
+      return null;
+    }
+    if (typeof preference.ratio === 'number' && preference.ratio > 0) {
+      return clampPinnedEditorHeight(availableHeight * preference.ratio, availableHeight);
+    }
+    if (typeof preference.height === 'number' && preference.height > 0) {
+      return clampPinnedEditorHeight(preference.height, availableHeight);
+    }
+    return null;
+  }
+
+  function getPinnedEditorHeightForPreset(preset, availableHeight, preference) {
+    if (!availableHeight) {
+      return 0;
+    }
+
+    if (preset === 'fold') {
+      return clampPinnedEditorHeight(PINNED_EDITOR_MIN_HEIGHT, availableHeight);
+    }
+    if (preset === 'focus') {
+      return clampPinnedEditorHeight(availableHeight * PINNED_EDITOR_FOCUS_RATIO, availableHeight);
+    }
+    if (preset === 'current' && $scope.pinnedEditorHeight) {
+      return clampPinnedEditorHeight($scope.pinnedEditorHeight, availableHeight);
+    }
+    if (preset === 'restore') {
+      let storedHeight = getPinnedEditorHeightFromPreference(preference, availableHeight);
+      if (storedHeight) {
+        return storedHeight;
+      }
+    }
+    return getPinnedDefaultEditorHeight(availableHeight);
+  }
+
+  function getPinnedAceEditorHeight(editor, editorRegionHeight) {
+    if (!$scope.isPinnedSplitVisible($scope.paragraph) || !editor) {
+      return null;
+    }
+
+    let regionHeight = editorRegionHeight ||
+      getPinnedEditorRegionElement().height() ||
+      $scope.pinnedEditorHeight ||
+      0;
+    if (!regionHeight) {
+      return null;
+    }
+
+    return Math.max(32, Math.floor(regionHeight - getPinnedEditorChromeHeight()));
+  }
+
+  function applyPinnedAceEditorHeight(editorRegionHeight) {
+    if (!$scope.editor) {
+      return;
+    }
+
+    let aceHeight = getPinnedAceEditorHeight($scope.editor, editorRegionHeight);
+    if (!aceHeight) {
+      return;
+    }
+
+    angular.element('#' + $scope.editor.container.id).height(aceHeight + 'px');
+    $scope.editor.resize();
+  }
+
+  function applyPinnedEditorRegionHeight(height, availableHeight) {
+    let targetHeight = clampPinnedEditorHeight(
+      height,
+      availableHeight || getPinnedSplitAvailableHeight()
+    );
+    if (!targetHeight) {
+      return 0;
+    }
+
+    $scope.pinnedEditorHeight = targetHeight;
+    $scope.pinnedEditorRegionStyle = {
+      height: targetHeight + 'px',
+      maxHeight: 'none',
+    };
+
+    let editorRegion = getPinnedEditorRegionElement();
+    if (editorRegion.length) {
+      editorRegion.css({
+        height: targetHeight + 'px',
+        maxHeight: 'none',
+      });
+    }
+    applyPinnedAceEditorHeight(targetHeight);
+    return targetHeight;
+  }
+
+  function clearPinnedEditorRegionHeight() {
+    $scope.pinnedEditorHeight = null;
+    $scope.pinnedEditorRegionStyle = {};
+    let editorRegion = getPinnedEditorRegionElement();
+    if (editorRegion.length) {
+      editorRegion.css({
+        height: '',
+        maxHeight: '',
+      });
+    }
+  }
+
+  function notifyPinnedSplitLayoutChanged() {
+    if (pinnedSplitBroadcasting || !$scope.paragraph || !$scope.paragraph.id) {
+      return;
+    }
+
+    let schedule = $window.requestAnimationFrame || function(callback) {
+      return $timeout(callback, 0, false);
+    };
+    schedule(function() {
+      $timeout(function() {
+        if ($scope.editor) {
+          autoAdjustEditorHeight($scope.editor);
+          $scope.editor.resize();
+        }
+        pinnedSplitBroadcasting = true;
+        $scope.$broadcast('paragraphLayoutChanged', $scope.paragraph.id);
+        $scope.$broadcast('paragraphResized', $scope.paragraph.id);
+        pinnedSplitBroadcasting = false;
+      }, 0);
+    });
+  }
+
+  function applyPinnedSplitPreset(preset, options) {
+    options = options || {};
+    if (!$scope.isPinnedSplitVisible($scope.paragraph)) {
+      clearPinnedEditorRegionHeight();
+      return;
+    }
+
+    let availableHeight = getPinnedSplitAvailableHeight();
+    if (!availableHeight) {
+      return;
+    }
+
+    let preference = preset === 'restore' ? readPinnedSplitPreference() : null;
+    let targetHeight = getPinnedEditorHeightForPreset(preset, availableHeight, preference);
+    let appliedHeight = applyPinnedEditorRegionHeight(targetHeight, availableHeight);
+    if (!appliedHeight) {
+      return;
+    }
+
+    if (preset === 'restore') {
+      $scope.pinnedSplitPreset = preference ? 'custom' : 'default';
+    } else {
+      $scope.pinnedSplitPreset = preset === 'current' ? $scope.pinnedSplitPreset : preset;
+    }
+
+    if (options.persist === true) {
+      savePinnedSplitPreference(appliedHeight, availableHeight);
+    } else if (preset === 'default') {
+      clearPinnedSplitPreference();
+    }
+
+    if (options.notify !== false) {
+      notifyPinnedSplitLayoutChanged();
+    }
+  }
+
+  function schedulePinnedSplitPreset(preset, options) {
+    if (pinnedSplitLayoutRaf && $window.cancelAnimationFrame) {
+      $window.cancelAnimationFrame(pinnedSplitLayoutRaf);
+    }
+
+    let schedule = $window.requestAnimationFrame || function(callback) {
+      return $timeout(callback, 0, false);
+    };
+    pinnedSplitLayoutRaf = schedule(function() {
+      pinnedSplitLayoutRaf = null;
+      $timeout(function() {
+        applyPinnedSplitPreset(preset, options);
+        bindPinnedSplitterPointerEvents();
+      }, 0);
+    });
+  }
+
+  $scope.applyPinnedSplitPreset = function(preset, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    schedulePinnedSplitPreset(preset, {
+      persist: preset !== 'default',
+      notify: true,
+    });
+  };
+
+  $scope.resetPinnedSplitToDefault = function(event) {
+    $scope.applyPinnedSplitPreset('default', event);
+  };
+
+  $scope.isPinnedSplitPresetActive = function(preset) {
+    return $scope.pinnedSplitPreset === preset;
+  };
+
+  function cleanupPinnedSplitterDrag(handleEl, pointerId) {
+    if (handleEl && pointerId !== undefined && handleEl.releasePointerCapture) {
+      try {
+        handleEl.releasePointerCapture(pointerId);
+      } catch (e) {
+        // ignore pointer capture release errors
+      }
+    }
+
+    angular.element(document.body).removeClass('zp-pinned-split-dragging');
+    pinnedSplitPointerState = null;
+    $scope.isPinnedSplitDragging = false;
+  }
+
+  function onPinnedSplitterPointerMove(event) {
+    if (!pinnedSplitPointerState || event.pointerId !== pinnedSplitPointerState.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    let nextHeight = pinnedSplitPointerState.startHeight +
+      (event.clientY - pinnedSplitPointerState.startY);
+    let appliedHeight = applyPinnedEditorRegionHeight(nextHeight, pinnedSplitPointerState.availableHeight);
+    pinnedSplitPointerState.lastHeight = appliedHeight;
+
+    if (!pinnedSplitPointerState.resizeRaf) {
+      let state = pinnedSplitPointerState;
+      let schedule = $window.requestAnimationFrame || function(callback) {
+        return $timeout(callback, 0, false);
+      };
+      state.resizeRaf = schedule(function() {
+        state.resizeRaf = null;
+        if ($scope.editor) {
+          $scope.editor.resize();
+        }
+      });
+    }
+  }
+
+  function onPinnedSplitterPointerEnd(event) {
+    if (!pinnedSplitPointerState || event.pointerId !== pinnedSplitPointerState.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    let state = pinnedSplitPointerState;
+    cleanupPinnedSplitterDrag(event.currentTarget, event.pointerId);
+    if (state.lastHeight) {
+      savePinnedSplitPreference(state.lastHeight, state.availableHeight);
+      $scope.$evalAsync(function() {
+        $scope.pinnedSplitPreset = 'custom';
+        $scope.pinnedEditorRegionStyle = {
+          height: state.lastHeight + 'px',
+          maxHeight: 'none',
+        };
+      });
+    }
+    notifyPinnedSplitLayoutChanged();
+  }
+
+  function onPinnedSplitterPointerDown(event) {
+    if (!$scope.isPinnedSplitVisible($scope.paragraph) ||
+        (event.button !== undefined && event.button !== 0)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    let availableHeight = getPinnedSplitAvailableHeight();
+    let currentHeight = getPinnedEditorRegionElement().height() ||
+      $scope.pinnedEditorHeight ||
+      getPinnedDefaultEditorHeight(availableHeight);
+    currentHeight = clampPinnedEditorHeight(currentHeight, availableHeight);
+
+    pinnedSplitPointerState = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startHeight: currentHeight,
+      lastHeight: currentHeight,
+      availableHeight,
+      resizeRaf: null,
+    };
+
+    if (event.currentTarget.setPointerCapture) {
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch (e) {
+        // ignore pointer capture errors
+      }
+    }
+
+    angular.element(document.body).addClass('zp-pinned-split-dragging');
+    $scope.$evalAsync(function() {
+      $scope.isPinnedSplitDragging = true;
+      $scope.pinnedSplitPreset = 'custom';
+    });
+  }
+
+  function unbindPinnedSplitterPointerEvents() {
+    if (!pinnedSplitterHandle) {
+      return;
+    }
+
+    pinnedSplitterHandle.removeEventListener('pointerdown', onPinnedSplitterPointerDown);
+    pinnedSplitterHandle.removeEventListener('pointermove', onPinnedSplitterPointerMove);
+    pinnedSplitterHandle.removeEventListener('pointerup', onPinnedSplitterPointerEnd);
+    pinnedSplitterHandle.removeEventListener('pointercancel', onPinnedSplitterPointerEnd);
+    pinnedSplitterHandle = null;
+  }
+
+  function bindPinnedSplitterPointerEvents() {
+    let handle = getPinnedSplitterHandleElement();
+    if (!handle.length || pinnedSplitterHandle === handle[0]) {
+      return;
+    }
+
+    unbindPinnedSplitterPointerEvents();
+    pinnedSplitterHandle = handle[0];
+    pinnedSplitterHandle.addEventListener('pointerdown', onPinnedSplitterPointerDown);
+    pinnedSplitterHandle.addEventListener('pointermove', onPinnedSplitterPointerMove);
+    pinnedSplitterHandle.addEventListener('pointerup', onPinnedSplitterPointerEnd);
+    pinnedSplitterHandle.addEventListener('pointercancel', onPinnedSplitterPointerEnd);
+  }
+
   $scope.getCodeLineCount = function(paragraph) {
     return getCodeLineCount(paragraph);
   };
@@ -592,6 +1059,10 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
       $scope.codeCollapsed = false;
       codeCollapseInitialized = false;
       resizeEditorSoon();
+    }
+    if ($scope.isParagraphPinned($scope.paragraph) &&
+        $scope.pinnedSplitPreset === 'default') {
+      schedulePinnedSplitPreset('default', {persist: false, notify: true});
     }
   });
 
@@ -1421,9 +1892,16 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
 
       autoAdjustEditorHeight(_editor);
 
-      let adjustEditorListener = () => autoAdjustEditorHeight(_editor);
+      let adjustEditorListener = () => {
+        if ($scope.isPinnedSplitVisible($scope.paragraph)) {
+          schedulePinnedSplitPreset('restore', {notify: true});
+        } else {
+          autoAdjustEditorHeight(_editor);
+        }
+      };
       angular.element(window).resize(adjustEditorListener);
       $scope.$on('$destroy', () => angular.element(window).unbind('resize', adjustEditorListener));
+      schedulePinnedSplitPreset('restore', {notify: false});
 
       if (navigator.appVersion.indexOf('Mac') !== -1) {
         $scope.editor.setKeyboardHandler('ace/keyboard/emacs');
@@ -2037,6 +2515,13 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   };
 
   const autoAdjustEditorHeight = function(editor) {
+    let pinnedAceHeight = getPinnedAceEditorHeight(editor);
+    if (pinnedAceHeight) {
+      angular.element('#' + editor.container.id).height(pinnedAceHeight + 'px');
+      editor.resize();
+      return;
+    }
+
     let height =
       editor.getSession().getScreenLength() *
       editor.renderer.lineHeight;
@@ -2767,6 +3252,17 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
       return;
     }
 
+    if ($scope.isPinnedSplitVisible($scope.paragraph)) {
+      if (pinnedSplitBroadcasting) {
+        autoAdjustEditorHeight($scope.editor);
+        $scope.editor.resize();
+      } else {
+        schedulePinnedSplitPreset('restore', {notify: false});
+      }
+      return;
+    }
+
+    clearPinnedEditorRegionHeight();
     $timeout(function() {
       if (!$scope.editor) {
         return;
@@ -2774,6 +3270,42 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
       autoAdjustEditorHeight($scope.editor);
       $scope.editor.resize();
     }, 0);
+  });
+
+  $scope.$watch('lockedParagraphId', function(lockedId, previousLockedId) {
+    if (!$scope.paragraph || !$scope.paragraph.id) {
+      return;
+    }
+    if (lockedId === $scope.paragraph.id) {
+      schedulePinnedSplitPreset('restore', {notify: true});
+    } else if (previousLockedId === $scope.paragraph.id) {
+      clearPinnedEditorRegionHeight();
+      if ($scope.editor) {
+        autoAdjustEditorHeight($scope.editor);
+      }
+    }
+  });
+
+  $scope.$watch(function() {
+    return $scope.paragraph && $scope.paragraph.config &&
+      $scope.paragraph.config.editorHide;
+  }, function(editorHidden) {
+    if (!$scope.isParagraphPinned($scope.paragraph)) {
+      return;
+    }
+    if (editorHidden) {
+      clearPinnedEditorRegionHeight();
+    } else {
+      schedulePinnedSplitPreset('restore', {notify: true});
+    }
+  });
+
+  $scope.$on('$destroy', function() {
+    unbindPinnedSplitterPointerEvents();
+    angular.element(document.body).removeClass('zp-pinned-split-dragging');
+    if (pinnedSplitLayoutRaf && $window.cancelAnimationFrame) {
+      $window.cancelAnimationFrame(pinnedSplitLayoutRaf);
+    }
   });
 
   const clearSearchSelection = function() {

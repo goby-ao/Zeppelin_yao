@@ -127,6 +127,41 @@ limitations under the License.
       <i class="fa fa-thumb-tack"></i>
       <span>{{lockedParagraphId === paragraph.id ? '取消置顶' : '置顶'}}</span>
     </span>
+    <span class="zp-pinned-split-presets"
+          ng-if="lockedParagraphId === paragraph.id && !paragraph.config.editorHide && !viewOnly"
+          role="toolbar"
+          aria-label="置顶分栏高度">
+      <button type="button"
+              class="zp-pinned-split-preset"
+              ng-class="{'is-active': isPinnedSplitPresetActive('fold')}"
+              ng-click="applyPinnedSplitPreset('fold', $event)"
+              tooltip-placement="bottom"
+              tooltip-append-to-body="true"
+              uib-tooltip="折叠代码，结果区拿满">
+        <i class="fa fa-compress"></i>
+        <span>折叠代码</span>
+      </button>
+      <button type="button"
+              class="zp-pinned-split-preset"
+              ng-class="{'is-active': isPinnedSplitPresetActive('default')}"
+              ng-click="applyPinnedSplitPreset('default', $event)"
+              tooltip-placement="bottom"
+              tooltip-append-to-body="true"
+              uib-tooltip="按代码行数恢复默认高度">
+        <i class="fa fa-dot-circle-o"></i>
+        <span>默认</span>
+      </button>
+      <button type="button"
+              class="zp-pinned-split-preset"
+              ng-class="{'is-active': isPinnedSplitPresetActive('focus')}"
+              ng-click="applyPinnedSplitPreset('focus', $event)"
+              tooltip-placement="bottom"
+              tooltip-append-to-body="true"
+              uib-tooltip="聚焦代码，保留结果区最小可读空间">
+        <i class="fa fa-expand"></i>
+        <span>聚焦代码</span>
+      </button>
+    </span>
     <span class="zp-toolbar-code-btn"
           ng-if="isSqlMode(paragraph)"
           ng-click="formatSqlCode(paragraph)"
