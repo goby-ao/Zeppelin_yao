@@ -41,11 +41,14 @@ describe('Controller: NotebookCtrl', function() {
 
   beforeEach(function() {
     scope.note = noteMock;
+    document.body.classList.remove('zp-pin-mode-active');
+    document.documentElement.classList.remove('zp-pin-mode-active');
   });
 
   let functions = ['getCronOptionNameFromValue', 'removeNote', 'runAllParagraphs', 'saveNote', 'toggleAllEditor',
     'showAllEditor', 'hideAllEditor', 'toggleAllTable', 'hideAllTable', 'showAllTable', 'isNoteRunning',
     'killSaveTimer', 'startSaveTimer', 'setLookAndFeel', 'setCronScheduler', 'setConfig', 'updateNoteName',
+    'toggleParagraphLock',
     'openSetting', 'closeSetting', 'saveSetting', 'toggleSetting'];
 
   functions.forEach(function(fn) {
@@ -173,5 +176,31 @@ describe('Controller: NotebookCtrl', function() {
     });
 
     expect(scope.note).toBe(noteMock);
+  });
+
+  it('should only keep one pinned paragraph at a time', function() {
+    scope.toggleParagraphLock('p1');
+    expect(scope.lockedParagraphId).toEqual('p1');
+
+    scope.toggleParagraphLock('p2');
+    expect(scope.lockedParagraphId).toEqual('p2');
+
+    scope.toggleParagraphLock('p2');
+    expect(scope.lockedParagraphId).toEqual(null);
+  });
+
+  it('should toggle pin mode class on body when paragraph pin changes', function() {
+    document.body.classList.remove('zp-pin-mode-active');
+    document.documentElement.classList.remove('zp-pin-mode-active');
+
+    scope.toggleParagraphLock('p1');
+
+    expect(document.body.classList.contains('zp-pin-mode-active')).toEqual(true);
+    expect(document.documentElement.classList.contains('zp-pin-mode-active')).toEqual(true);
+
+    scope.toggleParagraphLock('p1');
+
+    expect(document.body.classList.contains('zp-pin-mode-active')).toEqual(false);
+    expect(document.documentElement.classList.contains('zp-pin-mode-active')).toEqual(false);
   });
 });

@@ -15,7 +15,7 @@
 .zp-result-action-strip {
   position: absolute;
   top: 7px;
-  right: 362px;
+  right: 452px;
   z-index: 3;
   display: -ms-inline-flexbox;
   display: inline-flex;
@@ -24,6 +24,10 @@
   height: 32px;
   margin: 0;
   vertical-align: middle;
+}
+
+.zp-pinned-paragraph .zp-result-action-strip {
+  right: 650px;
 }
 
 .paragraph.zp-has-title .zp-result-action-strip {
@@ -131,7 +135,7 @@
 }
 
 .zp-result-tools-menu {
-  z-index: 10050 !important;
+  z-index: 10080 !important;
   min-width: 188px;
   padding: 6px 0;
   border-color: var(--zp-border);

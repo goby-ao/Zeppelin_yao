@@ -13,7 +13,7 @@ limitations under the License.
 -->
 <!-- Here the controller <NotebookCtrl> is not needed because explicitly set in the app.js (route) -->
 <div id="actionbar" ng-include src="'app/notebook/notebook-actionBar.html'"></div>
-<div id="content" class="notebookContent">
+<div id="content" class="notebookContent" ng-class="{'zp-pin-mode-active': lockedParagraphId}">
   <!-- revisions comparator-->
   <div ng-if="showRevisionsComparator" class="revisions-comparator">
     <div>
@@ -174,7 +174,7 @@ limitations under the License.
       <h4 class="plus-sign" ng-class="{'new-paragraph-disable': isNoteRunning}">&#43; 添加代码块</h4>
     </div>
   </div>
-  <div style="clear:both;height:10px"></div>
+  <div class="zp-paragraph-end-spacer"></div>
 
   <!-- Paragraph Navigation Bar -->
   <paragraph-nav

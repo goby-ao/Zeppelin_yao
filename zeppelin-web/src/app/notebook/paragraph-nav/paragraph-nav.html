@@ -40,9 +40,9 @@ limitations under the License.
           <i ng-if="node.status === 'ABORT'" class="fa fa-exclamation abort-icon"></i>
         </div>
 
-        <!-- Lock indicator -->
+        <!-- Pin indicator -->
         <div class="nav-node-lock" ng-if="node.isLocked">
-          <i class="fa fa-lock"></i>
+          <i class="fa fa-thumb-tack"></i>
         </div>
       </div>
 
@@ -55,8 +55,8 @@ limitations under the License.
           <button class="tooltip-lock-btn"
                   ng-class="{'locked': node.isLocked}"
                   ng-click="onLockToggle({paragraphId: node.id}); $event.stopPropagation()"
-                  title="{{node.isLocked ? 'Unlock' : 'Lock this paragraph'}}">
-            <i class="fa" ng-class="{'fa-lock': node.isLocked, 'fa-unlock': !node.isLocked}"></i>
+                  title="{{node.isLocked ? '取消置顶' : '置顶此代码块'}}">
+            <i class="fa fa-thumb-tack"></i>
           </button>
         </div>
         <div class="tooltip-status">

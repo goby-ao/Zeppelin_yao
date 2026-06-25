@@ -1,3 +1,8 @@
+import {
+  calculatePinnedGraphViewportHeight,
+  resolveAdaptiveTableHeight,
+} from './result.controller.js';
+
 describe('Controller: ResultCtrl', function() {
   beforeEach(angular.mock.module('zeppelinWebApp'));
 
@@ -65,6 +70,24 @@ describe('Controller: ResultCtrl', function() {
     expect(scope.shouldDisablePlainTextCopy()).toBe(false);
   });
 
+  it('should allow plain text copy when SQL table copy flag is configured', function() {
+    rootScope.disableCopyEnabled = true;
+    scope.$parent.getEditorValue = function() {
+      return '%sql\n--;;; allow copy\nselect 1';
+    };
+
+    expect(scope.shouldDisablePlainTextCopy()).toBe(false);
+  });
+
+  it('should allow plain text copy when SQL copy shortcut flag is configured', function() {
+    rootScope.disableCopyEnabled = true;
+    scope.$parent.getEditorValue = function() {
+      return '%sql\n--## allow copy\nselect 1';
+    };
+
+    expect(scope.shouldDisablePlainTextCopy()).toBe(false);
+  });
+
   it('should ignore plain text copy enable flag after the first two input lines', function() {
     rootScope.disableCopyEnabled = true;
     scope.$parent.getEditorValue = function() {
@@ -72,5 +95,25 @@ describe('Controller: ResultCtrl', function() {
     };
 
     expect(scope.shouldDisablePlainTextCopy()).toBe(true);
+  });
+
+  it('should cap pinned table height by the visible result viewport', function() {
+    expect(resolveAdaptiveTableHeight(520, 420, 260, 118)).toBe(260);
+  });
+
+  it('should expand pinned table height when the visible result viewport is larger than config', function() {
+    expect(resolveAdaptiveTableHeight(1000, 420, 620, 118)).toBe(620);
+  });
+
+  it('should allow pinned table height to shrink below the default minimum when viewport is tighter', function() {
+    expect(resolveAdaptiveTableHeight(520, 420, 96, 118)).toBe(96);
+  });
+
+  it('should calculate pinned graph height from geometry instead of stale wrapper blank space', function() {
+    expect(calculatePinnedGraphViewportHeight(750, 323, 0, 6)).toBe(420);
+  });
+
+  it('should calculate the pinned viewport by removing trailing siblings and bottom reserve', function() {
+    expect(calculatePinnedGraphViewportHeight(480, 84, 36)).toBe(359);
   });
 });

@@ -46,9 +46,21 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   $scope.looknfeelOption = ['default', 'simple', 'report'];
   $scope.noteFormTitle = null;
 
-  // Paragraph nav lock state
+  // Paragraph pin state
   $scope.lockedParagraphId = null;
   let highlightTimer = null;
+  const PIN_MODE_BODY_CLASS = 'zp-pin-mode-active';
+
+  // Safety watch: guarantee body/html pin class stays in sync with lockedParagraphId.
+  // If any code path (or external DOM mutation) leaves the class behind after
+  // lockedParagraphId is cleared, the full-viewport fixed overlay would block all
+  // pointer events — this watch acts as the last line of defense.
+  $scope.$watch('lockedParagraphId', function(lockedId) {
+    if (!lockedId && document && document.body) {
+      document.body.classList.remove(PIN_MODE_BODY_CLASS);
+      document.documentElement.classList.remove(PIN_MODE_BODY_CLASS);
+    }
+  });
   $scope.cronOption = [
     {name: 'None', value: undefined},
     {name: '1m', value: '0 0/1 * * * ?'},
@@ -128,6 +140,43 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     }
     connectedOnce = true;
   });
+
+  function togglePinnedPageClass(isPinned) {
+    if (document && document.body) {
+      document.body.classList.toggle(PIN_MODE_BODY_CLASS, isPinned);
+    }
+    if (document && document.documentElement) {
+      document.documentElement.classList.toggle(PIN_MODE_BODY_CLASS, isPinned);
+    }
+  }
+
+  function notifyParagraphLayoutChange(paragraphIds) {
+    let ids = (paragraphIds || []).filter(function(id, index, arr) {
+      return !!id && arr.indexOf(id) === index;
+    });
+
+    if (ids.length === 0) {
+      return;
+    }
+
+    $timeout(function() {
+      ids.forEach(function(id) {
+        $scope.$broadcast('paragraphLayoutChanged', id);
+        $scope.$broadcast('paragraphResized', id);
+      });
+    }, 0);
+  }
+
+  function setLockedParagraphId(nextParagraphId) {
+    let previousParagraphId = $scope.lockedParagraphId;
+    if (previousParagraphId === nextParagraphId) {
+      return;
+    }
+
+    $scope.lockedParagraphId = nextParagraphId || null;
+    togglePinnedPageClass(!!$scope.lockedParagraphId);
+    notifyParagraphLayoutChange([previousParagraphId, $scope.lockedParagraphId]);
+  }
 
   $scope.addEvent = function(config) {
     let removeEventByID = function(id) {
@@ -1856,6 +1905,9 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     }
 
     $scope.note = note;
+    if ($scope.lockedParagraphId && !_.find(note.paragraphs, {id: $scope.lockedParagraphId})) {
+      setLockedParagraphId(null);
+    }
     rememberOpenedNote($scope.note);
 
     $scope.paragraphUrl = $routeParams.paragraphId;
@@ -1976,9 +2028,9 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
 
   $scope.toggleParagraphLock = function(paragraphId) {
     if ($scope.lockedParagraphId === paragraphId) {
-      $scope.lockedParagraphId = null;
+      setLockedParagraphId(null);
     } else {
-      $scope.lockedParagraphId = paragraphId;
+      setLockedParagraphId(paragraphId);
     }
   };
 
@@ -2025,16 +2077,16 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     if (lockedEl.contains(e.target)) {
       return;
     }
-    $scope.lockedParagraphId = null;
-    $scope.$apply();
+    setLockedParagraphId(null);
+    $scope.$evalAsync();
   }
   document.addEventListener('dblclick', onDblClickUnlock);
 
   // Esc to exit lock mode
   function onEscKey(e) {
     if (e.keyCode === 27 && $scope.lockedParagraphId) {
-      $scope.lockedParagraphId = null;
-      $scope.$apply();
+      setLockedParagraphId(null);
+      $scope.$evalAsync();
     }
   }
   document.addEventListener('keydown', onEscKey);
@@ -2050,14 +2102,6 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     }
     if (!lockedEl.contains(event.target)) {
       event.preventDefault();
-      let scrollables = lockedEl.querySelectorAll('.resultContent, table, pre, .code-body');
-      for (let i = 0; i < scrollables.length; i++) {
-        let s = scrollables[i];
-        if (s.scrollHeight > s.clientHeight) {
-          s.scrollTop += event.deltaY;
-          break;
-        }
-      }
     }
   }
   document.addEventListener('wheel', onWheel, {passive: false});
@@ -2072,6 +2116,8 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     document.removeEventListener('keydown', onEscKey);
     document.removeEventListener('wheel', onWheel);
     document.removeEventListener('dblclick', onDblClickUnlock);
+    $scope.lockedParagraphId = null;
+    togglePinnedPageClass(false);
     if (highlightTimer) {
       clearTimeout(highlightTimer);
     }

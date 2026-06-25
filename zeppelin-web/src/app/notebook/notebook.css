@@ -35,6 +35,61 @@ body {
   padding-top: 36px;
 }
 
+body.zp-pin-mode-active,
+html.zp-pin-mode-active {
+  overflow: hidden;
+}
+
+.notebookContent.zp-pin-mode-active {
+  overflow: hidden;
+}
+
+.notebookContent .zp-paragraph-end-spacer {
+  clear: both;
+  height: 10px;
+}
+
+.notebookContent.zp-pin-mode-active .note-jump,
+.notebookContent.zp-pin-mode-active #noteForms,
+.notebookContent.zp-pin-mode-active .zp-paragraph-end-spacer,
+.notebookContent.zp-pin-mode-active .new-paragraph,
+.notebookContent.zp-pin-mode-active .paragraph-dimmed {
+  display: none !important;
+}
+
+.notebookContent.zp-pin-mode-active > .paragraph-locked {
+  position: fixed;
+  top: 106px;
+  right: 0;
+  bottom: 0px;
+  left: 0;
+  z-index: 10060;
+  width: auto !important;
+  float: none !important;
+  margin: 0 !important;
+  padding: 0 10px 2px 8px !important;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 16px 28px -24px rgba(15, 23, 42, 0.28);
+  overflow: hidden;
+}
+
+.notebookContent.zp-pin-mode-active > .paragraph-locked::before {
+  display: none;
+}
+
+.notebookContent.zp-pin-mode-active > .paragraph-locked > [id$="_paragraphColumn"] {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100%;
+  margin: 0 !important;
+}
+
+.notebookContent.zp-pin-mode-active .paragraph-nav-container {
+  z-index: 10000;
+}
+
 .revision  {
   max-width: 250px;
   margin-bottom: 0 !important;
@@ -150,7 +205,8 @@ body {
 
 .navbar-fixed-top,
 .navbar-fixed-top .dropdown-menu {
-  z-index: 10002;
+  /* Keep the header above pinned paragraphs, but below modal dialogs (11003). */
+  z-index: 11002;
 }
 
 .noteAction {
