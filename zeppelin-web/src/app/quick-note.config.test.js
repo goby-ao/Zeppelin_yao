@@ -37,6 +37,13 @@ describe('Quick note cluster config', function() {
     expect(getNoteClusterByInterpreterBinding('hive3', 'ns1')).toEqual('hadoop3');
   });
 
+  it('uses ns1 Hadoop2 Spark interpreter name', function() {
+    expect(getQuickNoteMagic('spark', 'hadoop2', 'ns1')).toEqual('%spark');
+    expect(getQuickNoteKey('spark', 'hadoop2', 'ns1')).toEqual('spark');
+    expect(getNoteClusterByInterpreterBinding('spark', 'ns1')).toEqual('hadoop2');
+    expect(getNoteClusterByInterpreterBinding('spark3', 'ns1')).toEqual('hadoop3');
+  });
+
   it('reads current Zeppelin cluster name from configurations', function() {
     setCurrentZeppelinClusterNameFromConfigurations({'zeppelin.audit.cluster.name': 'ns2'});
 

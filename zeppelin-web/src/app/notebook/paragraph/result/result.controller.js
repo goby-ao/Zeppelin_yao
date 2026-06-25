@@ -53,6 +53,14 @@ export function resolveAdaptiveTableHeight(totalHeight, configuredMaxHeight,
   return Math.max(effectiveMinHeight, Math.min(totalHeight, effectiveMaxHeight));
 }
 
+export function resolvePlainTextMaxHeight(configuredHeight, pinnedHeightLimit, minHeight = 300) {
+  if (typeof pinnedHeightLimit === 'number' && pinnedHeightLimit > 0) {
+    return Math.floor(pinnedHeightLimit);
+  }
+
+  return Math.max(parseInt(configuredHeight, 10) || minHeight, minHeight);
+}
+
 function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location,
                     $timeout, $compile, $http, $q, $templateCache, $templateRequest, $sce, websocketMsgSrv,
                     baseUrlSrv, ngToast, saveAsService, noteVarShareService, heliumService,
@@ -225,6 +233,53 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
     const pinnedHeightLimit = calculatePinnedGraphViewportHeight(
       resultRect.bottom,
       graphRect.top,
+      trailingSiblingHeights,
+      bottomReserve
+    );
+
+    return pinnedHeightLimit > 0 ? pinnedHeightLimit : null;
+  }
+
+  function getPinnedPlainTextHeightLimit(plainTextElem) {
+    if (!plainTextElem || !plainTextElem.length ||
+        !plainTextElem.closest('.zp-pinned-paragraph').length) {
+      return null;
+    }
+
+    const resultRegion = plainTextElem.closest('.zp-paragraph-result-region');
+    const currentDisplay = plainTextElem.closest('.tableDisplay');
+    const logOutput = plainTextElem.closest('.zp-log-output');
+    const logBody = plainTextElem.closest('.zp-log-output-body');
+    if (!resultRegion.length || !currentDisplay.length || !logOutput.length || !logBody.length) {
+      return null;
+    }
+
+    const resultRect = resultRegion[0].getBoundingClientRect();
+    const logBodyRect = logBody[0].getBoundingClientRect();
+    if (!resultRect.height) {
+      return null;
+    }
+
+    let trailingSiblingHeights = 0;
+    let currentFound = false;
+    angular.forEach(resultRegion.children(), function(child) {
+      if (child === currentDisplay[0]) {
+        currentFound = true;
+      } else if (currentFound) {
+        trailingSiblingHeights += getVisibleOuterHeight(angular.element(child));
+      }
+    });
+
+    const plainTextVerticalPadding =
+      getCssPixelValue(plainTextElem, 'paddingTop') +
+      getCssPixelValue(plainTextElem, 'paddingBottom');
+    const bottomReserve =
+      getCssPixelValue(resultRegion, 'paddingBottom') +
+      getCssPixelValue(logOutput, 'marginBottom') +
+      plainTextVerticalPadding;
+    const pinnedHeightLimit = calculatePinnedGraphViewportHeight(
+      resultRect.bottom,
+      logBodyRect.top,
       trailingSiblingHeights,
       bottomReserve
     );
@@ -560,9 +615,14 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
     const collapsed = $scope.plainTextCollapsible && $scope.plainTextCollapsed;
     const configuredHeight = parseInt(_.get($scope.config, 'graph.height',
       PLAIN_TEXT_EXPANDED_MIN_HEIGHT), 10) || PLAIN_TEXT_EXPANDED_MIN_HEIGHT;
+    const pinnedHeightLimit = collapsed ? null : getPinnedPlainTextHeightLimit(getPlainTextElem());
     const height = collapsed
       ? PLAIN_TEXT_COLLAPSED_HEIGHT
-      : Math.max(configuredHeight, PLAIN_TEXT_EXPANDED_MIN_HEIGHT);
+      : resolvePlainTextMaxHeight(
+        configuredHeight,
+        pinnedHeightLimit,
+        PLAIN_TEXT_EXPANDED_MIN_HEIGHT
+      );
     return {
       'max-height': height + 'px',
       'overflow': collapsed ? 'hidden' : 'auto',
@@ -1342,6 +1402,8 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
       const shouldAdjustTableHeight =
         ($scope.type === DefaultDisplayType.TABLE || $scope.type === DefaultDisplayType.NETWORK) &&
         tableData && tableData.rows;
+      const shouldAdjustPlainTextHeight =
+        $scope.type === DefaultDisplayType.TEXT && !$scope.plainTextCollapsed;
       let builtInViz = builtInVisualizations[$scope.graphMode];
       if (builtInViz && builtInViz.instance) {
         $timeout(() => {
@@ -1352,6 +1414,12 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
         }, 200);
       } else if (shouldAdjustTableHeight) {
         applyAdaptiveTableHeight(`p${$scope.id}_graph`, tableData.rows.length, {notifyParagraph: false});
+      } else if (shouldAdjustPlainTextHeight) {
+        $timeout(() => {
+          if ($scope.keepScrollDown) {
+            schedulePlainTextScrollToBottom();
+          }
+        }, 200);
       }
     }
   });

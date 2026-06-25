@@ -201,7 +201,7 @@ limitations under the License.
         uib-tooltip="{{(paragraph.config.tableHide ? '显示' : '隐藏')}}输出 (Ctrl+{{ (isMac ? 'Option' : 'Alt') }}+O)"
         ng-click="toggleOutput(paragraph)"></span>
   <span class="dropdown zp-toolbar-dropdown zp-toolbar-item"
-        ng-if="!revisionView"
+        ng-if="!revisionView && lockedParagraphId !== paragraph.id"
         uib-dropdown
         dropdown-append-to-body="true">
     <button class="zp-settings-trigger" style="cursor:pointer"

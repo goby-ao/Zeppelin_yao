@@ -12,7 +12,10 @@
  * limitations under the License.
  */
 
-import {RECENT_NOTES_KEY} from '../../app/quick-note.config';
+import {
+  getCurrentZeppelinClusterName,
+  getRecentNotesStorageKey,
+} from '../../app/quick-note.config';
 
 angular.module('zeppelinWebApp').controller('NavCtrl', NavCtrl);
 
@@ -110,7 +113,7 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
 
   function readRecentNotes() {
     try {
-      let raw = window.localStorage.getItem(RECENT_NOTES_KEY);
+      let raw = window.localStorage.getItem(getRecentNotesStorageKey(getCurrentZeppelinClusterName()));
       let notes = raw ? angular.fromJson(raw) : [];
       if (!angular.isArray(notes)) {
         return [];
@@ -335,6 +338,10 @@ function NavCtrl($scope, $rootScope, $http, $routeParams, $location,
   });
 
   $scope.$on('setNoteMenu', function() {
+    refreshRecentNotes();
+  });
+
+  $scope.$on('zeppelinClusterNameChanged', function() {
     refreshRecentNotes();
   });
 

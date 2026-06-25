@@ -240,7 +240,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     }
 
     if (!config.fontSize) {
-      config.fontSize = 10;
+      config.fontSize = 9;
     }
 
     if (config.lineNumbers === undefined) {

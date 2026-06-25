@@ -1,6 +1,7 @@
 import {
   calculatePinnedGraphViewportHeight,
   resolveAdaptiveTableHeight,
+  resolvePlainTextMaxHeight,
 } from './result.controller.js';
 
 describe('Controller: ResultCtrl', function() {
@@ -115,5 +116,18 @@ describe('Controller: ResultCtrl', function() {
 
   it('should calculate the pinned viewport by removing trailing siblings and bottom reserve', function() {
     expect(calculatePinnedGraphViewportHeight(480, 84, 36)).toBe(359);
+  });
+
+  it('should expand pinned plain text output by the visible result viewport', function() {
+    expect(resolvePlainTextMaxHeight(300, 620, 300)).toBe(620);
+  });
+
+  it('should allow pinned plain text output to shrink below the default minimum', function() {
+    expect(resolvePlainTextMaxHeight(300, 128, 300)).toBe(128);
+  });
+
+  it('should keep plain text configured height outside pinned mode', function() {
+    expect(resolvePlainTextMaxHeight(520, null, 300)).toBe(520);
+    expect(resolvePlainTextMaxHeight(120, null, 300)).toBe(300);
   });
 });

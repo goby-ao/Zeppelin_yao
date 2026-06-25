@@ -1,7 +1,13 @@
+import {
+  setCurrentZeppelinClusterNameFromConfigurations,
+} from '../../app/quick-note.config';
+
 describe('Controller: NavCtrl', function() {
   // load the controller's module
   beforeEach(angular.mock.module('zeppelinWebApp'));
-  const RECENT_NOTES_KEY = 'zp_recent_notes';
+  const RECENT_NOTES_KEY = 'zp_recent_notes.ns3';
+  const NS2_RECENT_NOTES_KEY = 'zp_recent_notes.ns2';
+  const OLD_RECENT_NOTES_KEY = 'zp_recent_notes';
   let NavCtrl;
   let scope;
   let rootScope;
@@ -47,7 +53,10 @@ describe('Controller: NavCtrl', function() {
   beforeEach(inject(function($rootScope) {
     rootScope = $rootScope;
     scope = $rootScope.$new();
+    setCurrentZeppelinClusterNameFromConfigurations({'zeppelin.audit.cluster.name': 'ns3'});
     window.localStorage.removeItem(RECENT_NOTES_KEY);
+    window.localStorage.removeItem(NS2_RECENT_NOTES_KEY);
+    window.localStorage.removeItem(OLD_RECENT_NOTES_KEY);
     httpMock = {
       get: jasmine.createSpy('get').and.returnValue(httpGetResponse()),
     };
@@ -58,6 +67,13 @@ describe('Controller: NavCtrl', function() {
       getHomeNote: jasmine.createSpy('getHomeNote'),
     };
   }));
+
+  afterEach(function() {
+    setCurrentZeppelinClusterNameFromConfigurations({'zeppelin.audit.cluster.name': 'ns3'});
+    window.localStorage.removeItem(RECENT_NOTES_KEY);
+    window.localStorage.removeItem(NS2_RECENT_NOTES_KEY);
+    window.localStorage.removeItem(OLD_RECENT_NOTES_KEY);
+  });
 
   it('does not load notes before auth ticket exists', inject(function($controller) {
     NavCtrl = createController($controller);
@@ -130,5 +146,34 @@ describe('Controller: NavCtrl', function() {
 
     expect(NavCtrl.recentNotes.length).toEqual(1);
     expect(NavCtrl.recentNotes[0].id).toEqual('1');
+  }));
+
+  it('refreshes recent notes from the active Zeppelin cluster storage key', inject(function($controller) {
+    window.localStorage.setItem(OLD_RECENT_NOTES_KEY, angular.toJson([
+      {id: 'old', name: 'Old unscoped note', time: 300},
+    ]));
+    window.localStorage.setItem(RECENT_NOTES_KEY, angular.toJson([
+      {id: 'ns3', name: 'NS3 note', time: 100},
+    ]));
+    window.localStorage.setItem(NS2_RECENT_NOTES_KEY, angular.toJson([
+      {id: 'ns2-a', name: 'NS2 note A', time: 200},
+      {id: 'ns2-b', name: 'NS2 note B', time: 100},
+    ]));
+
+    NavCtrl = createController($controller, {
+      principal: 'anonymous',
+      ticket: 'anonymous',
+      roles: '[]',
+    });
+
+    expect(NavCtrl.recentNotes.length).toEqual(1);
+    expect(NavCtrl.recentNotes[0].id).toEqual('ns3');
+
+    setCurrentZeppelinClusterNameFromConfigurations({'zeppelin.audit.cluster.name': 'ns2'});
+    rootScope.$broadcast('zeppelinClusterNameChanged', 'ns2');
+
+    expect(NavCtrl.recentNotes.length).toEqual(2);
+    expect(NavCtrl.recentNotes[0].id).toEqual('ns2-a');
+    expect(NavCtrl.recentNotes[1].id).toEqual('ns2-b');
   }));
 });

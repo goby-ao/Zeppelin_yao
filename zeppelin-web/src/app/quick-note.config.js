@@ -17,7 +17,7 @@ const ZEPPELIN_CLUSTER_CONFIGS = {
     bindings: {
       hadoop2: {
         hive: 'hive',
-        spark: 'spark3',
+        spark: 'spark',
       },
       hadoop3: {
         hive: 'hive3',
