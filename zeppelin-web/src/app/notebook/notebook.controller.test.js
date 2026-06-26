@@ -3,6 +3,7 @@ describe('Controller: NotebookCtrl', function() {
 
   let scope;
   let rootScope;
+  let scrollMonitorMock;
 
   let websocketMsgSrvMock = {
     getNote: function() {},
@@ -31,11 +32,16 @@ describe('Controller: NotebookCtrl', function() {
   beforeEach(inject(function($controller, $rootScope) {
     rootScope = $rootScope;
     scope = rootScope.$new();
+    scrollMonitorMock = {
+      recalculateLocations: jasmine.createSpy('recalculateLocations'),
+      update: jasmine.createSpy('update'),
+    };
     $controller('NotebookCtrl', {
       $scope: scope,
       websocketMsgSrv: websocketMsgSrvMock,
       baseUrlSrv: baseUrlSrvMock,
       $routeParams: routeParamsMock,
+      scrollMonitor: scrollMonitorMock,
     });
   }));
 
@@ -153,6 +159,115 @@ describe('Controller: NotebookCtrl', function() {
     expect(scope.noteRevisions.length).toEqual(1);
     expect(scope.noteRevisions[0].id).toEqual('Head');
     expect(scope.noteRevisions[0].time).toEqual(null);
+  });
+
+  it('should reveal and focus a newly added paragraph', inject(function($controller) {
+    let newParagraph = {id: 'paragraph-new', text: '%sh\n', config: {}};
+    let scheduledTimeouts = [];
+    let fakeTimeout = function(callback) {
+      scheduledTimeouts.push(callback);
+      return scheduledTimeouts.length;
+    };
+    fakeTimeout.cancel = angular.noop;
+    let localScope = rootScope.$new();
+    $controller('NotebookCtrl', {
+      $scope: localScope,
+      websocketMsgSrv: websocketMsgSrvMock,
+      baseUrlSrv: baseUrlSrvMock,
+      $routeParams: routeParamsMock,
+      $timeout: fakeTimeout,
+      scrollMonitor: scrollMonitorMock,
+    });
+    localScope.note = {
+      id: '1',
+      name: 'my note',
+      config: {},
+      paragraphs: [
+        {id: 'paragraph-before', focus: true},
+        {id: 'paragraph-after'},
+      ],
+    };
+    spyOn(localScope, 'scrollToParagraphById');
+    spyOn(localScope, '$broadcast').and.callThrough();
+
+    let timeoutCountBeforeAdd = scheduledTimeouts.length;
+    localScope.$broadcast('addParagraph', newParagraph, 1);
+
+    expect(localScope.note.paragraphs[1]).toBe(newParagraph);
+    expect(localScope.note.paragraphs[0].focus).toBe(false);
+    expect(newParagraph.focus).toBe(true);
+    expect(newParagraph._initializing).toBe(true);
+    expect(localScope.viewportWatchSuspend).toBe(1);
+    expect(localScope.scrollToParagraphById).not.toHaveBeenCalled();
+
+    localScope.$broadcast('paragraphInitialized', 'paragraph-new');
+    scheduledTimeouts[timeoutCountBeforeAdd + 1]();
+
+    expect(newParagraph._initializing).toBe(false);
+    expect(localScope.viewportWatchSuspend).toBe(0);
+    expect(scrollMonitorMock.update).toHaveBeenCalled();
+    expect(localScope.scrollToParagraphById).toHaveBeenCalledWith('paragraph-new');
+    expect(localScope.$broadcast).toHaveBeenCalledWith('focusParagraph', 'paragraph-new', 0, null, false);
+  }));
+
+  it('should keep a newly added paragraph visible in pin mode', inject(function($controller) {
+    let newParagraph = {id: 'paragraph-new', text: '%sh\n', config: {}};
+    let scheduledTimeouts = [];
+    let fakeTimeout = function(callback) {
+      scheduledTimeouts.push(callback);
+      return scheduledTimeouts.length;
+    };
+    fakeTimeout.cancel = angular.noop;
+    let localScope = rootScope.$new();
+    $controller('NotebookCtrl', {
+      $scope: localScope,
+      websocketMsgSrv: websocketMsgSrvMock,
+      baseUrlSrv: baseUrlSrvMock,
+      $routeParams: routeParamsMock,
+      $timeout: fakeTimeout,
+      scrollMonitor: scrollMonitorMock,
+    });
+    localScope.note = {
+      id: '1',
+      name: 'my note',
+      config: {},
+      paragraphs: [
+        {id: 'paragraph-before', focus: true},
+        {id: 'paragraph-after'},
+      ],
+    };
+    localScope.toggleParagraphLock('paragraph-before');
+
+    let timeoutCountBeforeAdd = scheduledTimeouts.length;
+    localScope.$broadcast('addParagraph', newParagraph, 1);
+    scheduledTimeouts.slice(timeoutCountBeforeAdd).forEach(function(callback) {
+      callback();
+    });
+
+    expect(localScope.note.paragraphs[1]).toBe(newParagraph);
+    expect(localScope.lockedParagraphId).toEqual('paragraph-new');
+    expect(document.body.classList.contains('zp-pin-mode-active')).toEqual(true);
+    expect(newParagraph.focus).toBe(true);
+  }));
+
+  it('should leave pin mode when the pinned paragraph is removed', function() {
+    scope.note = {
+      id: '1',
+      name: 'my note',
+      config: {},
+      paragraphs: [
+        {id: 'paragraph-before'},
+        {id: 'paragraph-pinned'},
+      ],
+    };
+    scope.toggleParagraphLock('paragraph-pinned');
+
+    scope.$broadcast('removeParagraph', 'paragraph-pinned');
+
+    expect(scope.lockedParagraphId).toEqual(null);
+    expect(document.body.classList.contains('zp-pin-mode-active')).toEqual(false);
+    expect(scope.note.paragraphs.length).toEqual(1);
+    expect(scope.note.paragraphs[0].id).toEqual('paragraph-before');
   });
 
   it('should request revision history after authenticated login', function() {

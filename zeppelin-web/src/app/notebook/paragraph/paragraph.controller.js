@@ -2363,6 +2363,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     // watchers when this paragraph scrolls out of the viewport.
     if ($scope.paragraph) {
       $scope.paragraph._initializing = false;
+      $scope.$emit('paragraphInitialized', $scope.paragraph.id);
     }
   };
 

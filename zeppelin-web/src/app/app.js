@@ -21,6 +21,8 @@ import 'headroom.js/dist/angular.headroom';
 import 'scrollmonitor/scrollMonitor.js';
 import 'angular-viewport-watch/angular-viewport-watch.js';
 
+import {decorateViewportWatchDirective} from './viewport-watch-safety';
+
 import 'angular-ui-grid/ui-grid.css';
 import './notebook/paragraph/result/display-table.css';
 import 'angular-ui-grid';
@@ -75,6 +77,9 @@ if (!process.env.BUILD_CI) {
 }
 
 let zeppelinWebApp = angular.module('zeppelinWebApp', requiredModules)
+  .config(['$provide', function($provide) {
+    decorateViewportWatchDirective($provide);
+  }])
   .filter('breakFilter', function() {
     return function(text) {
       // eslint-disable-next-line no-extra-boolean-cast

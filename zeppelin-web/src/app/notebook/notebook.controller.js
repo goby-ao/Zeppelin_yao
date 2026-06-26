@@ -27,7 +27,7 @@ angular.module('zeppelinWebApp').controller('NotebookCtrl', NotebookCtrl);
 function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
                       $http, websocketMsgSrv, baseUrlSrv, $timeout, saveAsService,
                       ngToast, noteActionService, noteVarShareService, TRASH_FOLDER_ID,
-                      heliumService) {
+                      heliumService, scrollMonitor) {
   'ngInject';
 
   ngToast.dismiss();
@@ -94,11 +94,14 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   $scope.isNoteDirty = null;
   $scope.saveTimer = null;
   $scope.paragraphWarningDialog = {};
+  $scope.viewportWatchSuspend = 0;
 
   let connectedOnce = false;
   let quickNoteBindingSaved = {};
   let interpreterBindingsBackgroundTimer = null;
   let loadingInterpreterBindingsInBackground = false;
+  let initializingParagraphIds = {};
+  let initializingParagraphTimeouts = {};
   let isRevisionPath = function(path) {
     let pattern = new RegExp('^.*\/notebook\/[a-zA-Z0-9_]*\/revision\/[a-zA-Z0-9_]*');
     return pattern.test(path);
@@ -916,26 +919,99 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     return noteCopy;
   };
 
+  function syncViewportWatchSuspend() {
+    $scope.viewportWatchSuspend = Object.keys(initializingParagraphIds).length;
+  }
+
+  function refreshViewportWatchLocations() {
+    if (scrollMonitor && scrollMonitor.update) {
+      scrollMonitor.update();
+    } else if (scrollMonitor && scrollMonitor.recalculateLocations) {
+      scrollMonitor.recalculateLocations();
+    }
+  }
+
+  function revealInitializedParagraph(paragraphId) {
+    $timeout(function() {
+      refreshViewportWatchLocations();
+      if (!$scope.note || !_.find($scope.note.paragraphs, {id: paragraphId})) {
+        return;
+      }
+      $scope.scrollToParagraphById(paragraphId);
+      $scope.$broadcast('focusParagraph', paragraphId, 0, null, false);
+    });
+  }
+
+  function beginParagraphInitialization(paragraph) {
+    paragraph._initializing = true;
+    paragraph._pendingRevealAfterInit = true;
+    initializingParagraphIds[paragraph.id] = true;
+    $timeout.cancel(initializingParagraphTimeouts[paragraph.id]);
+    syncViewportWatchSuspend();
+
+    // If aceLoaded never comes back, release the note-level guard so existing
+    // off-screen paragraphs can still be frozen by viewport-watch later.
+    initializingParagraphTimeouts[paragraph.id] = $timeout(function() {
+      delete initializingParagraphTimeouts[paragraph.id];
+      finishParagraphInitialization(paragraph.id, false);
+    }, 10000);
+  }
+
+  function finishParagraphInitialization(paragraphId, revealAfterRender) {
+    if (initializingParagraphTimeouts[paragraphId]) {
+      $timeout.cancel(initializingParagraphTimeouts[paragraphId]);
+      delete initializingParagraphTimeouts[paragraphId];
+    }
+
+    let paragraph = $scope.note && $scope.note.paragraphs ?
+      _.find($scope.note.paragraphs, {id: paragraphId}) : null;
+
+    if (!initializingParagraphIds[paragraphId]) {
+      if (revealAfterRender && paragraph && paragraph._pendingRevealAfterInit) {
+        paragraph._pendingRevealAfterInit = false;
+        revealInitializedParagraph(paragraphId);
+      }
+      return;
+    }
+
+    delete initializingParagraphIds[paragraphId];
+    syncViewportWatchSuspend();
+
+    if (paragraph) {
+      paragraph._initializing = false;
+    }
+
+    if (revealAfterRender && paragraph && paragraph._pendingRevealAfterInit) {
+      paragraph._pendingRevealAfterInit = false;
+      revealInitializedParagraph(paragraphId);
+    } else {
+      $timeout(refreshViewportWatchLocations);
+    }
+  }
+
   let addPara = function(paragraph, index) {
     if (!$scope.note || !$scope.note.paragraphs) {
       return;
     }
 
-    // Mark the paragraph as initializing so that viewport-watch's
-    // disableDigest() will skip it until aceLoaded() clears the flag.
-    // This prevents a race where $$watchers are nulled before the
-    // ng-include → code-editor → ui-ace → aceLoaded chain completes.
-    paragraph._initializing = true;
+    // Mark the data object, not a scope, so both ngRepeat and ParagraphCtrl
+    // can see the same initialization state while viewport-watch decides
+    // whether it is allowed to disable watchers.
+    beginParagraphInitialization(paragraph);
 
     $scope.note.paragraphs.splice(index, 0, paragraph);
-    // Mark the new paragraph as focused. The aceLoaded callback in
-    // ParagraphCtrl will automatically focus the editor when it
-    // finishes initializing (ACE template loads asynchronously).
+    // Keep the new block visible to the user. The websocket response already
+    // added it, but without an explicit reveal it can be inserted outside the
+    // current viewport and look like the click did nothing until refresh.
     $scope.note.paragraphs.forEach(function(para) {
-      if (para.id === paragraph.id) {
-        para.focus = true;
-      }
+      para.focus = para.id === paragraph.id;
     });
+    if ($scope.lockedParagraphId) {
+      // In pin mode, non-locked paragraphs are hidden by .paragraph-dimmed.
+      // Move the pin to the websocket-created paragraph so the insert has
+      // immediate visible feedback instead of only appearing after refresh.
+      setLockedParagraphId(paragraph.id);
+    }
   };
 
   let removePara = function(paragraphId) {
@@ -945,6 +1021,14 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
         removeIdx = idx;
       }
     });
+    if (removeIdx === undefined) {
+      return [];
+    }
+    if ($scope.lockedParagraphId === paragraphId) {
+      // Removing the pinned paragraph leaves no visible .paragraph-locked node.
+      // Clear pin mode immediately so the remaining paragraphs are not hidden.
+      setLockedParagraphId(null);
+    }
     return $scope.note.paragraphs.splice(removeIdx, 1);
   };
 
@@ -955,10 +1039,15 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     addPara(paragraph, index);
   });
 
+  $scope.$on('paragraphInitialized', function(event, paragraphId) {
+    finishParagraphInitialization(paragraphId, true);
+  });
+
   $scope.$on('removeParagraph', function(event, paragraphId) {
     if ($scope.paragraphUrl || $scope.revisionView === true) {
       return;
     }
+    finishParagraphInitialization(paragraphId, false);
     removePara(paragraphId);
   });
 
