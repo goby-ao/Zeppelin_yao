@@ -15,6 +15,10 @@
 angular.module('zeppelinWebApp').directive('resizable', ResizableDirective);
 
 function ResizableDirective() {
+  const FLOATING_HEIGHT_RESIZE_TYPES = ['TABLE', 'NETWORK'];
+  const MAX_FLOATING_HEIGHT = 2400;
+  const TABLE_HEIGHT_RESIZING_CLASS = 'zp-table-height-resizing';
+
   let resizableConfig = {
     autoHide: true,
     handles: 'se',
@@ -41,6 +45,17 @@ function ResizableDirective() {
     });
   };
 
+  let shouldShowFloatingHeightHandle = function(resize, elem) {
+    return FLOATING_HEIGHT_RESIZE_TYPES.indexOf(resize.graphType) !== -1 &&
+      !elem.closest('.zp-pinned-paragraph').length;
+  };
+
+  let syncTableResizeHeight = function(elem, height) {
+    let heightPx = height + 'px';
+    elem.find('.graphContainer').css('height', heightPx);
+    elem.find('.ui-grid').css('height', heightPx);
+  };
+
   return {
     restrict: 'A',
     scope: {
@@ -59,12 +74,34 @@ function ResizableDirective() {
             conf.grid = [colStep, 10000];
             conf.minHeight = 0;
           }
+          if (shouldShowFloatingHeightHandle(resize, elem)) {
+            elem.addClass('zp-table-resize-enabled');
+            conf.autoHide = false;
+            conf.handles = 's,se';
+            conf.maxHeight = MAX_FLOATING_HEIGHT;
+            conf.start = function() {
+              angular.element(document.body).addClass(TABLE_HEIGHT_RESIZING_CLASS);
+            };
+            conf.resize = function(event, ui) {
+              elem.data('zeppelinResizeHeight', ui.size.height);
+              syncTableResizeHeight(elem, ui.size.height);
+            };
+            conf.stop = function(event, ui) {
+              angular.element(document.body).removeClass(TABLE_HEIGHT_RESIZING_CLASS);
+              elem.data('zeppelinResizeHeight', ui.size.height);
+              syncTableResizeHeight(elem, ui.size.height);
+              resizableConfig.stop.call(this);
+            };
+          } else {
+            elem.removeClass('zp-table-resize-enabled');
+          }
           conf.maxWidth = window.innerWidth;
 
           elem.resizable(conf);
           elem.on('resizestop', function() {
             if (scope.callback) {
-              let height = elem.height();
+              let height = elem.data('zeppelinResizeHeight') || elem.height();
+              elem.removeData('zeppelinResizeHeight');
               if (height < 50) {
                 height = 300;
               }

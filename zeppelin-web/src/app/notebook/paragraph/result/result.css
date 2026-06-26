@@ -134,61 +134,136 @@
   box-shadow: none;
 }
 
+.tableDisplay {
+  --zp-table-resize-handle-color: #3b6cf6;
+  --zp-table-resize-handle-rgb: 59, 108, 246;
+  --zp-table-corner-resize-color: #4b5563;
+  --zp-table-corner-resize-rgb: 75, 85, 99;
+}
+
+.tableDisplay [resizable] {
+  position: relative;
+}
+
+.paragraph:not(.zp-pinned-paragraph) .tableDisplay .zp-table-resize-enabled {
+  padding-bottom: 30px;
+}
+
 .tableDisplay .ui-resizable-se {
-  right: 2px !important;
-  bottom: 2px !important;
-  width: 18px !important;
-  height: 18px !important;
-  box-sizing: border-box;
-  border-right: 2px solid #64748b;
-  border-bottom: 2px solid #64748b;
-  border-radius: 0 0 4px 0;
-  background: transparent !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 5 !important;
+  display: block !important;
+  width: 24px !important;
+  height: 24px !important;
+  background: linear-gradient(135deg,
+                              transparent 48%,
+                              rgba(var(--zp-table-corner-resize-rgb), 0.20) 50%) !important;
   color: transparent;
-  z-index: 4 !important;
-  opacity: 0.78;
+  opacity: 1 !important;
   cursor: nwse-resize;
-  transition: border-color 120ms ease, opacity 120ms ease, transform 120ms ease;
 }
 
 .tableDisplay .ui-resizable-se::before,
 .tableDisplay .ui-resizable-se::after {
   position: absolute;
-  right: 2px;
-  height: 2px;
-  border-radius: 999px;
-  background: #64748b;
+  right: 3px;
+  height: 1.5px;
+  background: var(--zp-table-corner-resize-color);
   content: '';
   transform: rotate(-45deg);
   transform-origin: right center;
-  transition: background-color 120ms ease;
 }
 
 .tableDisplay .ui-resizable-se::before {
-  bottom: 5px;
-  width: 13px;
+  bottom: 4px;
+  width: 10px;
 }
 
 .tableDisplay .ui-resizable-se::after {
+  bottom: 8px;
+  width: 6px;
+}
+
+.tableDisplay .ui-resizable-se:active {
+  background: linear-gradient(135deg,
+                              transparent 46%,
+                              rgba(var(--zp-table-corner-resize-rgb), 0.28) 50%) !important;
+}
+
+.paragraph:not(.zp-pinned-paragraph) .tableDisplay .ui-resizable-s {
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 5 !important;
+  display: block !important;
+  width: auto !important;
+  height: 30px !important;
+  margin-left: 0;
+  border: 0;
+  background: transparent;
+  cursor: row-resize;
+}
+
+.paragraph:not(.zp-pinned-paragraph) .tableDisplay .ui-resizable-s::before {
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  bottom: 15px;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.12);
+  content: '';
+}
+
+.paragraph:not(.zp-pinned-paragraph) .tableDisplay .ui-resizable-s::after {
+  position: absolute;
+  left: 50%;
   bottom: 10px;
-  width: 8px;
+  width: 80px;
+  height: 11px;
+  margin-left: -33px;
+  border: 0.5px solid rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at calc(50% - 9px) 50%, rgba(0, 0, 0, 0.35) 0 1.8px, transparent 1.9px),
+    radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.35) 0 1.8px, transparent 1.9px),
+    radial-gradient(circle at calc(50% + 9px) 50%, rgba(0, 0, 0, 0.35) 0 1.8px, transparent 1.9px),
+    #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  content: '';
 }
 
-.tableDisplay:hover .ui-resizable-se,
-.tableDisplay .ui-resizable-se:hover,
-.tableDisplay .ui-resizable-se:focus {
-  border-color: #2563eb;
-  opacity: 1;
-  transform: translate(-1px, -1px);
+.paragraph:not(.zp-pinned-paragraph) .tableDisplay .ui-resizable-s:hover::after,
+.paragraph:not(.zp-pinned-paragraph) .tableDisplay .ui-resizable-s:active::after,
+.paragraph:not(.zp-pinned-paragraph) .tableDisplay .ui-resizable-resizing .ui-resizable-s::after,
+body.zp-table-height-resizing .paragraph:not(.zp-pinned-paragraph) .tableDisplay .ui-resizable-s::after {
+  border-color: rgba(var(--zp-table-resize-handle-rgb), 0.55);
+  background:
+    radial-gradient(circle at calc(50% - 9px) 50%, var(--zp-table-resize-handle-color) 0 1.8px, transparent 1.9px),
+    radial-gradient(circle at 50% 50%, var(--zp-table-resize-handle-color) 0 1.8px, transparent 1.9px),
+    radial-gradient(circle at calc(50% + 9px) 50%, var(--zp-table-resize-handle-color) 0 1.8px, transparent 1.9px),
+    #f3f7ff;
 }
 
-.tableDisplay:hover .ui-resizable-se::before,
-.tableDisplay:hover .ui-resizable-se::after,
-.tableDisplay .ui-resizable-se:hover::before,
-.tableDisplay .ui-resizable-se:hover::after,
-.tableDisplay .ui-resizable-se:focus::before,
-.tableDisplay .ui-resizable-se:focus::after {
-  background: #2563eb;
+.zp-pinned-paragraph .tableDisplay .ui-resizable-s,
+.zp-pinned-paragraph .tableDisplay .ui-resizable-s::before,
+.zp-pinned-paragraph .tableDisplay .ui-resizable-s::after,
+.paragraph-locked .tableDisplay .ui-resizable-s,
+.paragraph-locked .tableDisplay .ui-resizable-s::before,
+.paragraph-locked .tableDisplay .ui-resizable-s::after {
+  display: none !important;
+  content: none !important;
+}
+
+.tableDisplay .ui-resizable-resizing,
+.tableDisplay .ui-resizable-resizing *,
+body.zp-table-height-resizing,
+body.zp-table-height-resizing * {
+  cursor: row-resize !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
 }
 
 .zp-result-tools-menu {

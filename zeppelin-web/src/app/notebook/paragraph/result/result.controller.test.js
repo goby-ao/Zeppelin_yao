@@ -139,7 +139,7 @@ describe('Controller: ResultCtrl', function() {
     });
     expect(resolveResizableTableBounds(null, 420, 100)).toEqual({
       minHeight: 100,
-      maxHeight: null,
+      maxHeight: 2400,
     });
   });
 });

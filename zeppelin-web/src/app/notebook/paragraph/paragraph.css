@@ -1829,13 +1829,8 @@ table.table-striped {
 }
 
 .zp-pinned-paragraph .zp-paragraph-splitter::before {
-  position: absolute;
-  right: 0;
-  left: 0;
-  top: 50%;
-  height: 1px;
-  background: #e5e7eb;
-  content: '';
+  display: none;
+  content: none;
 }
 
 .zp-paragraph-splitter-handle {
@@ -1882,7 +1877,7 @@ body.zp-pinned-split-dragging * {
   min-height: 96px;
   overflow: auto;
   padding-bottom: 4px;
-  border-top: 1px solid rgba(229, 231, 235, 0.9);
+  border-top: 0;
 }
 
 .zp-pinned-paragraph .zp-paragraph-body.is-editor-hidden .zp-paragraph-result-region {
@@ -1933,6 +1928,10 @@ body.zp-pinned-split-dragging * {
 
 .zp-pinned-paragraph .tableDisplay:first-child {
   margin-top: 2px;
+}
+
+.zp-pinned-paragraph .tableDisplay .graphContainer {
+  border-top: 0;
 }
 
 .zp-pinned-paragraph .paragraphFooter {

@@ -61,7 +61,8 @@ export function resolvePlainTextMaxHeight(configuredHeight, pinnedHeightLimit, m
   return Math.max(parseInt(configuredHeight, 10) || minHeight, minHeight);
 }
 
-export function resolveResizableTableBounds(pinnedHeightLimit, finalHeight, minHeight = 100) {
+export function resolveResizableTableBounds(pinnedHeightLimit, finalHeight,
+                                            minHeight = 100, maxHeight = 2400) {
   // 置顶模式是固定结果视口，需要锁住高度；普通模式保留右下角拖拽增高能力。
   if (typeof pinnedHeightLimit === 'number' && pinnedHeightLimit > 0) {
     return {
@@ -72,7 +73,7 @@ export function resolveResizableTableBounds(pinnedHeightLimit, finalHeight, minH
 
   return {
     minHeight: minHeight,
-    maxHeight: null,
+    maxHeight: Math.max(minHeight, maxHeight),
   };
 }
 
