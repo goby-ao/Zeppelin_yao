@@ -61,6 +61,21 @@ export function resolvePlainTextMaxHeight(configuredHeight, pinnedHeightLimit, m
   return Math.max(parseInt(configuredHeight, 10) || minHeight, minHeight);
 }
 
+export function resolveResizableTableBounds(pinnedHeightLimit, finalHeight, minHeight = 100) {
+  // 置顶模式是固定结果视口，需要锁住高度；普通模式保留右下角拖拽增高能力。
+  if (typeof pinnedHeightLimit === 'number' && pinnedHeightLimit > 0) {
+    return {
+      minHeight: finalHeight,
+      maxHeight: finalHeight,
+    };
+  }
+
+  return {
+    minHeight: minHeight,
+    maxHeight: null,
+  };
+}
+
 function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location,
                     $timeout, $compile, $http, $q, $templateCache, $templateRequest, $sce, websocketMsgSrv,
                     baseUrlSrv, ngToast, saveAsService, noteVarShareService, heliumService,
@@ -1112,8 +1127,12 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
       // ---- 6. Resizable wrapper ----
       if (resizeWrapper.length) {
         try {
-          resizeWrapper.resizable('option', 'maxHeight', finalHeight);
-          resizeWrapper.resizable('option', 'minHeight', finalHeight);
+          const resizeBounds = resolveResizableTableBounds(
+            pinnedHeightLimit,
+            finalHeight
+          );
+          resizeWrapper.resizable('option', 'maxHeight', resizeBounds.maxHeight);
+          resizeWrapper.resizable('option', 'minHeight', resizeBounds.minHeight);
         } catch (e) { /* ignore */ }
         resizeWrapper.css({height: heightPx, overflow: 'hidden'});
         const handle = resizeWrapper.find('.ui-resizable-handle');

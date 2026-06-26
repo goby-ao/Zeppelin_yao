@@ -134,6 +134,63 @@
   box-shadow: none;
 }
 
+.tableDisplay .ui-resizable-se {
+  right: 2px !important;
+  bottom: 2px !important;
+  width: 18px !important;
+  height: 18px !important;
+  box-sizing: border-box;
+  border-right: 2px solid #64748b;
+  border-bottom: 2px solid #64748b;
+  border-radius: 0 0 4px 0;
+  background: transparent !important;
+  color: transparent;
+  z-index: 4 !important;
+  opacity: 0.78;
+  cursor: nwse-resize;
+  transition: border-color 120ms ease, opacity 120ms ease, transform 120ms ease;
+}
+
+.tableDisplay .ui-resizable-se::before,
+.tableDisplay .ui-resizable-se::after {
+  position: absolute;
+  right: 2px;
+  height: 2px;
+  border-radius: 999px;
+  background: #64748b;
+  content: '';
+  transform: rotate(-45deg);
+  transform-origin: right center;
+  transition: background-color 120ms ease;
+}
+
+.tableDisplay .ui-resizable-se::before {
+  bottom: 5px;
+  width: 13px;
+}
+
+.tableDisplay .ui-resizable-se::after {
+  bottom: 10px;
+  width: 8px;
+}
+
+.tableDisplay:hover .ui-resizable-se,
+.tableDisplay .ui-resizable-se:hover,
+.tableDisplay .ui-resizable-se:focus {
+  border-color: #2563eb;
+  opacity: 1;
+  transform: translate(-1px, -1px);
+}
+
+.tableDisplay:hover .ui-resizable-se::before,
+.tableDisplay:hover .ui-resizable-se::after,
+.tableDisplay .ui-resizable-se:hover::before,
+.tableDisplay .ui-resizable-se:hover::after,
+.tableDisplay .ui-resizable-se:focus::before,
+.tableDisplay .ui-resizable-se:focus::after {
+  background: #2563eb;
+}
+
 .zp-result-tools-menu {
   z-index: 10080 !important;
   min-width: 188px;
