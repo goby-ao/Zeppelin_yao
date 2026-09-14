@@ -352,6 +352,9 @@ table.table-shortcut {
   font-weight: bold;
   font-family: 'Roboto', sans-serif;
   font-size: 17px !important;
+  padding-left: 11px;
+  padding-top: 2px;
+
 }
 
 .paragraph .title input {

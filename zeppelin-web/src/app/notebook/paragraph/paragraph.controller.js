@@ -1979,9 +1979,6 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'ALTER TABLE RENAME PARTITION', 'ALTER TABLE EXCHANGE PARTITION',
         'ALTER TABLE RECOVER PARTITIONS',
 
-        // ===== Hive DDL - 分桶操作 =====
-        'CLUSTERED BY', 'SORTED BY', 'INTO BUCKETS', 'BUCKET',
-
         // ===== Hive DDL - 存储格式 =====
         'STORED AS', 'STORED BY', 'STORED AS TEXTFILE', 'STORED AS ORC', 'STORED AS PARQUET',
         'STORED AS AVRO', 'STORED AS SEQUENCEFILE', 'STORED AS RCFILE', 'STORED AS JSONFILE',
@@ -2011,7 +2008,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         // ===== Hive DML - 查询语法 =====
         'SORT BY', 'DISTRIBUTE BY', 'CLUSTER BY',
         'LATERAL VIEW', 'LATERAL VIEW OUTER', 'LATERAL TABLE',
-        'TABLESAMPLE', 'TABLESAMPLE (BUCKET', 'TABLESAMPLE (PERCENT',
+        'TABLESAMPLE', 'TABLESAMPLE (PERCENT',
         'WITH',
 
         // ===== Hive DML - 事务操作 (ACID) =====
@@ -2024,7 +2021,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
 
         // ===== Hive 查询提示 =====
         '/*+ MAPJOIN', '/*+ BROADCASTJOIN', '/*+ STREAMTABLE',
-        '/*+ BUCKET', '/*+ SHUFFLE', '/*+ NOSHUFFLE',
+        '/*+ SHUFFLE', '/*+ NOSHUFFLE',
         '/*+ MERGE', '/*+ NO_MERGE', '/*+ INFER',
         'SET', 'SET hive.', 'SET mapreduce.', 'SET yarn.',
 
@@ -2135,7 +2132,6 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         'TO_DATE', 'TO_TIMESTAMP', 'FROM_UTC_TIMESTAMP', 'TO_UTC_TIMESTAMP',
         'PERCENTILE', 'PERCENTILE_APPROX', 'STDDEV', 'VARIANCE', 'CORR', 'COVARIANCE',
         'INSERT OVERWRITE', 'INSERT INTO', 'LOAD DATA', 'PARTITION',
-        'BUCKET', 'CLUSTERED BY', 'SORTED BY', 'INTO BUCKETS',
         'STORED AS', 'ROW FORMAT', 'FIELDS TERMINATED BY', 'LINES TERMINATED BY',
         'SERDE', 'WITH SERDEPROPERTIES', 'LOCATION', 'TBLPROPERTIES',
         'EXTERNAL TABLE', 'TEMPORARY TABLE',
