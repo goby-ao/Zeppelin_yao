@@ -55,6 +55,11 @@ limitations under the License.
   </div>
 
 <script>
+    // Only local development on port 9000 skips the portal redirect; token login is unchanged.
+    var isLocalDev =
+      (window.location.hostname === 'localhost' ||
+       window.location.hostname === '127.0.0.1') &&
+      window.location.port === '9000';
     var url = document.location.href.split("?")[1];
     var path = document.location.href.split("?")[0];
     if(typeof(url)!="undefined"){
@@ -62,10 +67,10 @@ limitations under the License.
       if(typeof(params[1])!="undefined"){
          param = params[1].split("#")[0];
          angular.element(document.getElementById('login-container')).scope().loginByToken(param,path);
-      } else {
-        // window.location.href = "https://dc.migu.cn/elephant/mgwh/#/login";
+      } else if (!isLocalDev) {
+        window.location.replace("https://dc.migu.cn/elephant/mgwh/#/login");
       }
-    } else {
-      //window.location.href = "https://dc.migu.cn/elephant/mgwh/#/login";
+    } else if (!isLocalDev) {
+      window.location.replace("https://dc.migu.cn/elephant/mgwh/#/login");
     }
 </script>
