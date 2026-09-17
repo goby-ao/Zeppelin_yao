@@ -22,3 +22,33 @@ import './note-create.css'
 .dynamicForm.form-horizontal .form-group .checkbox-item input {
   margin-right: 2px;
 }
+
+.zp-paragraph-result-region .dynamicForm.form-horizontal {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 16px;
+  row-gap: 12px;
+  margin: 10px 16px 14px;
+}
+
+.zp-paragraph-result-region .dynamicForm.form-horizontal.row::before,
+.zp-paragraph-result-region .dynamicForm.form-horizontal.row::after {
+  content: none;
+}
+
+.zp-paragraph-result-region .dynamicForm.form-horizontal .form-group {
+  float: none;
+  width: auto;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.zp-paragraph-result-region .dynamicForm.form-horizontal .form-group > .control-label {
+  display: block;
+  text-align: left;
+  height: auto;
+  padding: 0;
+  margin: 0 0 3px;
+  line-height: 18px;
+}
