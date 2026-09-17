@@ -13,7 +13,7 @@ limitations under the License.
 -->
 
 <div class="zp-result-action-strip"
-     ng-if="$index === 0 && !asIframe && !viewOnly">
+     ng-if="isResultToolbarHost() && !asIframe && !viewOnly">
 
   <div id="{{id}}_switch"
        ng-if="type == 'TABLE' || type == 'NETWORK'"

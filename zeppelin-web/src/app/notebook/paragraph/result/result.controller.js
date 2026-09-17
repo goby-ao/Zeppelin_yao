@@ -1351,6 +1351,15 @@ function ResultCtrl($scope, $rootScope, $route, $window, $routeParams, $location
     websocketMsgSrv.clearParagraphOutput(paragraph.id);
   };
 
+  $scope.isResultToolbarHost = function() {
+    if (!paragraph || !paragraph.results || !paragraph.results.msg) {
+      return false;
+    }
+    const firstVisualResult = paragraph.results.msg.findIndex((msg) =>
+      msg && (msg.type === DefaultDisplayType.TABLE || msg.type === DefaultDisplayType.NETWORK));
+    return resultIndex === (firstVisualResult === -1 ? 0 : firstVisualResult);
+  };
+
   const getVizConfig = function(vizId) {
     let config;
     let graph = $scope.config.graph;
