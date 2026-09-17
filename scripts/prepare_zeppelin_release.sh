@@ -69,8 +69,6 @@ RELEASE_PARENT="$(cd "${RELEASE_PARENT}" && pwd -P)"
   fail '--release-parent must be inside a Git worktree'
 [[ -z "$(git -C "${ROOT_DIR}" status --porcelain)" ]] ||
   fail 'Zeppelin source tree is dirty; commit the source before building a release'
-[[ -z "$(git -C "${RELEASE_PARENT}" status --porcelain -- .)" ]] ||
-  fail 'release directory has uncommitted changes'
 
 SOURCE_COMMIT="$(git -C "${ROOT_DIR}" rev-parse HEAD)"
 RELEASE_ID="${CLUSTER}-$(date '+%Y%m%d-%H%M%S')-${SOURCE_COMMIT:0:8}"

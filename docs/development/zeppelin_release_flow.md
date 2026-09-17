@@ -35,6 +35,7 @@ bash scripts/prepare_zeppelin_release.sh \
 WAR 在制品目录中带日期时间和源码提交号，清单会把它映射到服务器原有的标准 WAR 文件名。
 检查 `manifest.tsv`、产物和源码提交号后，在制品仓库**仅暂存这个版本目录**，再
 commit、推送到 `origin` 和 `gitee`。不要把工作区其他文件或旧发布目录一起提交。
+其他未提交的版本目录不影响本次准备；提交时仍须只选择本次的 `<release-id>`。
 
 ## 服务器发布
 
