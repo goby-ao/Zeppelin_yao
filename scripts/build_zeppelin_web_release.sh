@@ -1,16 +1,13 @@
 #!/usr/bin/env bash
 #
-# Build Zeppelin legacy web assets, package zeppelin-web WAR, and copy it to
-# the local release directory.
+# Build Zeppelin legacy web assets and package zeppelin-web WAR in target/.
 #
 # Usage:
 #   scripts/build_zeppelin_web_release.sh
 #
 # Optional env vars:
-#   DEPLOY_DIR=/path/to/release_dir
 #   DEPS_FROM=/path/to/another/zeppelin-web
 #   VERIFY_WAR=1
-#   SKIP_COPY=1
 #
 set -euo pipefail
 
@@ -22,7 +19,6 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 WEB_DIR="${ROOT_DIR}/zeppelin-web"
 WAR_NAME="zeppelin-web-0.9.1-SNAPSHOT.war"
 WAR_PATH="${WEB_DIR}/target/${WAR_NAME}"
-DEPLOY_DIR="${DEPLOY_DIR:-/Users/yao/projects/video_hadoop3_update/temp/zeppelin_audit_depoly}"
 DEFAULT_DEPS_FROM="/Users/yao/IdeaProjects/Zeppelin_yao/zeppelin-web"
 
 CREATED_LINKS=()
@@ -43,17 +39,6 @@ log() {
 fail() {
   printf '[zeppelin-web-release] ERROR: %s\n' "$*" >&2
   exit 1
-}
-
-md5_print() {
-  local file="$1"
-  if command -v md5 >/dev/null 2>&1; then
-    md5 "${file}"
-  elif command -v md5sum >/dev/null 2>&1; then
-    md5sum "${file}"
-  else
-    log "md5/md5sum not found, skip checksum"
-  fi
 }
 
 link_dependency_dir() {
@@ -137,6 +122,7 @@ main() {
     cd "${ROOT_DIR}"
     mvn -pl zeppelin-web war:war -DskipTests
   )
+  [[ -s "${WAR_PATH}" ]] || fail "WAR not found or empty: ${WAR_PATH}"
 
   if [[ "${VERIFY_WAR:-0}" == "1" ]]; then
     command -v unzip >/dev/null 2>&1 || fail "unzip command not found"
@@ -145,16 +131,7 @@ main() {
     log "skip WAR content verification; set VERIFY_WAR=1 to enable"
   fi
 
-  if [[ "${SKIP_COPY:-0}" == "1" ]]; then
-    log "SKIP_COPY=1, WAR left at ${WAR_PATH}"
-    md5_print "${WAR_PATH}"
-    return 0
-  fi
-
-  mkdir -p "${DEPLOY_DIR}"
-  cp -p "${WAR_PATH}" "${DEPLOY_DIR}/${WAR_NAME}"
-  log "copied WAR to ${DEPLOY_DIR}/${WAR_NAME}"
-  md5_print "${DEPLOY_DIR}/${WAR_NAME}"
+  log "WAR ready: ${WAR_PATH}"
 }
 
 main "$@"
