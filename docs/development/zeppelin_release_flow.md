@@ -43,9 +43,12 @@ commit、推送到 `origin` 和 `gitee`。不要把工作区其他文件或旧�
 脚本不会自动读取该配置。发布 WAR 时还要确认实际生效的 `zeppelin.war` 指向清单中的
 标准 WAR 目标文件。再执行只读预检：
 
+默认 `ZEPPELIN_HOME=/data/cdh/zeppelin-0.9.1-SNAPSHOT`，
+`BACKUP_ROOT=/data/cdh/zeppelin-deploy-backup`。备份父目录需提前建好并确保执行账号可写；
+两者均可通过同名环境变量覆盖。
+
 ```bash
-ZEPPELIN_HOME=/data/cdh/zeppelin-0.9.1-SNAPSHOT CLUSTER_NAME=ns3 \
-  BACKUP_ROOT=/YOUR_BACKUP_ROOT \
+CLUSTER_NAME=ns3 \
   bash /YOUR_RELEASE_REPO/zeppelin_deploy/<release-id>/deploy.sh --dry-run
 ```
 
@@ -54,8 +57,7 @@ ZEPPELIN_HOME=/data/cdh/zeppelin-0.9.1-SNAPSHOT CLUSTER_NAME=ns3 \
 确认进程已停止后再执行：
 
 ```bash
-ZEPPELIN_HOME=/data/cdh/zeppelin-0.9.1-SNAPSHOT CLUSTER_NAME=ns3 \
-  BACKUP_ROOT=/YOUR_BACKUP_ROOT CONFIRM_STOPPED=1 \
+CLUSTER_NAME=ns3 CONFIRM_STOPPED=1 \
   bash /YOUR_RELEASE_REPO/zeppelin_deploy/<release-id>/deploy.sh --apply
 ```
 
@@ -68,15 +70,15 @@ ZEPPELIN_HOME=/data/cdh/zeppelin-0.9.1-SNAPSHOT CLUSTER_NAME=ns3 \
 验收失败时先停止 Zeppelin，使用**同一 release-id 和 BACKUP_ROOT** 回滚：
 
 ```bash
-ZEPPELIN_HOME=/data/cdh/zeppelin-0.9.1-SNAPSHOT CLUSTER_NAME=ns3 \
-  BACKUP_ROOT=/YOUR_BACKUP_ROOT CONFIRM_STOPPED=1 \
+CLUSTER_NAME=ns3 CONFIRM_STOPPED=1 \
   bash /YOUR_RELEASE_REPO/zeppelin_deploy/<release-id>/deploy.sh --rollback
 ```
 
 回滚脚本检查本地备份和当前文件，且只还原当次替换的文件。替换中途失败时会尝试
 自动恢复；如果机器异常断电，可用上述命令从备份继续恢复。确认后再重启服务。
 回滚不修改 `conf/`、`notebook/`、审计数据库或其他用户数据。`BACKUP_ROOT` 必须
-事先建好，并显式指定为 Zeppelin 安装目录之外的绝对路径，不要在验收前删除备份。
+位于 Zeppelin 安装目录之外，不要在验收前删除备份。发布和回滚若覆盖默认值，
+必须使用同一个 `BACKUP_ROOT`。
 
 旧的 `zeppelin_audit_depoly/update_zeppelin_audit_jars.sh` 和
 `rollback_zeppelin_audit_jars.sh` 只适用于历史审计发布，**不要与新版本清单混用**。

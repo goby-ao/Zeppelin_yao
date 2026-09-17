@@ -5,7 +5,7 @@ set -euo pipefail
 MODE="${1:---dry-run}"
 RELEASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 MANIFEST="${RELEASE_DIR}/manifest.tsv"
-ZEPPELIN_HOME="${ZEPPELIN_HOME:-}"
+ZEPPELIN_HOME="${ZEPPELIN_HOME:-/data/cdh/zeppelin-0.9.1-SNAPSHOT}"
 CLUSTER_NAME="${CLUSTER_NAME:-}"
 FILES=()
 TARGETS=()
@@ -42,7 +42,7 @@ case "${MODE}" in
   *) fail 'usage: deploy.sh --dry-run|--apply|--rollback' ;;
 esac
 [[ -n "${ZEPPELIN_HOME}" && -d "${ZEPPELIN_HOME}" && ! -L "${ZEPPELIN_HOME}" ]] ||
-  fail 'set ZEPPELIN_HOME to the real Zeppelin installation directory'
+  fail "ZEPPELIN_HOME must be a real Zeppelin installation directory: ${ZEPPELIN_HOME}"
 ZEPPELIN_HOME="$(cd "${ZEPPELIN_HOME}" && pwd -P)"
 case "${CLUSTER_NAME}" in
   ns1|ns2|ns3) ;;
@@ -105,7 +105,7 @@ for index in "${!EXPECTED_TARGETS[@]}"; do
   [[ "${TARGETS[$index]}" == "${EXPECTED_TARGETS[$index]}" ]] || fail 'manifest artifact order or scope is invalid'
 done
 
-BACKUP_ROOT="${BACKUP_ROOT:-}"
+BACKUP_ROOT="${BACKUP_ROOT:-/data/cdh/zeppelin-deploy-backup}"
 [[ "${BACKUP_ROOT}" == /* ]] || fail 'set BACKUP_ROOT to an absolute directory outside ZEPPELIN_HOME'
 [[ -d "${BACKUP_ROOT}" && ! -L "${BACKUP_ROOT}" ]] ||
   fail "BACKUP_ROOT must already exist and cannot be a symlink: ${BACKUP_ROOT}"
