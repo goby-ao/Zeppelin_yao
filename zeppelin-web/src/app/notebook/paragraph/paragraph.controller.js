@@ -81,6 +81,9 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   $scope.paragraph.results.msg = [];
   $scope.originalText = '';
   $scope.pendingText = undefined;
+  // A text acknowledgement may arrive before older execution snapshots.
+  let submittedRunText;
+  let textAwaitingEditorRender;
   $scope.editor = null;
   $scope.cursorPosition = null;
   $scope.diffMatchPatch = new DiffMatchPatch();
@@ -911,12 +914,17 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   }
 
   function getLatestParagraphText(paragraph) {
-    if (hasParagraphText($scope.dirtyText)) {
-      return $scope.dirtyText;
-    }
     let editorText = getEditorText();
     if (hasParagraphText(editorText)) {
+      // An accepted remote model can be waiting for ngModel.$render in this digest.
+      if (hasParagraphText(textAwaitingEditorRender) && paragraph &&
+          paragraph.text === textAwaitingEditorRender) {
+        return textAwaitingEditorRender;
+      }
       return editorText;
+    }
+    if (hasParagraphText($scope.dirtyText)) {
+      return $scope.dirtyText;
     }
     return paragraph ? paragraph.text : undefined;
   }
@@ -927,6 +935,9 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     }
     if (hasParagraphText($scope.pendingText)) {
       return $scope.pendingText;
+    }
+    if (hasParagraphText(submittedRunText)) {
+      return submittedRunText;
     }
     return undefined;
   }
@@ -946,9 +957,11 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   }
 
   function confirmParagraphText(paragraphText) {
+    const previousOriginalText = $scope.originalText;
     $scope.paragraph.text = paragraphText;
+    textAwaitingEditorRender = paragraphText;
     $scope.originalText = angular.copy(paragraphText);
-    if ($scope.dirtyText === paragraphText) {
+    if ($scope.dirtyText === paragraphText || $scope.dirtyText === previousOriginalText) {
       $scope.dirtyText = undefined;
     }
     if ($scope.pendingText === paragraphText) {
@@ -1507,6 +1520,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   };
 
   $scope.runParagraphUsingBackendInterpreter = function(paragraphText) {
+    submittedRunText = paragraphText;
     websocketMsgSrv.runParagraph($scope.paragraph.id, $scope.paragraph.title,
       paragraphText, $scope.paragraph.config, $scope.paragraph.settings.params);
   };
@@ -1834,13 +1848,30 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     commitParagraph(paragraph);
   };
 
-  $scope.aceChanged = function(_, editor) {
-    let session = editor.getSession();
-    let dirtyText = session.getValue();
+  function recordEditorText(_, editor) {
+    let dirtyText = editor.getValue();
+    // Ace's "input" notification is delayed (31ms). Capture changes immediately,
+    // before a websocket update or a quick blur/run can use the previous text.
+    textAwaitingEditorRender = undefined;
     $scope.dirtyText = dirtyText;
+    $scope.paragraph.text = dirtyText;
+    if (!$scope.isRunning($scope.paragraph) && dirtyText !== submittedRunText) {
+      submittedRunText = undefined;
+    }
     if (hasParagraphText($scope.pendingText) && $scope.pendingText !== dirtyText) {
       $scope.pendingText = undefined;
     }
+  }
+
+  $scope.aceChanged = function(_, editor) {
+    let session = editor.getSession();
+    let dirtyText = session.getValue();
+    // Offscreen paragraphs can suspend ngModel rendering; this delayed event is
+    // not a new edit. Real keystrokes already clear the marker in recordEditorText.
+    if (hasParagraphText(textAwaitingEditorRender) && dirtyText !== textAwaitingEditorRender) {
+      return;
+    }
+    recordEditorText(_, editor);
     if ($scope.dirtyText !== $scope.originalText) {
       if ($scope.collaborativeMode) {
         $scope.sendPatch();
@@ -1868,6 +1899,9 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     _editor.$blockScrolling = Infinity;
     _editor.$zeppelinParagraphScope = $scope;
     $scope.editor = _editor;
+    $scope.editor.off('change', recordEditorText);
+    $scope.editor.on('change', recordEditorText);
+    $scope.editor.off('input', $scope.aceChanged);
     $scope.editor.on('input', $scope.aceChanged);
     if (_editor.container.id !== '{{paragraph.id}}_editor') {
       $scope.editor.renderer.setShowGutter($scope.paragraph.config.lineNumbers);
@@ -2586,7 +2620,7 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   };
 
   $scope.getEditorValue = function() {
-    return !$scope.editor ? $scope.paragraph.text : $scope.editor.getValue();
+    return getLatestParagraphText($scope.paragraph);
   };
 
   $scope.getProgress = function() {
@@ -2871,6 +2905,11 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
         // Keep local editor text when stale remote paragraph updates arrive out of order.
         $scope.paragraph.text = localTextUpdate;
       }
+      // Do not release the run's text on PENDING/RUNNING acknowledgements.
+      // A terminal snapshot must also confirm it before normal remote edits resume.
+      if (newPara.text === submittedRunText && isTerminalParagraphStatus(newPara.status)) {
+        submittedRunText = undefined;
+      }
       return;
     }
 
@@ -2989,7 +3028,12 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     const oldPara = $scope.paragraph;
     const newPara = data.paragraph;
 
+    if (oldPara.id !== newPara.id || $scope.revisionView === true) {
+      return;
+    }
     if (!isUpdateRequired(oldPara, newPara)) {
+      // Saving/running updates paragraph.text optimistically; identical echoes still acknowledge it.
+      $scope.updateAllScopeTexts(oldPara, newPara);
       return;
     }
 
@@ -3017,15 +3061,22 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
 
   $scope.$on('patchReceived', function(event, data) {
     if (data.paragraphId === $scope.paragraph.id) {
-      let patch = data.patch;
-      patch = $scope.diffMatchPatch.patch_fromText(patch);
-      if (!$scope.paragraph.text || $scope.paragraph.text === undefined) {
-        $scope.paragraph.text = '';
+      const patch = $scope.diffMatchPatch.patch_fromText(data.patch);
+      const applyPatch = (text) => $scope.diffMatchPatch.patch_apply(patch, text || '')[0];
+      const localText = getLatestParagraphText($scope.paragraph);
+      // Rebase the server baseline separately: a remote patch does not acknowledge
+      // local keystrokes that have not yet been sent by the delayed input handler.
+      $scope.originalText = applyPatch($scope.originalText);
+      $scope.paragraph.text = applyPatch(localText);
+      textAwaitingEditorRender = $scope.paragraph.text;
+      $scope.dirtyText = $scope.paragraph.text === $scope.originalText ? undefined : $scope.paragraph.text;
+      if (hasParagraphText($scope.pendingText)) {
+        $scope.pendingText = applyPatch($scope.pendingText);
       }
-      $scope.paragraph.text = $scope.diffMatchPatch.patch_apply(patch, $scope.paragraph.text)[0];
-      $scope.originalText = angular.copy($scope.paragraph.text);
-      let newPosition = $scope.editor.getCursorPosition();
-      if (newPosition && newPosition.row && newPosition.column) {
+      if (hasParagraphText(submittedRunText)) {
+        submittedRunText = applyPatch(submittedRunText);
+      }
+      if ($scope.editor) {
         $scope.cursorPosition = $scope.editor.getCursorPosition();
       }
     }
@@ -3655,6 +3706,10 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   };
 
   $scope.$on('$destroy', function() {
+    if ($scope.editor) {
+      $scope.editor.off('change', recordEditorText);
+      $scope.editor.off('input', $scope.aceChanged);
+    }
     if (cancelSlowHintTimer) {
       $timeout.cancel(cancelSlowHintTimer);
     }
