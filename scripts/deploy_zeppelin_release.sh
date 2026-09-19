@@ -31,7 +31,7 @@ sha256_file() {
 cleanup() {
   local temp
   for temp in "${TEMP_FILES[@]:-}"; do
-    [[ ! -f "${temp}" ]] || rm -f -- "${temp}"
+    [[ ! -f "${temp}" ]] || sudo -n rm -f -- "${temp}"
   done
 }
 trap cleanup EXIT
@@ -127,13 +127,23 @@ if [[ "${MODE}" == --dry-run ]]; then
   printf 'Dry-run complete; no files changed. Backup location on apply: %s\n' "${BACKUP_DIR}"
   exit 0
 fi
-[[ "${CONFIRM_STOPPED:-}" == 1 ]] || fail 'stop Zeppelin, then set CONFIRM_STOPPED=1'
+# Allow replacing files before a maintenance restart. Never truncate a live WAR/JAR:
+# stage a separate inode in the destination directory and rename it into place.
+command -v sudo >/dev/null 2>&1 || fail 'sudo is required to replace installed artifacts'
+sudo -n true || fail 'sudo authorization required; configure approved non-interactive sudo access or run sudo -v in SSH'
+printf 'WARNING: replacing files without stopping Zeppelin; this is not a hot upgrade. Restart to load the new version.\n' >&2
+if [[ "${scope}" != web ]]; then
+  printf 'WARNING: live JAR replacement can mix loaded versions; use a maintenance restart as soon as possible.\n' >&2
+fi
 
 stage_file() {
   local source="$1" target="$2" expected="$3" staged
-  staged="$(mktemp "${target}.release.XXXXXX")"
+  staged="$(sudo -n mktemp "${target}.release.XXXXXX")"
   TEMP_FILES+=("${staged}")
-  cp -p -- "${source}" "${staged}"
+  sudo -n cp -p -- "${source}" "${staged}"
+  # Release-repository ownership must not become installation ownership (Linux server).
+  sudo -n chown --reference="${target}" -- "${staged}"
+  sudo -n chmod --reference="${target}" -- "${staged}"
   [[ "$(sha256_file "${staged}")" == "${expected}" ]] || fail "staging checksum mismatch: ${target}"
   STAGED_FILE="${staged}"
 }
@@ -166,12 +176,13 @@ if [[ "${MODE}" == --rollback ]]; then
   done
   rollback_interrupted() {
     trap - ERR INT TERM
-    printf 'Rollback interrupted; keep Zeppelin stopped and rerun this rollback.\n' >&2
+    printf 'Rollback interrupted; stop Zeppelin before retrying if possible, and rerun this rollback.\n' >&2
     exit 1
   }
   trap rollback_interrupted ERR INT TERM
   for index in "${!TARGETS[@]}"; do
-    mv -f -- "${staged_files[$index]}" "${ZEPPELIN_HOME}/${TARGETS[$index]}"
+    sudo -n mv -f -- "${staged_files[$index]}" "${ZEPPELIN_HOME}/${TARGETS[$index]}"
+    [[ "$(sha256_file "${ZEPPELIN_HOME}/${TARGETS[$index]}")" == "${old_checksums[$index]}" ]]
   done
   printf 'rolled-back\n' > "${BACKUP_DIR}/state"
   trap - ERR INT TERM
@@ -182,7 +193,7 @@ fi
 [[ ! -e "${BACKUP_DIR}" && ! -L "${BACKUP_DIR}" ]] ||
   fail "backup already exists; refusing to deploy the same release twice: ${BACKUP_DIR}"
 mkdir -p "${BACKUP_DIR}"
-cp -p -- "${MANIFEST}" "${BACKUP_DIR}/manifest.tsv"
+sudo -n cp -p -- "${MANIFEST}" "${BACKUP_DIR}/manifest.tsv"
 receipt_tmp="${BACKUP_DIR}/receipt.tsv.tmp"
 : > "${receipt_tmp}"
 for index in "${!TARGETS[@]}"; do
@@ -190,7 +201,7 @@ for index in "${!TARGETS[@]}"; do
   target_file="${ZEPPELIN_HOME}/${target}"
   backup_file="${BACKUP_DIR}/${target}"
   mkdir -p "$(dirname "${backup_file}")"
-  cp -p -- "${target_file}" "${backup_file}"
+  sudo -n cp -p -- "${target_file}" "${backup_file}"
   cmp -s -- "${target_file}" "${backup_file}" || fail "backup verification failed: ${target}"
   printf '%s\t%s\t%s\n' "${target}" "$(sha256_file "${backup_file}")" \
     "${CHECKSUMS[$index]}" >> "${receipt_tmp}"
@@ -211,11 +222,11 @@ recover_partial_deploy() {
   local restore_tmp index
   for index in "${!TARGETS[@]}"; do
     restore_tmp=""
-    if restore_tmp="$(mktemp "${ZEPPELIN_HOME}/${TARGETS[$index]}.release.XXXXXX")"; then
+    if restore_tmp="$(sudo -n mktemp "${ZEPPELIN_HOME}/${TARGETS[$index]}.release.XXXXXX")"; then
       TEMP_FILES+=("${restore_tmp}")
-      if cp -p -- "${BACKUP_DIR}/${TARGETS[$index]}" "${restore_tmp}" &&
+      if sudo -n cp -p -- "${BACKUP_DIR}/${TARGETS[$index]}" "${restore_tmp}" &&
          cmp -s -- "${BACKUP_DIR}/${TARGETS[$index]}" "${restore_tmp}" &&
-         mv -f -- "${restore_tmp}" "${ZEPPELIN_HOME}/${TARGETS[$index]}"; then
+         sudo -n mv -f -- "${restore_tmp}" "${ZEPPELIN_HOME}/${TARGETS[$index]}"; then
         continue
       fi
     fi
@@ -226,7 +237,7 @@ recover_partial_deploy() {
 }
 trap recover_partial_deploy ERR INT TERM
 for index in "${!TARGETS[@]}"; do
-  mv -f -- "${staged_files[$index]}" "${ZEPPELIN_HOME}/${TARGETS[$index]}"
+  sudo -n mv -f -- "${staged_files[$index]}" "${ZEPPELIN_HOME}/${TARGETS[$index]}"
   [[ "$(sha256_file "${ZEPPELIN_HOME}/${TARGETS[$index]}")" == "${CHECKSUMS[$index]}" ]]
 done
 printf 'applied\n' > "${BACKUP_DIR}/state"

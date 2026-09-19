@@ -53,25 +53,36 @@ CLUSTER_NAME=ns3 \
   bash /YOUR_RELEASE_REPO/zeppelin_deploy/<release-id>/deploy.sh --dry-run
 ```
 
-确认集群、文件清单和校验值后，在维护窗口等待运行任务完成并停止 Zeppelin。
-部署脚本不会自行停服、启动服务或提权。执行账号须能写安装目录和备份目录；
-确认进程已停止后再执行：
+确认集群、文件清单和校验值后，可以直接替换包，不再要求设置 `CONFIRM_STOPPED`。
+脚本不会自行停止或重启服务。推荐维护窗口停服发布；运行中替换只表示更新磁盘文件，
+不是热升级，尤其 JAR 可能造成新旧类混用，应尽快安排重启。
+
+复制使用 `sudo -n cp -p`，目标目录临时文件创建、重命名、属主/权限保留及清理也使用
+`sudo -n`。执行账号须能读取制品和原安装文件、写备份目录，并具有相应 sudo 权限
+（`true`、`cp`、`mktemp`、`chown`、`chmod`、`mv`、`rm`）。
+SSH 中可先执行 `sudo -v` 授权；Zeppelin `%sh` 中需要管理员批准的非交互 sudo 权限，
+SSH 的授权缓存不保证能在解释器中使用。不要在代码中保存 sudo 密码或配置无限制免密授权。
+权限不足时脚本报错退出，不等待密码输入。`--dry-run` 不调用 sudo，也不检查 sudo 授权。
+服务器使用 Linux 命令的 `--reference` 选项保留目标文件属主和权限。
 
 ```bash
-CLUSTER_NAME=ns3 CONFIRM_STOPPED=1 \
+CLUSTER_NAME=ns3 \
   bash /YOUR_RELEASE_REPO/zeppelin_deploy/<release-id>/deploy.sh --apply
 ```
 
-脚本先备份并校验**本次清单中的**旧文件，再在目标目录内准备新文件，最后逐个替换。
-所有文件校验通过后才提示完成。完成后启动 Zeppelin，检查页面、API、解释器
+脚本先备份并校验**本次清单中的**旧文件，再通过 sudo 在目标目录内准备新文件，
+校验后逐个重命名替换，避免直接 cp 截断正在使用的 WAR/JAR。单个文件的替换是原子的，
+多文件发布不是一个整体原子操作；不要并行执行发布或回滚。
+所有文件校验通过后才提示完成。完成后启动或重启 Zeppelin，检查页面、API、解释器
 以及本次变更涉及的功能。集群间独立选择版本，不能把 `ns3` 版本误装到 `ns1/ns2`。
 
 ## 回滚
 
-验收失败时先停止 Zeppelin，使用**同一 release-id 和 BACKUP_ROOT** 回滚：
+验收失败时使用**同一 release-id 和 BACKUP_ROOT** 回滚。回滚也支持运行中替换并使用
+sudo，但仍推荐先停止 Zeppelin，避免运行时版本混用：
 
 ```bash
-CLUSTER_NAME=ns3 CONFIRM_STOPPED=1 \
+CLUSTER_NAME=ns3 \
   bash /YOUR_RELEASE_REPO/zeppelin_deploy/<release-id>/deploy.sh --rollback
 ```
 
@@ -80,6 +91,10 @@ CLUSTER_NAME=ns3 CONFIRM_STOPPED=1 \
 回滚不修改 `conf/`、`notebook/`、审计数据库或其他用户数据。`BACKUP_ROOT` 必须
 位于 Zeppelin 安装目录之外，不要在验收前删除备份。发布和回滚若覆盖默认值，
 必须使用同一个 `BACKUP_ROOT`。
+
+`prepare_zeppelin_release.sh` 会把当前模板复制到新发布目录的 `deploy.sh`。
+已经生成或推送的发布目录仍携带当时的旧脚本，不会自动更新。请生成包含新脚本的新发布版本，
+提交、推送后再在服务器拉取；保持已发布目录不变，不要只修改本地模板就认为旧发布已生效。
 
 旧的 `zeppelin_audit_depoly/update_zeppelin_audit_jars.sh` 和
 `rollback_zeppelin_audit_jars.sh` 只适用于历史审计发布，**不要与新版本清单混用**。
