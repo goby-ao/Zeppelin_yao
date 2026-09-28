@@ -1,1 +1,5 @@
-/Users/yao/.nvm/versions/node/v12.22.12/bin/node /Users/yao/.codex/worktrees/4fa4/Zeppelin_yao/scripts/zeppelin-online-proxy.js
+#!/bin/sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec /Users/yao/.nvm/versions/node/v12.22.12/bin/node "$SCRIPT_DIR/zeppelin-online-proxy.js"

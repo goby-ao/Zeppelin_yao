@@ -1,5 +1,6 @@
 const http = require('http');
-const httpProxy = require(process.cwd() + '/node_modules/http-proxy');
+const path = require('path');
+const httpProxy = require(path.join(__dirname, '..', 'zeppelin-web', 'node_modules', 'http-proxy'));
 
 const proxy = httpProxy.createProxyServer({
   target: 'https://dc.migu.cn',
