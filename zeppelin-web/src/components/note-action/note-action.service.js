@@ -14,7 +14,7 @@
 
 angular.module('zeppelinWebApp').service('noteActionService', noteActionService);
 
-function noteActionService(websocketMsgSrv, $location, noteRenameService, noteListFactory) {
+function noteActionService(websocketMsgSrv, $location, noteRenameService, noteListFactory, ngToast) {
   'ngInject';
 
   this.moveNoteToTrash = function(noteId, redirectToHome) {
@@ -116,19 +116,25 @@ function noteActionService(websocketMsgSrv, $location, noteRenameService, noteLi
     });
   };
 
-  this.clearAllParagraphOutput = function(noteId) {
-    BootstrapDialog.confirm({
+  this.clearAllParagraphOutput = function(noteId, canClear) {
+    let dialog = BootstrapDialog.confirm({
       closable: true,
-      title: '清空输出',
-      message: '确认清空所有 <b>输出结果</b> ？(仅清空输出结果，提升加载性能)',
-      btnOKLabel: '确认',
+      title: '清理当前笔记的全部运行结果？',
+      message: '<p>将清理本笔记所有段落的运行结果。<strong>代码和段落会保留。</strong></p>' +
+        '<p class="zp-clear-output-benefit">清理运行结果可减小笔记体积，' +
+        '有助于提升加载和操作的流畅度。</p>' +
+        '<p class="zp-clear-output-caution">已保存的运行结果将被清除，需要查看时请重新运行。</p>',
+      btnOKLabel: '清理结果',
       btnCancelLabel: '取消',
       callback: function(result) {
-        if (result) {
+        if (result && (!canClear || canClear())) {
           websocketMsgSrv.clearAllParagraphOutput(noteId);
+          ngToast.info({content: '清理请求已提交，代码和段落会保留。', timeout: 3000});
         }
       },
     });
+    // This version of confirm() does not forward cssClass to the dialog.
+    dialog.getModal().addClass('zp-clear-output-dialog');
   };
 
   this.renameNote = function(noteId, notePath) {

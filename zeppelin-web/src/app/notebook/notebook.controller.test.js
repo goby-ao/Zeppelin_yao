@@ -116,6 +116,64 @@ describe('Controller: NotebookCtrl', function() {
     expect(scope.saveTimer).toEqual(null);
   });
 
+  describe('output cleanup', function() {
+    beforeEach(function() {
+      scope.note = {
+        id: '1', name: 'cleanup note', config: {},
+        paragraphs: [{id: 'p1', text: 'select 1', status: 'FINISHED',
+          results: {msg: [{type: 'TEXT', data: '1'}]}}],
+      };
+    });
+
+    it('disables cleanup until the note has output', function() {
+      expect(scope.canClearNoteOutput()).toBe(true);
+      scope.note.paragraphs[0].results = {msg: []};
+      expect(scope.canClearNoteOutput()).toBe(false);
+      scope.note = null;
+      expect(scope.canClearNoteOutput()).toBe(false);
+    });
+
+    it('blocks running, queued, read-only and revision cleanup', inject(function(noteActionService) {
+      spyOn(noteActionService, 'clearAllParagraphOutput');
+      ['PENDING', 'RUNNING'].forEach(function(status) {
+        scope.note.paragraphs[0].status = status;
+        scope.clearAllParagraphOutput('1');
+        expect(scope.canClearNoteOutput()).toBe(false);
+      });
+      scope.note.paragraphs[0].status = 'FINISHED';
+      scope.viewOnly = true;
+      scope.clearAllParagraphOutput('1');
+      expect(scope.canClearNoteOutput()).toBe(false);
+      scope.viewOnly = false;
+      scope.revisionView = true;
+      scope.clearAllParagraphOutput('1');
+      expect(scope.canClearNoteOutput()).toBe(false);
+      expect(noteActionService.clearAllParagraphOutput).not.toHaveBeenCalled();
+    }));
+
+    it('rechecks the note and running state when the dialog is confirmed', inject(function(noteActionService) {
+      spyOn(noteActionService, 'clearAllParagraphOutput');
+      scope.clearAllParagraphOutput('1');
+      let canClear = noteActionService.clearAllParagraphOutput.calls.mostRecent().args[1];
+      expect(canClear()).toBe(true);
+      scope.note.paragraphs[0].status = 'RUNNING';
+      expect(canClear()).toBe(false);
+      scope.note.paragraphs[0].status = 'FINISHED';
+      scope.note.id = '2';
+      expect(canClear()).toBe(false);
+    }));
+
+    it('clears only matching note results and preserves code and paragraphs', function() {
+      scope.$broadcast('clearAllParagraphOutput', 'another-note');
+      expect(scope.hasNoteOutput()).toBe(true);
+      scope.$broadcast('clearAllParagraphOutput', '1');
+      expect(scope.canClearNoteOutput()).toBe(false);
+      expect(scope.note.paragraphs.length).toBe(1);
+      expect(scope.note.paragraphs[0].text).toBe('select 1');
+      expect(scope.noteStats.severity).toBe('normal');
+    });
+  });
+
   it('should NOT update note name when updateNoteName() is called with an invalid name', function() {
     spyOn(websocketMsgSrvMock, 'renameNote');
     scope.updateNoteName('');

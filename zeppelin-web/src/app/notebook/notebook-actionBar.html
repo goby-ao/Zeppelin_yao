@@ -39,16 +39,6 @@ limitations under the License.
         <span class="zp-note-default-interpreter-label">默认引擎：</span>
         <span class="zp-note-default-interpreter-magic">{{getDefaultInterpreterMagic()}}</span>
       </span>
-      <span class="zp-note-stats-badge"
-            ng-if="!input.showEditor && noteStats.severity !== 'normal'"
-            tooltip-placement="bottom"
-            uib-tooltip="段落数：{{noteStats.paragraphCount}}&#013;预估大小：{{noteStats.estimatedSizeMB}} MB&#013;结果较多时建议清空输出以提升性能"
-            ng-class="{'zp-note-stats-warning': noteStats.severity === 'warning',
-                       'zp-note-stats-critical': noteStats.severity === 'critical'}">
-        <i class="fa fa-database"></i>
-        <span>{{noteStats.paragraphCount}} 段</span>
-        <span ng-if="noteStats.estimatedSizeMB > 0"> · {{noteStats.estimatedSizeMB}} MB</span>
-      </span>
     </div>
     <div>
       <!-- 克隆 / 重载 -->
@@ -83,7 +73,7 @@ limitations under the License.
         </button>
       </span>
 
-      <!-- 常用：隐藏代码 / 隐藏输出 / 清空输出 -->
+      <!-- 常用：隐藏代码 / 隐藏输出 -->
       <span class="labelBtn btn-group" style="margin-left: 6px;">
         <button type="button"
                 class="btn btn-default btn-sm"
@@ -101,16 +91,31 @@ limitations under the License.
                 ng-disabled="revisionView">
           <i ng-class="tableToggled ? 'fa icon-notebook' : 'fa icon-book-open'"></i>
         </button>
-        <button type="button"
-                class="btn btn-default btn-sm zp-note-clear-output-btn"
-                ng-click="clearAllParagraphOutput(note.id)"
-                ng-hide="viewOnly"
-                ng-class="{'disabled':isNoteRunning()}"
-                tooltip-placement="bottom" uib-tooltip="清空所有代码块输出！提升笔记加载速度!"
-                ng-disabled="revisionView">
-          <i class="fa fa-eraser"></i>
-          <span>清空输出</span>
-        </button>
+      </span>
+
+      <span class="zp-note-output-actions" ng-hide="viewOnly">
+        <span class="zp-note-stats-badge"
+              ng-if="noteStats && noteStats.severity !== 'normal' && hasNoteOutput()"
+              tooltip-class="zp-note-clear-output-tooltip"
+              tooltip-placement="bottom" tooltip-append-to-body="true"
+              uib-tooltip="{{noteStats.paragraphCount}} 个段落，笔记预估大小约 {{noteStats.estimatedSizeMB}} MB。清理运行结果可减小笔记体积，有助于提升加载和操作的流畅度。">
+          <i class="fa fa-database" aria-hidden="true"></i>
+          <span>笔记较大</span>
+        </span>
+        <span class="zp-note-clear-output-trigger"
+              ng-class="{'is-disabled': !canClearNoteOutput()}"
+              tooltip-class="zp-note-clear-output-tooltip"
+              tooltip-placement="bottom" tooltip-append-to-body="true"
+              uib-tooltip="{{getClearNoteOutputHint()}}">
+          <button type="button"
+                  class="btn btn-default btn-sm zp-note-clear-output-btn"
+                  ng-click="clearAllParagraphOutput(note.id)"
+                  ng-disabled="!canClearNoteOutput()"
+                  aria-label="清理全部运行结果，保留代码和段落">
+            <i class="fa fa-eraser" aria-hidden="true"></i>
+            <span>清理全部结果</span>
+          </button>
+        </span>
       </span>
 
       <!-- 暂时隐藏个人/协作模式切换入口，保留代码便于后续恢复。

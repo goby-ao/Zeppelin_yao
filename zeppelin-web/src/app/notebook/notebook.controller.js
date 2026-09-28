@@ -370,20 +370,25 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   }
 
   function showLargeNoteToast(stats) {
+    if (!$scope.hasNoteOutput()) {
+      return;
+    }
     let sizeInfo = stats.estimatedSizeMB > 0
       ? '约 ' + stats.estimatedSizeMB + ' MB'
       : stats.paragraphCount + ' 个段落';
 
     if (stats.severity === 'critical') {
       ngToast.warning({
-        content: '此笔记规模较大（' + sizeInfo + '），打开和操作可能卡顿。请点击顶部 「清空输出」 按钮移除所有段落输出结果。',
+        content: '此笔记规模较大（' + sizeInfo + '）。使用顶部「清理全部结果」可减小笔记体积，' +
+          '有助于提升加载和操作的流畅度，代码会保留。',
         dismissOnTimeout: false,
         timeout: 15000,
         verticalPosition: 'top',
       });
     } else if (stats.severity === 'warning') {
       ngToast.info({
-        content: '此笔记包含 ' + stats.paragraphCount + ' 个段落（' + sizeInfo + '），结果较多时建议点击顶部 「清空输出」 按钮提升性能。',
+        content: '此笔记包含 ' + stats.paragraphCount + ' 个段落（' + sizeInfo + '）。' +
+          '使用顶部「清理全部结果」可减小笔记体积，有助于提升加载和操作的流畅度，代码会保留。',
         dismissOnTimeout: false,
         timeout: 8000,
         verticalPosition: 'top',
@@ -752,8 +757,40 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
     }
   };
 
+  $scope.hasNoteOutput = function() {
+    let paragraphs = $scope.note && $scope.note.paragraphs;
+    return angular.isArray(paragraphs) && paragraphs.some(function(paragraph) {
+      let messages = paragraph.results && paragraph.results.msg;
+      return angular.isArray(messages) && messages.length > 0;
+    });
+  };
+
+  $scope.canClearNoteOutput = function() {
+    return !$scope.$$destroyed && !$scope.viewOnly && !$scope.revisionView &&
+      !$scope.isNoteRunning() && $scope.hasNoteOutput();
+  };
+
+  $scope.getClearNoteOutputHint = function() {
+    if ($scope.revisionView) {
+      return '历史版本中的运行结果不可清理。';
+    }
+    if ($scope.isNoteRunning()) {
+      return '代码运行中，请在运行结束后清理结果。';
+    }
+    if (!$scope.hasNoteOutput()) {
+      return '当前笔记暂无可清理的运行结果。';
+    }
+    return '清理全部运行结果可减小笔记体积，有助于提升加载和操作的流畅度，代码和段落会保留。';
+  };
+
   $scope.clearAllParagraphOutput = function(noteId) {
-    noteActionService.clearAllParagraphOutput(noteId);
+    function canClear() {
+      return $scope.note && $scope.note.id === noteId && $scope.canClearNoteOutput();
+    }
+    if (canClear()) {
+      // Recheck when confirming: a paragraph may start running while the dialog is open.
+      noteActionService.clearAllParagraphOutput(noteId, canClear);
+    }
   };
 
   $scope.$on('clearAllParagraphOutput', function(event, noteId) {
@@ -761,6 +798,7 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
       _.forEach($scope.note.paragraphs, function(p) {
         p.results = {};
       });
+      $scope.noteStats = computeNoteStats($scope.note);
     }
   });
 
@@ -802,7 +840,7 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
    * @returns {boolean} true if one more paragraphs are running. otherwise return false.
    */
   $scope.isNoteRunning = function() {
-    if (!$scope.note) {
+    if (!$scope.note || !angular.isArray($scope.note.paragraphs)) {
       return false;
     }
 

@@ -432,37 +432,143 @@ html.zp-pin-mode-active {
   font-weight: 700;
 }
 
-/* Large note stats badge in action bar */
+.zp-note-output-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 8px;
+}
+
+.zp-note-clear-output-trigger {
+  display: inline-flex;
+}
+
+.noteAction .zp-note-clear-output-btn {
+  --zp-clear-accent: #3b6cf6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid #b9cbfc;
+  border-radius: 6px;
+  background: #f0f5ff;
+  color: #2857ce;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.noteAction .zp-note-clear-output-btn:not(:disabled):hover,
+.noteAction .zp-note-clear-output-btn:not(:disabled):focus {
+  border-color: var(--zp-clear-accent);
+  background: #e5eeff;
+  color: #214ab3;
+}
+
+.noteAction .zp-note-clear-output-btn:focus-visible {
+  outline: 2px solid var(--zp-clear-accent);
+  outline-offset: 2px;
+}
+
+.noteAction .zp-note-clear-output-btn:disabled {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  opacity: 1;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.zp-note-clear-output-trigger.is-disabled {
+  cursor: not-allowed;
+}
+
+.zp-note-clear-output-tooltip {
+  z-index: 11002;
+}
+
+.zp-note-clear-output-tooltip .tooltip-inner {
+  max-width: 280px !important;
+  padding: 8px 10px;
+  line-height: 1.6;
+  text-align: left;
+  white-space: normal;
+}
+
 .zp-note-stats-badge {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  margin-left: 10px;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 11px;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
   font-weight: 500;
-  background: #f1f5f9;
-  color: #64748b;
+  line-height: 20px;
+  background: #fff4d6;
+  color: #85520c;
   white-space: nowrap;
   cursor: default;
 }
 
-.zp-note-stats-badge .fa {
-  font-size: 10px;
-  opacity: 0.7;
+.zp-clear-output-dialog .modal-dialog {
+  width: 460px;
+  max-width: calc(100% - 32px);
+  margin: 64px auto;
 }
 
-.zp-note-stats-warning {
-  background: #fef3c7;
-  color: #92400e;
+.zp-clear-output-dialog .modal-content {
+  border-radius: 6px;
 }
 
-.zp-note-stats-critical {
-  background: #fee2e2;
-  color: #991b1b;
+.zp-clear-output-dialog .btn-primary {
+  background: #3b6cf6;
+  border-color: #3b6cf6;
 }
 
+.zp-clear-output-dialog .btn-primary:hover,
+.zp-clear-output-dialog .btn-primary:focus {
+  background: #2857ce;
+  border-color: #2857ce;
+}
+
+.bootstrap-dialog.zp-clear-output-dialog .modal-header {
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.bootstrap-dialog.zp-clear-output-dialog .bootstrap-dialog-title {
+  color: #253248;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.zp-clear-output-dialog .bootstrap-dialog-message {
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.zp-clear-output-dialog .zp-clear-output-benefit {
+  margin: 12px 0;
+  padding-left: 12px;
+  border-left: 3px solid #3b6cf6;
+  color: #2857ce;
+}
+
+.zp-clear-output-dialog .zp-clear-output-caution {
+  margin-bottom: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+@media print {
+  .noteAction .zp-note-output-actions {
+    display: none !important;
+  }
+}
 
 .form-control-title-input:after, .form-control-title:after {
   content: "\200E‎";
