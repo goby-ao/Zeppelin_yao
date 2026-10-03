@@ -21,6 +21,10 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Collections;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.zeppelin.user.UsernamePassword;
 
@@ -34,20 +38,45 @@ public class JDBCUserConfigurations {
   // dbPrefix --> Properties
   private final HashMap<String, Properties> propertiesMap;
   // dbPrefix --> Boolean
-  private HashMap<String, Boolean> isSuccessful;
+  private Map<String, Boolean> isSuccessful;
 
   public JDBCUserConfigurations() {
-    paragraphIdStatementMap = new HashMap<>();
-    poolingDriverMap = new HashMap<>();
+    // Precode may use a null paragraph id, which ConcurrentHashMap does not support.
+    paragraphIdStatementMap = Collections.synchronizedMap(new HashMap<>());
+    poolingDriverMap = new ConcurrentHashMap<>();
     propertiesMap = new HashMap<>();
-    isSuccessful = new HashMap<>();
+    isSuccessful = new ConcurrentHashMap<>();
   }
 
   public void initStatementMap() throws SQLException {
-    for (Statement statement : paragraphIdStatementMap.values()) {
-      statement.close();
+    SQLException failure = null;
+    List<Statement> statements;
+    synchronized (paragraphIdStatementMap) {
+      statements = new ArrayList<>(paragraphIdStatementMap.values());
+    }
+    for (Statement statement : statements) {
+      try {
+        statement.close();
+      } catch (SQLException e) {
+        if (failure == null) {
+          failure = e;
+        } else {
+          failure.addSuppressed(e);
+        }
+      }
     }
     paragraphIdStatementMap.clear();
+    if (failure != null) {
+      throw failure;
+    }
+  }
+
+  public List<String> getDBPoolNames() {
+    return new ArrayList<>(poolingDriverMap.keySet());
+  }
+
+  public PoolingDriver getDBDriverPool(String key) {
+    return poolingDriverMap.get(key);
   }
 
   public void initConnectionPoolMap() throws SQLException {

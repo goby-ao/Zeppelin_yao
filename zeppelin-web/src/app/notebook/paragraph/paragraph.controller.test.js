@@ -61,6 +61,24 @@ describe('Controller: ParagraphCtrl', function() {
     });
   });
 
+  it('ignores another notebook binding response and stops waiting on timeout',
+    inject(function($rootScope, $timeout) {
+      const previous = window.BootstrapDialog;
+      window.BootstrapDialog = {alert: jasmine.createSpy('alert')};
+      scope.interpreterBindings = [];
+      websocketMsgSrvMock.getInterpreterBindings = jasmine.createSpy('getInterpreterBindings');
+      try {
+        scope.restartParagraphInterpreter(scope.paragraph);
+        $rootScope.$broadcast('interpreterBindings', {noteId: 'other', interpreterBindings: []});
+        $rootScope.$digest();
+        expect(BootstrapDialog.alert).not.toHaveBeenCalled();
+        $timeout.flush(5000);
+        expect(BootstrapDialog.alert.calls.mostRecent().args[0].message).toContain('超时');
+      } finally {
+        window.BootstrapDialog = previous;
+      }
+    }));
+
   it('should have this array of values for "colWidthOption"', function() {
     expect(scope.colWidthOption).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
   });

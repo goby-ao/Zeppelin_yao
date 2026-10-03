@@ -24,6 +24,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.zeppelin.annotation.ZeppelinApi;
 import org.apache.zeppelin.dep.Repository;
 import org.apache.zeppelin.interpreter.InterpreterException;
+import org.apache.zeppelin.interpreter.InterpreterCloseException;
 import org.apache.zeppelin.interpreter.InterpreterPropertyType;
 import org.apache.zeppelin.interpreter.InterpreterSetting;
 import org.apache.zeppelin.interpreter.InterpreterSettingManager;
@@ -199,6 +200,9 @@ public class InterpreterRestApi {
     LOGGER.info("Restart interpreterSetting {}, msg={}", settingId, message);
 
     InterpreterSetting setting = interpreterSettingManager.get(settingId);
+    if (setting == null) {
+      return new JsonResponse<>(Status.NOT_FOUND, "Interpreter setting not found", settingId).build();
+    }
     try {
       RestartInterpreterRequest request = RestartInterpreterRequest.fromJson(message);
 
@@ -218,13 +222,14 @@ public class InterpreterRestApi {
                   .build();
         }
       }
+    } catch (InterpreterCloseException e) {
+      LOGGER.warn("Interpreter restart did not complete: {}", settingId, e);
+      return new JsonResponse<>(e.isTimeout() ? Status.GATEWAY_TIMEOUT : Status.CONFLICT,
+          e.getMessage()).build();
     } catch (InterpreterException e) {
       LOGGER.error("Exception in InterpreterRestApi while restartSetting ", e);
-      return new JsonResponse<>(Status.NOT_FOUND, e.getMessage(), ExceptionUtils.getStackTrace(e))
+      return new JsonResponse<>(Status.INTERNAL_SERVER_ERROR, e.getMessage())
           .build();
-    }
-    if (setting == null) {
-      return new JsonResponse<>(Status.NOT_FOUND, "", settingId).build();
     }
     return new JsonResponse<>(Status.OK, "", setting).build();
   }

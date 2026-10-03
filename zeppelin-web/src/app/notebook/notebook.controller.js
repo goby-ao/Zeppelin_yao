@@ -27,7 +27,7 @@ angular.module('zeppelinWebApp').controller('NotebookCtrl', NotebookCtrl);
 function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
                       $http, websocketMsgSrv, baseUrlSrv, $timeout, saveAsService,
                       ngToast, noteActionService, noteVarShareService, TRASH_FOLDER_ID,
-                      heliumService, scrollMonitor) {
+                      heliumService, scrollMonitor, interpreterRestartService) {
   'ngInject';
 
   ngToast.dismiss();
@@ -1136,6 +1136,9 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   }
 
   $scope.$on('interpreterBindings', function(event, data) {
+    if (data.noteId && (!$scope.note || data.noteId !== $scope.note.id)) {
+      return;
+    }
     let quickNoteBinding = getQuickNoteInterpreterBinding($scope.note);
     $scope.allInterpreterBindings = data.interpreterBindings || [];
     $scope.interpreterBindings = filterQuickNoteInterpreterBindings(data.interpreterBindings);
@@ -1577,39 +1580,7 @@ function NotebookCtrl($scope, $route, $routeParams, $location, $rootScope,
   });
 
   $scope.restartInterpreter = function(interpreter) {
-    const thisConfirm = BootstrapDialog.confirm({
-      closable: false,
-      closeByBackdrop: false,
-      closeByKeyboard: false,
-      title: '',
-      message: 'Do you want to restart ' + _.escape(interpreter.name) + ' interpreter?',
-      callback: function(result) {
-        if (result) {
-          let payload = {
-            'noteId': $scope.note.id,
-          };
-
-          thisConfirm.$modalFooter.find('button').addClass('disabled');
-          thisConfirm.$modalFooter.find('button:contains("OK")')
-            .html('<i class="fa fa-circle-o-notch fa-spin"></i> Saving Setting');
-
-          $http.put(baseUrlSrv.getRestApiBase() + '/interpreter/setting/restart/' + interpreter.id, payload)
-            .success(function(data, status, headers, config) {
-              let index = _.findIndex($scope.interpreterSettings, {'id': interpreter.id});
-              $scope.interpreterSettings[index] = data.body;
-              thisConfirm.close();
-            }).error(function(data, status, headers, config) {
-              thisConfirm.close();
-              console.log('Error %o %o', status, data.message);
-              BootstrapDialog.show({
-                title: 'Error restart interpreter.',
-                message: _.escape(data.message),
-              });
-            });
-          return false;
-        }
-      },
-    });
+    interpreterRestartService.restart(interpreter.id, $scope.note.id, interpreter.name);
   };
 
   $scope.savePermissions = function() {

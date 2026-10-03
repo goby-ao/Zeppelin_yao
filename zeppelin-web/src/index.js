@@ -77,5 +77,6 @@ import './components/base-url/base-url.service.js';
 import './components/loader/loader.service';
 import './components/login/login.controller.js';
 import './components/note-action/note-action.service.js';
+import './components/interpreter-restart/interpreter-restart.service.js';
 import './components/note-rename/note-rename.controller.js';
 import './components/note-rename/note-rename.service.js';

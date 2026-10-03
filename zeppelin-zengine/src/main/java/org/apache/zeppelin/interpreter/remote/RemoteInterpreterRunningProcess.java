@@ -81,14 +81,10 @@ public class RemoteInterpreterRunningProcess extends RemoteInterpreterProcess {
     if (System.getenv("ZEPPELIN_FORCE_STOP") != null || isRecovery) {
       if (isRunning()) {
         LOGGER.info("Kill interpreter process of interpreter group: {}", interpreterGroupId);
-        try {
-          callRemoteFunction(client -> {
-            client.shutdown();
-            return null;
-          });
-        } catch (Exception e) {
-          LOGGER.warn("ignore the exception when shutting down interpreter process.", e);
-        }
+        callManagementFunction(client -> {
+          client.shutdown();
+          return null;
+        });
 
         // Shutdown connection
         shutdown();

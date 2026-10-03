@@ -965,7 +965,7 @@ public class InterpreterSettingManager implements NoteEventListener, ClusterEven
       executionContext.setUser(user);
       restart(settingId, executionContext);
     } catch (IOException e) {
-      LOGGER.warn("Fail to restart interpreter", e);
+      throw new InterpreterException("Fail to restart interpreter", e);
     }
   }
 
