@@ -23,7 +23,6 @@ import org.apache.zeppelin.interpreter.InterpreterContext;
 import org.apache.zeppelin.interpreter.InterpreterException;
 import org.apache.zeppelin.interpreter.InterpreterResult;
 import org.apache.zeppelin.interpreter.LazyOpenInterpreter;
-import org.apache.zeppelin.interpreter.thrift.InterpreterRPCException;
 import org.apache.zeppelin.interpreter.thrift.RemoteInterpreterContext;
 import org.apache.zeppelin.interpreter.thrift.RemoteInterpreterResult;
 import org.junit.Test;
@@ -32,86 +31,15 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.times;
 
 public class RemoteInterpreterServerTest {
-
-  private RemoteInterpreterServer serverWithMock(Interpreter interpreter) throws Exception {
-    RemoteInterpreterServer server = new RemoteInterpreterServer("localhost", 1, ":", "test", true);
-    server.intpEventClient = mock(RemoteInterpreterEventClient.class);
-    Map<String, String> properties = new HashMap<>();
-    properties.put("zeppelin.interpreter.localRepo", "/tmp");
-    server.createInterpreter("test", "session", Test1Interpreter.class.getName(), properties, "user");
-    when(interpreter.getClassName()).thenReturn("blocked");
-    server.getInterpreterGroup().put("session", new ArrayList<>(Arrays.asList(interpreter)));
-    return server;
-  }
-
-  @Test
-  public void closeFailureMustReachClientAndRetainIsolatedInstance() throws Exception {
-    Interpreter interpreter = mock(Interpreter.class);
-    doThrow(new InterpreterException("CloseSession failed")).when(interpreter).close();
-    RemoteInterpreterServer server = serverWithMock(interpreter);
-    for (int i = 0; i < 2; i++) {
-      try {
-        server.close("session", "blocked");
-        fail("A failed close must not be acknowledged");
-      } catch (InterpreterRPCException expected) {
-        assertEquals(1, server.getInterpreterGroup().get("session").size());
-      }
-    }
-    verify(interpreter, times(1)).close();
-    try {
-      server.getInterpreter("session", "blocked");
-      fail("Failed instance must not accept more work");
-    } catch (InterpreterRPCException expected) {
-      assertTrue(expected.getErrorMessage().contains("failed to close"));
-    }
-  }
-
-  @Test
-  public void blockedCloseDoesNotHoldRemoteGroupMonitor() throws Exception {
-    Interpreter interpreter = mock(Interpreter.class);
-    CountDownLatch entered = new CountDownLatch(1);
-    CountDownLatch release = new CountDownLatch(1);
-    doAnswer(invocation -> { entered.countDown(); release.await(); return null; })
-        .when(interpreter).close();
-    RemoteInterpreterServer server = serverWithMock(interpreter);
-    Interpreter other = mock(Interpreter.class);
-    when(other.getClassName()).thenReturn("other");
-    server.getInterpreterGroup().addInterpreterToSession(other, "other-session");
-    ExecutorService callers = Executors.newFixedThreadPool(2);
-    Future<?> close = callers.submit(() -> { server.close("session", "blocked"); return null; });
-    try {
-      assertTrue(entered.await(2, TimeUnit.SECONDS));
-      assertEquals(other, callers.submit(() -> server.getInterpreter("other-session", "other"))
-          .get(1, TimeUnit.SECONDS));
-    } finally {
-      release.countDown();
-      close.get(3, TimeUnit.SECONDS);
-      callers.shutdownNow();
-    }
-    assertTrue(server.getInterpreterGroup().get("session").isEmpty());
-  }
 
   @Test
   public void testStartStop() throws Exception {

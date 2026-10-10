@@ -22,8 +22,6 @@ import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.zeppelin.conf.ZeppelinConfiguration;
-import org.apache.zeppelin.interpreter.InterpreterCloseException;
-import org.apache.zeppelin.interpreter.thrift.InterpreterRPCException;
 import org.apache.zeppelin.interpreter.launcher.InterpreterClient;
 import org.apache.zeppelin.interpreter.thrift.RemoteInterpreterService.Client;
 import org.slf4j.Logger;
@@ -32,10 +30,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Abstract class for interpreter process
@@ -49,17 +43,6 @@ public abstract class RemoteInterpreterProcess implements InterpreterClient {
   protected int intpEventServerPort;
   private PooledRemoteClient<Client> remoteClient;
   private String startTime;
-  private int managementTimeout = 30000;
-  private static final ScheduledThreadPoolExecutor MANAGEMENT_DEADLINES =
-      new ScheduledThreadPoolExecutor(1, task -> {
-        Thread thread = new Thread(task, "Interpreter-management-deadline");
-        thread.setDaemon(true);
-        return thread;
-      });
-
-  static {
-    MANAGEMENT_DEADLINES.setRemoveOnCancelPolicy(true);
-  }
 
   public RemoteInterpreterProcess(int connectTimeout,
                                   int connectionPoolSize,
@@ -114,43 +97,6 @@ public abstract class RemoteInterpreterProcess implements InterpreterClient {
 
   public <R> R callRemoteFunction(PooledRemoteClient.RemoteFunction<R, Client> func) {
     return remoteClient.callRemoteFunction(func);
-  }
-
-  public void setManagementTimeout(int timeoutMs) {
-    if (timeoutMs <= 0) {
-      throw new IllegalArgumentException("zeppelin.interpreter.management.timeout must be positive");
-    }
-    managementTimeout = timeoutMs;
-  }
-
-  /** One connection, one attempt. Never reuse a timed-out management response for a SQL call. */
-  public <R> R callManagementFunction(PooledRemoteClient.RemoteFunction<R, Client> func) {
-    return callManagementFunction(func, managementTimeout);
-  }
-
-  public <R> R callManagementFunction(PooledRemoteClient.RemoteFunction<R, Client> func,
-                                     int maxTimeoutMs) {
-    int timeoutMs = Math.min(managementTimeout, maxTimeoutMs);
-    TSocket transport = new TSocket(getHost(), getPort(), timeoutMs);
-    AtomicBoolean expired = new AtomicBoolean();
-    ScheduledFuture<?> deadline = MANAGEMENT_DEADLINES.schedule(() -> {
-      expired.set(true);
-      transport.close();
-    }, timeoutMs, TimeUnit.MILLISECONDS);
-    try {
-      transport.open();
-      return func.call(new Client(new TBinaryProtocol(transport)));
-    } catch (Exception e) {
-      String detail = e instanceof InterpreterRPCException
-          ? ((InterpreterRPCException) e).getErrorMessage() : e.toString();
-      boolean timeout = expired.get() || (e instanceof TTransportException
-          && ((TTransportException) e).getType() == TTransportException.TIMED_OUT);
-      throw new InterpreterCloseException("Interpreter management RPC "
-          + (timeout ? "timed out: " : "failed: ") + detail, e, timeout);
-    } finally {
-      deadline.cancel(false);
-      transport.close();
-    }
   }
 
   public void init(ZeppelinConfiguration zConf) {

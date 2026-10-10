@@ -86,12 +86,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
@@ -113,9 +112,6 @@ public class RemoteInterpreterServer extends Thread
 
   private String interpreterGroupId;
   private InterpreterGroup interpreterGroup;
-  // Guarded by interpreterGroup; a failed close stays isolated until process recovery.
-  private final Set<Interpreter> closingInterpreters =
-      Collections.newSetFromMap(new IdentityHashMap<Interpreter, Boolean>());
   private AngularObjectRegistry angularObjectRegistry;
   private InterpreterHookRegistry hookRegistry;
   private DistributedResourcePool resourcePool;
@@ -430,10 +426,6 @@ public class RemoteInterpreterServer extends Thread
       }
       for (Interpreter inp : interpreters) {
         if (inp.getClassName().equals(className)) {
-          if (closingInterpreters.contains(inp)) {
-            throw new InterpreterRPCException("Interpreter " + className
-                + " is closing or failed to close");
-          }
           return inp;
         }
       }
@@ -454,36 +446,6 @@ public class RemoteInterpreterServer extends Thread
 
   @Override
   public void close(String sessionId, String className) throws InterpreterRPCException, TException {
-    Interpreter target = null;
-    if (interpreterGroup == null) {
-      return;
-    }
-    synchronized (interpreterGroup) {
-      List<Interpreter> interpreters = interpreterGroup.get(sessionId);
-      if (interpreters != null) {
-        for (Interpreter interpreter : interpreters) {
-          if (interpreter.getClassName().equals(className)) {
-            target = interpreter;
-            break;
-          }
-        }
-      }
-      if (target == null) {
-        return;
-      }
-      if (!closingInterpreters.add(target)) {
-        throw new InterpreterRPCException("Interpreter " + className
-            + " is already closing or failed to close");
-      }
-    }
-    // JDBC CloseSession may wait on HS2. Never hold the group monitor across that call.
-    try {
-      target.close();
-    } catch (Exception e) {
-      LOGGER.warn("Fail to close interpreter {} in session {}", className, sessionId, e);
-      throw new InterpreterRPCException("Failed to close " + className + ": " + e.toString());
-    }
-
     // unload all applications
     for (String appId : runningApplications.keySet()) {
       RunningApplication appInfo = runningApplications.get(appId);
@@ -501,9 +463,26 @@ public class RemoteInterpreterServer extends Thread
       }
     }
 
-    synchronized (interpreterGroup) {
-      interpreterGroup.get(sessionId).remove(target);
-      closingInterpreters.remove(target);
+    // close interpreters
+    if (interpreterGroup != null) {
+      synchronized (interpreterGroup) {
+        List<Interpreter> interpreters = interpreterGroup.get(sessionId);
+        if (interpreters != null) {
+          Iterator<Interpreter> it = interpreters.iterator();
+          while (it.hasNext()) {
+            Interpreter inp = it.next();
+            if (inp.getClassName().equals(className)) {
+              try {
+                inp.close();
+              } catch (InterpreterException e) {
+                LOGGER.warn("Fail to close interpreter", e);
+              }
+              it.remove();
+              break;
+            }
+          }
+        }
+      }
     }
   }
 
@@ -670,21 +649,15 @@ public class RemoteInterpreterServer extends Thread
       deleteClusterMeta();
 
       if (interpreterGroup != null) {
-        List<Interpreter> toClose = new ArrayList<>();
         synchronized (interpreterGroup) {
           for (List<Interpreter> session : interpreterGroup.values()) {
             for (Interpreter interpreter : session) {
-              if (closingInterpreters.add(interpreter)) {
-                toClose.add(interpreter);
+              try {
+                interpreter.close();
+              } catch (InterpreterException e) {
+                LOGGER.warn("Fail to close interpreter", e);
               }
             }
-          }
-        }
-        for (Interpreter interpreter : toClose) {
-          try {
-            interpreter.close();
-          } catch (Exception e) {
-            LOGGER.warn("Fail to close interpreter", e);
           }
         }
       }

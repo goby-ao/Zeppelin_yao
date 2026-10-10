@@ -78,11 +78,16 @@ public abstract class RemoteInterpreterManagedProcess extends RemoteInterpreterP
   @Override
   public void stop() {
     LOGGER.info("Stop interpreter process for interpreter group: {}", getInterpreterGroupId());
-    callManagementFunction(client -> {
-      client.shutdown();
-      return null;
-    });
-    shutdown();
+    try {
+      callRemoteFunction(client -> {
+        client.shutdown();
+        return null;
+      });
+      // Shutdown connection
+      shutdown();
+    } catch (Exception e) {
+      LOGGER.warn("ignore the exception when shutting down", e);
+    }
   }
 
   @Override

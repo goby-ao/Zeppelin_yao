@@ -113,7 +113,6 @@ public class RemoteInterpreter extends Interpreter {
   @Override
   public void open() throws InterpreterException {
     synchronized (this) {
-      getInterpreterGroup().ensureSessionOpen(sessionId);
       if (!isOpened) {
         // create all the interpreters of the same session first, then Open the internal interpreter
         // of this RemoteInterpreter.
@@ -151,7 +150,6 @@ public class RemoteInterpreter extends Interpreter {
 
   private void internal_create() throws IOException {
     synchronized (this) {
-      getInterpreterGroup().ensureSessionOpen(sessionId);
       if (!isCreated) {
         this.interpreterProcess = getOrCreateInterpreterProcess();
         if (!interpreterProcess.isRunning()) {
@@ -171,21 +169,19 @@ public class RemoteInterpreter extends Interpreter {
 
 
   @Override
-  public synchronized void close() throws InterpreterException {
-    if (isCreated || isOpened) {
-      // Closing must not create a replacement process after a failure.
-      if (interpreterProcess == null) {
-        throw new InterpreterException("Missing process while closing " + className);
+  public void close() throws InterpreterException {
+    if (isOpened) {
+      RemoteInterpreterProcess interpreterProcess = null;
+      try {
+        interpreterProcess = getOrCreateInterpreterProcess();
+      } catch (IOException e) {
+        throw new InterpreterException(e);
       }
-      if (!(interpreterProcess instanceof ExecRemoteInterpreterProcess)
-          || interpreterProcess.isRunning()) {
-        interpreterProcess.callManagementFunction(client -> {
-          client.close(sessionId, className);
-          return null;
-        });
-      }
+      interpreterProcess.callRemoteFunction(client -> {
+        client.close(sessionId, className);
+        return null;
+      });
       isOpened = false;
-      isCreated = false;
     } else {
       LOGGER.warn("close is called when RemoterInterpreter is not opened for {}", className);
     }
@@ -194,7 +190,6 @@ public class RemoteInterpreter extends Interpreter {
   @Override
   public InterpreterResult interpret(final String st, final InterpreterContext context)
       throws InterpreterException {
-    getInterpreterGroup().ensureSessionOpen(sessionId);
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug("st:\n{}", st);
     }
@@ -252,10 +247,16 @@ public class RemoteInterpreter extends Interpreter {
       LOGGER.warn("Cancel is called when RemoterInterpreter is not opened for {}", className);
       return;
     }
-    interpreterProcess.callManagementFunction(client -> {
+    RemoteInterpreterProcess interpreterProcess = null;
+    try {
+      interpreterProcess = getOrCreateInterpreterProcess();
+    } catch (IOException e) {
+      throw new InterpreterException(e);
+    }
+    interpreterProcess.callRemoteFunction(client -> {
       client.cancel(sessionId, className, convert(context));
       return null;
-    }, 5000);
+    });
   }
 
   @Override

@@ -87,11 +87,9 @@ const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     }
     await source('src/app/spell/spell-result.js', '../../spell');
     await source('src/app/notebook/paragraph/paragraph.status.js', './paragraph.status');
-    await script('src/components/interpreter-restart/interpreter-restart.service.js');
     await source('src/app/notebook/paragraph/paragraph.controller.js', 'controller');
     await script('src/app/notebook/paragraph/paragraph.controller.test.js');
     await script('src/app/notebook/paragraph/paragraph.text-sync.test.js');
-    await script('src/components/interpreter-restart/interpreter-restart.service.test.js');
     const results = await page.evaluate(() => new Promise((resolve) => {
       const specs = [];
       jasmine.getEnv().addReporter({

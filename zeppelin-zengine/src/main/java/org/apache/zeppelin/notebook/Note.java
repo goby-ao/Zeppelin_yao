@@ -985,34 +985,21 @@ public class Note implements JsonSerializable {
       }
     }
 
-    // Binding metadata must stay readable while an interpreter is closing.
+    // add interpreter group used by each paragraph
     for (Paragraph p : getParagraphs()) {
-      InterpreterSetting setting = resolveInterpreterSetting(p.getIntpText(), defaultIntpSetting);
-      if (setting != null && setting.isUserAuthorized(userAndRoles)) {
-        settings.add(setting);
+      try {
+        Interpreter intp = p.getBindedInterpreter();
+        InterpreterSetting interpreterSetting = (
+                (ManagedInterpreterGroup) intp.getInterpreterGroup()).getInterpreterSetting();
+        if (interpreterSetting.isUserAuthorized(userAndRoles)) {
+          settings.add(interpreterSetting);
+        }
+      } catch (InterpreterNotFoundException e) {
+        // ignore this
       }
     }
 
     return new ArrayList<>(settings);
-  }
-
-  private InterpreterSetting resolveInterpreterSetting(String replName,
-                                                       InterpreterSetting defaultSetting) {
-    if (StringUtils.isBlank(replName)) {
-      return defaultSetting;
-    }
-    String[] names = replName.split("\\.");
-    if (names.length == 2) {
-      InterpreterSetting setting = interpreterSettingManager.getByName(names[0]);
-      return setting != null && setting.hasInterpreter(names[1]) ? setting : null;
-    }
-    if (names.length == 1) {
-      if (defaultSetting != null && defaultSetting.hasInterpreter(replName)) {
-        return defaultSetting;
-      }
-      return interpreterSettingManager.getByName(replName);
-    }
-    return null;
   }
 
   /**

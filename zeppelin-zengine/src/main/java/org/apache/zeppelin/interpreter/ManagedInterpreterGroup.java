@@ -20,7 +20,6 @@ package org.apache.zeppelin.interpreter;
 
 import org.apache.zeppelin.conf.ZeppelinConfiguration;
 import org.apache.zeppelin.interpreter.remote.RemoteInterpreterProcess;
-import org.apache.zeppelin.interpreter.remote.ExecRemoteInterpreterProcess;
 import org.apache.zeppelin.scheduler.Job;
 import org.apache.zeppelin.scheduler.Scheduler;
 import org.apache.zeppelin.scheduler.SchedulerFactory;
@@ -28,18 +27,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 /**
  * ManagedInterpreterGroup runs under zeppelin server
@@ -49,26 +40,8 @@ public class ManagedInterpreterGroup extends InterpreterGroup {
   private static final Logger LOGGER = LoggerFactory.getLogger(ManagedInterpreterGroup.class);
 
   private InterpreterSetting interpreterSetting;
-  private volatile RemoteInterpreterProcess remoteInterpreterProcess;
+  private RemoteInterpreterProcess remoteInterpreterProcess; // attached remote interpreter process
   private Object interpreterProcessCreationLock = new Object();
-  private static final ThreadPoolExecutor CLOSE_EXECUTOR = new ThreadPoolExecutor(
-      0, 8, 60, TimeUnit.SECONDS, new SynchronousQueue<>(), task -> {
-        Thread thread = new Thread(task, "Interpreter-session-close");
-        thread.setDaemon(true);
-        return thread;
-      });
-  private final Map<String, CloseOperation> closingSessions = new HashMap<>();
-  private boolean closingGroup;
-  private boolean retiring;
-
-  private static class CloseOperation {
-    private final CompletableFuture<Void> result = new CompletableFuture<>();
-    private final long deadline;
-
-    CloseOperation(int timeoutMs) {
-      deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
-    }
-  }
 
   /**
    * Create InterpreterGroup with given id and interpreterSetting, used in ZeppelinServer
@@ -92,8 +65,6 @@ public class ManagedInterpreterGroup extends InterpreterGroup {
         LOGGER.info("Create InterpreterProcess for InterpreterGroup: {}", getId());
         remoteInterpreterProcess = interpreterSetting.createInterpreterProcess(id, userName,
                 properties);
-        remoteInterpreterProcess.setManagementTimeout(Integer.parseInt(properties.getProperty(
-            "zeppelin.interpreter.management.timeout", "30000")));
         remoteInterpreterProcess.start(userName);
         remoteInterpreterProcess.init(ZeppelinConfiguration.create());
         getInterpreterSetting().getRecoveryStorage()
@@ -118,25 +89,8 @@ public class ManagedInterpreterGroup extends InterpreterGroup {
   @Override
   public void close() {
     LOGGER.info("Close InterpreterGroup: {}", id);
-    List<String> sessionIds;
-    synchronized (this) {
-      closingGroup = true;
-      sessionIds = new ArrayList<>(sessions.keySet());
-    }
-    InterpreterCloseException failure = null;
-    for (String sessionId : sessionIds) {
-      try {
-        close(sessionId);
-      } catch (InterpreterCloseException e) {
-        if (failure == null) {
-          failure = e;
-        } else if (failure != e) {
-          failure.addSuppressed(e);
-        }
-      }
-    }
-    if (failure != null) {
-      throw failure;
+    for (String sessionId : sessions.keySet()) {
+      close(sessionId);
     }
   }
 
@@ -144,148 +98,78 @@ public class ManagedInterpreterGroup extends InterpreterGroup {
    * Close all interpreter instances in this session
    * @param sessionId
    */
-  public void close(String sessionId) {
-    CloseOperation operation;
-    synchronized (this) {
-      if (!sessions.containsKey(sessionId)) {
-        return;
-      }
-      operation = closingSessions.get(sessionId);
-      if (operation != null && operation.result.isCompletedExceptionally()
-          && remoteInterpreterProcess instanceof ExecRemoteInterpreterProcess
-          && !remoteInterpreterProcess.isRunning()) {
-        // Explicit retry after the owned local process exited, not after a mere RPC timeout.
-        closingSessions.remove(sessionId);
-        operation = null;
-      }
-      if (operation == null) {
-        operation = new CloseOperation(getCloseTimeout());
-        closingSessions.put(sessionId, operation);
-        CloseOperation submitted = operation;
-        List<Interpreter> interpreters = new ArrayList<>(sessions.get(sessionId));
+  public synchronized void close(String sessionId) {
+    LOGGER.info("Close Session: {} for interpreter setting: {}", sessionId, interpreterSetting.getName());
+    close(sessions.remove(sessionId));
+    //TODO(zjffdu) whether close InterpreterGroup if there's no session left in Zeppelin Server
+    if (sessions.isEmpty() && interpreterSetting != null) {
+      LOGGER.info("Remove this InterpreterGroup: {} as all the sessions are closed", id);
+      interpreterSetting.removeInterpreterGroup(id);
+      if (remoteInterpreterProcess != null) {
+        LOGGER.info("Kill RemoteInterpreterProcess");
+        remoteInterpreterProcess.stop();
         try {
-          CLOSE_EXECUTOR.execute(() -> closeSession(sessionId, interpreters, submitted));
-        } catch (RejectedExecutionException e) {
-          // Nothing was submitted; allow an explicit retry when capacity is available.
-          closingSessions.remove(sessionId);
-          throw new InterpreterCloseException("Interpreter close workers are busy; retry later",
-              e, false);
-        }
-      }
-    }
-    awaitClose(sessionId, operation);
-  }
-
-  int getCloseTimeout() {
-    int timeout = Integer.parseInt(interpreterSetting.getJavaProperties().getProperty(
-        "zeppelin.interpreter.close.timeout", "45000"));
-    if (timeout <= 0) {
-      throw new IllegalArgumentException("zeppelin.interpreter.close.timeout must be positive");
-    }
-    return timeout;
-  }
-
-  private void awaitClose(String sessionId, CloseOperation operation) {
-    try {
-      operation.result.get(Math.max(1, operation.deadline - System.nanoTime()),
-          TimeUnit.NANOSECONDS);
-    } catch (TimeoutException e) {
-      synchronized (this) {
-        // Do not cancel a blocking close and then recreate a session on top of it.
-        operation.result.completeExceptionally(new InterpreterCloseException(
-            "Timed out closing session " + sessionId + "; session remains isolated", e, true));
-      }
-      awaitClose(sessionId, operation);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new InterpreterCloseException("Interrupted waiting for session close " + sessionId,
-          e, false);
-    } catch (ExecutionException e) {
-      throw (InterpreterCloseException) e.getCause();
-    }
-  }
-
-  private void closeSession(String sessionId, List<Interpreter> interpreters,
-                            CloseOperation operation) {
-    try {
-      for (Interpreter interpreter : interpreters) {
-        if (operation.result.isDone()) {
-          return;
-        }
-        closeInterpreter(interpreter);
-      }
-      RemoteInterpreterProcess process;
-      synchronized (this) {
-        if (operation.result.isDone()) {
-          return;
-        }
-        if (sessions.size() > 1) {
-          sessions.remove(sessionId);
-          closingSessions.remove(sessionId);
-          operation.result.complete(null);
-          return;
-        }
-        retiring = true;
-        process = remoteInterpreterProcess;
-      }
-      // Network calls and process waits must never own the group monitor.
-      if (process != null) {
-        process.stop();
-        try {
-          interpreterSetting.getRecoveryStorage().onInterpreterClientStop(process);
+          interpreterSetting.getRecoveryStorage().onInterpreterClientStop(remoteInterpreterProcess);
         } catch (IOException e) {
           LOGGER.error("Fail to store recovery data", e);
         }
-      }
-      synchronized (this) {
-        if (operation.result.isDone()) {
-          return;
-        }
-        sessions.remove(sessionId);
-        closingSessions.remove(sessionId);
         remoteInterpreterProcess = null;
-        interpreterSetting.removeInterpreterGroup(id, this);
-        operation.result.complete(null);
       }
-    } catch (Exception e) {
-      InterpreterCloseException failure = e instanceof InterpreterCloseException
-          ? (InterpreterCloseException) e : new InterpreterCloseException(
-              "Failed to close session " + sessionId + "; session remains isolated", e, false);
-      operation.result.completeExceptionally(failure);
     }
   }
 
-  private void closeInterpreter(Interpreter interpreter) throws InterpreterException {
+  private void close(Collection<Interpreter> interpreters) {
+    if (interpreters == null) {
+      return;
+    }
+    List<Thread> closeThreads = interpreters.stream()
+            .map(interpreter -> new Thread(() ->
+                    closeInterpreter(interpreter),
+                    interpreter.getClass().getSimpleName() + "-close"))
+            .peek(t -> t.setUncaughtExceptionHandler((th, e) ->
+                    LOGGER.error("Interpreter close error", e)))
+            .peek(Thread::start)
+            .collect(Collectors.toList());
+
+    for (Thread t : closeThreads) {
+      try {
+        t.join();
+      } catch (InterruptedException e) {
+        LOGGER.error("Can't wait interpreter close threads", e);
+        Thread.currentThread().interrupt();
+        break;
+      }
+    }
+  }
+
+  private void closeInterpreter(Interpreter interpreter) {
     Scheduler scheduler = interpreter.getScheduler();
 
     if (Boolean.parseBoolean(
             interpreter.getProperty("zeppelin.interpreter.close.cancel_job", "true"))) {
       for (final Job job : scheduler.getAllJobs()) {
         if (!job.isTerminated()) {
-          try {
-            job.abort();
-            job.setStatus(Job.Status.ABORT);
-            LOGGER.info("Job {} aborted ", job.getJobName());
-          } catch (Exception e) {
-            // Cancellation failure must not prevent JDBC close from aborting its transport.
-            LOGGER.warn("Job cancellation failed; continuing interpreter close", e);
-            break;
-          }
+          job.abort();
+          job.setStatus(Job.Status.ABORT);
+          LOGGER.info("Job {} aborted ", job.getJobName());
         }
       }
     } else {
       LOGGER.info("Keep job running while closing interpreter: {}", interpreter.getClassName());
     }
 
-    LOGGER.info("Trying to close interpreter {}", interpreter.getClassName());
-    interpreter.close();
+    try {
+      LOGGER.info("Trying to close interpreter {}", interpreter.getClassName());
+      interpreter.close();
+    } catch (InterpreterException e) {
+      LOGGER.warn("Fail to close interpreter {}", interpreter.getClassName(), e);
+    }
 
     //TODO(zjffdu) move the close of schedule to Interpreter
     SchedulerFactory.singleton().removeScheduler(scheduler.getName());
   }
 
   public synchronized List<Interpreter> getOrCreateSession(String user, String sessionId) {
-    ensureSessionOpen(sessionId);
     if (sessions.containsKey(sessionId)) {
       return sessions.get(sessionId);
     } else {
@@ -296,13 +180,6 @@ public class ManagedInterpreterGroup extends InterpreterGroup {
       LOGGER.info("Create Session: {} in InterpreterGroup: {} for user: {}", sessionId, id, user);
       sessions.put(sessionId, interpreters);
       return interpreters;
-    }
-  }
-
-  public synchronized void ensureSessionOpen(String sessionId) {
-    if (closingGroup || retiring || closingSessions.containsKey(sessionId)) {
-      throw new InterpreterCloseException("Session " + sessionId
-          + " is closing or failed to close; execution is unavailable", null, false);
     }
   }
 

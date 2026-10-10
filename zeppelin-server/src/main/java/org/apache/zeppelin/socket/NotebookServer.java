@@ -558,8 +558,7 @@ public class NotebookServer extends WebSocketServlet
       }
     }
     conn.send(serializeMessage(
-        new Message(OP.INTERPRETER_BINDINGS).put("noteId", noteId)
-            .put("interpreterBindings", settingList)));
+        new Message(OP.INTERPRETER_BINDINGS).put("interpreterBindings", settingList)));
   }
 
   public void saveInterpreterBindings(NotebookSocket conn, ServiceContext context, Message fromMessage) throws IOException {
@@ -583,8 +582,7 @@ public class NotebookServer extends WebSocketServlet
     }
 
     conn.send(serializeMessage(
-            new Message(OP.INTERPRETER_BINDINGS).put("noteId", noteId)
-                .put("interpreterBindings", settingList)));
+            new Message(OP.INTERPRETER_BINDINGS).put("interpreterBindings", settingList)));
   }
 
   public void broadcastNote(Note note) {

@@ -19,12 +19,10 @@ import com.google.common.io.Files;
 import org.apache.commons.dbcp2.ConnectionFactory;
 import org.apache.commons.dbcp2.DriverManagerConnectionFactory;
 import org.apache.commons.dbcp2.PoolableConnectionFactory;
-import org.apache.commons.dbcp2.PoolableConnection;
 import org.apache.commons.dbcp2.PoolingDriver;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.pool2.ObjectPool;
-import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -55,7 +53,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.apache.commons.lang3.StringUtils.*;
@@ -145,22 +142,20 @@ public class JDBCInterpreter extends KerberosInterpreter {
   // database --> Properties
   private final HashMap<String, Properties> basePropertiesMap;
   // username --> User Configuration
-  private final Map<String, JDBCUserConfigurations> jdbcUserConfigurationsMap;
-  private final JDBCConnectionClose connectionClose = new JDBCConnectionClose();
-  private final String poolNamespace = java.util.UUID.randomUUID().toString();
+  private final HashMap<String, JDBCUserConfigurations> jdbcUserConfigurationsMap;
   private final HashMap<String, SqlCompleter> sqlCompletersMap;
 
   private int maxLineResults;
   private int maxRows;
   private SqlSplitter sqlSplitter;
 
-  private Map<String, ScheduledExecutorService> refreshExecutorServices = new ConcurrentHashMap<>();
+  private Map<String, ScheduledExecutorService> refreshExecutorServices = new HashMap<>();
   private Map<String, Boolean> isFirstRefreshMap = new HashMap<>();
   private Map<String, Boolean> paragraphCancelMap = new HashMap<>();
 
   public JDBCInterpreter(Properties property) {
     super(property);
-    jdbcUserConfigurationsMap = new ConcurrentHashMap<>();
+    jdbcUserConfigurationsMap = new HashMap<>();
     basePropertiesMap = new HashMap<>();
     sqlCompletersMap = new HashMap<>();
     maxLineResults = MAX_LINE_DEFAULT;
@@ -301,49 +296,41 @@ public class JDBCInterpreter extends KerberosInterpreter {
     return completer;
   }
 
-  @Override
-  public void close() {
-    connectionClose.close(() -> {
-      super.close();
-      refreshExecutorServices.values().forEach(ExecutorService::shutdownNow);
-      refreshExecutorServices.clear();
-      SQLException failure = null;
-      for (Map.Entry<String, JDBCUserConfigurations> entry : jdbcUserConfigurationsMap.entrySet()) {
-        JDBCUserConfigurations configuration = entry.getValue();
-        try {
-          configuration.initStatementMap();
-        } catch (SQLException e) {
-          failure = appendCloseFailure(failure, e);
-        }
-        for (String prefix : configuration.getDBPoolNames()) {
-          try {
-            closeDBPool(entry.getKey(), prefix);
-          } catch (SQLException e) {
-            failure = appendCloseFailure(failure, e);
-          }
-        }
-      }
-      if (failure != null) {
-        throw failure;
-      }
-      return null;
-    }, Long.parseLong(getProperty("zeppelin.jdbc.close.timeout", "15000")),
-        Long.parseLong(getProperty("zeppelin.jdbc.close.abort.timeout", "5000")));
-    for (JDBCUserConfigurations configuration : jdbcUserConfigurationsMap.values()) {
+  private void initStatementMap() {
+    for (JDBCUserConfigurations configurations : jdbcUserConfigurationsMap.values()) {
       try {
-        configuration.initConnectionPoolMap();
-      } catch (SQLException e) {
-        throw new IllegalStateException(e);
+        configurations.initStatementMap();
+      } catch (Exception e) {
+        LOGGER.error("Error while closing paragraphIdStatementMap statement...", e);
       }
     }
   }
 
-  private SQLException appendCloseFailure(SQLException failure, SQLException next) {
-    if (failure == null) {
-      return next;
+  private void initConnectionPoolMap() {
+    for (String key : jdbcUserConfigurationsMap.keySet()) {
+      try {
+        closeDBPool(key, DEFAULT_KEY);
+      } catch (SQLException e) {
+        LOGGER.error("Error while closing database pool.", e);
+      }
+      try {
+        JDBCUserConfigurations configurations = jdbcUserConfigurationsMap.get(key);
+        configurations.initConnectionPoolMap();
+      } catch (SQLException e) {
+        LOGGER.error("Error while closing initConnectionPoolMap.", e);
+      }
     }
-    failure.addSuppressed(next);
-    return failure;
+  }
+
+  @Override
+  public void close() {
+    super.close();
+    try {
+      initStatementMap();
+      initConnectionPoolMap();
+    } catch (Exception e) {
+      LOGGER.error("Error while closing...", e);
+    }
   }
 
   /* Get user of this sql.
@@ -372,12 +359,11 @@ public class JDBCInterpreter extends KerberosInterpreter {
   }
 
   private String getJDBCDriverName(String user, String dbPrefix) {
-    return DBCP_STRING + getPoolName(user, dbPrefix);
-  }
-
-  private String getPoolName(String user, String dbPrefix) {
-    // DBCP's registry is static: scoped sessions in one JVM must not close each other's pools.
-    return poolNamespace + ":" + dbPrefix.length() + ":" + dbPrefix + user;
+    StringBuffer driverName = new StringBuffer();
+    driverName.append(DBCP_STRING);
+    driverName.append(dbPrefix);
+    driverName.append(user);
+    return driverName.toString();
   }
 
   private boolean existAccountInBaseProperty(String propertyKey) {
@@ -396,14 +382,20 @@ public class JDBCInterpreter extends KerberosInterpreter {
   }
 
   public JDBCUserConfigurations getJDBCConfiguration(String user) {
-    return jdbcUserConfigurationsMap.computeIfAbsent(user, ignored -> new JDBCUserConfigurations());
+    JDBCUserConfigurations jdbcUserConfigurations = jdbcUserConfigurationsMap.get(user);
+
+    if (jdbcUserConfigurations == null) {
+      jdbcUserConfigurations = new JDBCUserConfigurations();
+      jdbcUserConfigurationsMap.put(user, jdbcUserConfigurations);
+    }
+
+    return jdbcUserConfigurations;
   }
 
   private void closeDBPool(String user, String propertyKey) throws SQLException {
-    PoolingDriver poolingDriver = getJDBCConfiguration(user).getDBDriverPool(propertyKey);
+    PoolingDriver poolingDriver = getJDBCConfiguration(user).removeDBDriverPool(propertyKey);
     if (poolingDriver != null) {
-      poolingDriver.closePool(getPoolName(user, propertyKey));
-      getJDBCConfiguration(user).removeDBDriverPool(propertyKey);
+      poolingDriver.closePool(propertyKey + user);
     }
   }
 
@@ -509,24 +501,11 @@ public class JDBCInterpreter extends KerberosInterpreter {
       properties.setProperty("password", "");
     }
 
-    ConnectionFactory driverFactory =
+    ConnectionFactory connectionFactory =
             new DriverManagerConnectionFactory(url, properties);
-    ConnectionFactory connectionFactory = () -> connectionClose.create(driverFactory);
 
     PoolableConnectionFactory poolableConnectionFactory = new PoolableConnectionFactory(
-            connectionFactory, null) {
-      @Override
-      public void destroyObject(PooledObject<PoolableConnection> pooled) throws Exception {
-        Connection physical = pooled.getObject().getDelegate();
-        try {
-          super.destroyObject(pooled);
-        } finally {
-          if (physical.isClosed()) {
-            connectionClose.released(physical);
-          }
-        }
-      }
-    };
+            connectionFactory, null);
     final String maxConnectionLifetime =
             StringUtils.defaultIfEmpty(getProperty("zeppelin.jdbc.maxConnLifetime"), "-1");
     poolableConnectionFactory.setMaxConnLifetimeMillis(Long.parseLong(maxConnectionLifetime));
@@ -538,17 +517,13 @@ public class JDBCInterpreter extends KerberosInterpreter {
     poolableConnectionFactory.setPool(connectionPool);
     Class.forName(driverClass);
     PoolingDriver driver = new PoolingDriver();
-    synchronized (connectionClose) {
-      connectionClose.ensureOpen();
-      driver.registerPool(getPoolName(user, dbPrefix), connectionPool);
-      getJDBCConfiguration(user).saveDBDriverPool(dbPrefix, driver);
-    }
+    driver.registerPool(dbPrefix + user, connectionPool);
+    getJDBCConfiguration(user).saveDBDriverPool(dbPrefix, driver);
   }
 
   private Connection getConnectionFromPool(String url, String user, String dbPrefix,
                                            Properties properties)
           throws SQLException, ClassNotFoundException {
-    connectionClose.ensureOpen();
     String jdbcDriver = getJDBCDriverName(user, dbPrefix);
 
     if (!getJDBCConfiguration(user).isConnectionInDBDriverPool(dbPrefix)) {
@@ -768,21 +743,6 @@ public class JDBCInterpreter extends KerberosInterpreter {
    */
   private InterpreterResult executeSql(String dbPrefix, String sql,
                                        InterpreterContext context) throws InterpreterException {
-    try {
-      connectionClose.beginExecution();
-    } catch (SQLException e) {
-      return new InterpreterResult(Code.ERROR, e.getMessage());
-    }
-    try {
-      return executeSqlInternal(dbPrefix, sql, context);
-    } finally {
-      connectionClose.endExecution();
-    }
-  }
-
-  private InterpreterResult executeSqlInternal(String dbPrefix, String sql,
-                                               InterpreterContext context)
-      throws InterpreterException {
     Connection connection = null;
     Statement statement;
     ResultSet resultSet = null;

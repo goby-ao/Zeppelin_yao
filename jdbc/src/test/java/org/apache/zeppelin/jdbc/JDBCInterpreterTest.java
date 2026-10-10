@@ -517,32 +517,6 @@ public class JDBCInterpreterTest extends BasicJDBCTestCaseAdapter {
     return properties;
   }
 
-  @Test
-  public void closingOneInstanceMustNotCloseAnotherInstancesPools() throws Exception {
-    Properties properties = getDBProperty("default", "", "");
-    properties.putAll(getDBProperty("alternate", "", ""));
-    JDBCInterpreter first = new JDBCInterpreter(properties);
-    JDBCInterpreter second = new JDBCInterpreter(properties);
-    first.open();
-    second.open();
-    try {
-      try (Connection ignored = first.getConnection("default", context);
-           Connection alternate = first.getConnection("alternate", context);
-           Connection other = second.getConnection("default", context)) {
-        assertFalse(other.isClosed());
-      }
-      first.close();
-      assertTrue(first.getJDBCConfiguration("testUser").getDBPoolNames().isEmpty());
-      try (Connection other = second.getConnection("default", context);
-           Statement statement = other.createStatement()) {
-        assertTrue(statement.execute("select 1"));
-      }
-    } finally {
-      first.close();
-      second.close();
-    }
-  }
-
   private AuthenticationInfo getUserAuth(String user, String entityName, String dbUser,
       String dbPassword) {
     UserCredentials userCredentials = new UserCredentials();

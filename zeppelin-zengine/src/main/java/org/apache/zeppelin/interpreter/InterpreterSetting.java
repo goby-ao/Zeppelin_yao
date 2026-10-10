@@ -471,17 +471,6 @@ public class InterpreterSetting {
     }
   }
 
-  void removeInterpreterGroup(String groupId, ManagedInterpreterGroup expected) {
-    interpreterGroupWriteLock.lock();
-    try {
-      if (interpreterGroups.get(groupId) == expected) {
-        interpreterGroups.remove(groupId);
-      }
-    } finally {
-      interpreterGroupWriteLock.unlock();
-    }
-  }
-
   public ManagedInterpreterGroup getInterpreterGroup(String user, String noteId) {
     return getInterpreterGroup(getExecutionContext(user, noteId));
   }
@@ -536,25 +525,29 @@ public class InterpreterSetting {
     if (interpreterGroup != null) {
       String sessionId = getInterpreterSessionId(executionContext);
       interpreterGroup.close(sessionId);
+      if (interpreterGroup.isEmpty()) {
+        interpreterGroups.remove(interpreterGroup.getId());
+      }
     }
   }
 
   public void close() {
     LOGGER.info("Close InterpreterSetting: {}", name);
-    InterpreterCloseException failure = null;
-    for (ManagedInterpreterGroup group : getAllInterpreterGroups()) {
+    List<Thread> closeThreads = interpreterGroups.values().stream()
+            .map(g -> new Thread(g::close, name + "-close"))
+            .peek(t -> t.setUncaughtExceptionHandler((th, e) ->
+                    LOGGER.error("InterpreterSetting close error", e)))
+            .peek(Thread::start)
+            .collect(Collectors.toList());
+    interpreterGroups.clear();
+    for (Thread t : closeThreads) {
       try {
-        group.close();
-      } catch (InterpreterCloseException e) {
-        if (failure == null) {
-          failure = e;
-        } else if (failure != e) {
-          failure.addSuppressed(e);
-        }
+        t.join();
+      } catch (InterruptedException e) {
+        LOGGER.error("Can't wait InterpreterSetting close threads", e);
+        Thread.currentThread().interrupt();
+        break;
       }
-    }
-    if (failure != null) {
-      throw failure;
     }
   }
 
@@ -893,10 +886,6 @@ public class InterpreterSetting {
       }
     }
     return null;
-  }
-
-  public boolean hasInterpreter(String replName) {
-    return getInterpreterClassFromInterpreterSetting(replName) != null;
   }
 
   private String getInterpreterClassFromInterpreterSetting(String replName) {

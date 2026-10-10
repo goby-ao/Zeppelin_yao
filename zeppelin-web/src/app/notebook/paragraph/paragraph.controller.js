@@ -70,7 +70,7 @@ angular.module('zeppelinWebApp').controller('ParagraphCtrl', ParagraphCtrl);
 function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $location,
                         $timeout, $compile, $http, $q, websocketMsgSrv,
                        baseUrlSrv, ngToast, noteVarShareService,
-                       heliumService, interpreterRestartService) {
+                       heliumService) {
   'ngInject';
 
   let ANGULAR_FUNCTION_OBJECT_NAME_PREFIX = '_Z_ANGULAR_FUNC_';
@@ -1195,31 +1195,15 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
     // Full bindings are required for paragraph-level actions such as restarting %python
     // inside a quick note whose visible binding list is intentionally narrowed.
     let noteId = getCurrentNoteId();
-    return $q(function(resolve, reject) {
-      function cleanup() {
-        deregister();
-        destroyListener();
-        $timeout.cancel(timer);
-      }
+    websocketMsgSrv.getInterpreterBindings(noteId);
+    return $q(function(resolve) {
       let deregister = $rootScope.$on('interpreterBindings', function(event, data) {
-        if (data.noteId !== noteId) {
-          return;
-        }
-        cleanup();
+        deregister();
         if (scope && data && data.interpreterBindings) {
           scope.allInterpreterBindings = data.interpreterBindings;
         }
         resolve();
       });
-      let destroyListener = $scope.$on('$destroy', function() {
-        cleanup();
-        reject(new Error('笔记已关闭'));
-      });
-      let timer = $timeout(function() {
-        cleanup();
-        reject(new Error('解释器绑定读取超时，请检查服务端日志。'));
-      }, 5000);
-      websocketMsgSrv.getInterpreterBindings(noteId);
     });
   }
 
@@ -1241,10 +1225,6 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
       }
       // 绑定加载后再获取解释器名称，避免返回 'default'
       doRestartInterpreter(settingId, getInterpreterName(paragraph));
-    }).catch(function(error) {
-      if (!$scope.$$destroyed) {
-        BootstrapDialog.alert({title: '读取解释器失败', message: _.escape(error.message)});
-      }
     });
   };
 
@@ -1255,7 +1235,53 @@ function ParagraphCtrl($scope, $rootScope, $route, $window, $routeParams, $locat
   }
 
   function doRestartInterpreter(settingId, intpName) {
-    interpreterRestartService.restart(settingId, getCurrentNoteId(), '%' + intpName);
+    let displayName = _.escape(intpName);
+    let msgHtml =
+      '<div style="padding: 8px 0;">' +
+        '<div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">' +
+          '<i class="fa fa-exclamation-triangle" style="color:#d97706; font-size:18px;"></i>' +
+          '<span style="font-size:14px; font-weight:500;">即将重启 <code>%' + displayName + '</code> 解释器</span>' +
+        '</div>' +
+        '<div style="background:#fef3c7; border:1px solid #fde68a; border-radius:6px; ' +
+          'padding:10px 12px; margin-bottom:12px; font-size:12px; color:#92400e;">' +
+          '<i class="fa fa-info-circle" style="margin-right:4px;"></i>' +
+          '重启后首次运行会稍慢，因为需要重新初始化解释器进程。' +
+        '</div>' +
+        '<div style="font-size:12px; color:#6b7280;">' +
+          '<i class="fa fa-lightbulb-o" style="margin-right:4px;"></i>' +
+          '建议仅在遇到解释器异常（如连接超时、进程卡死）时重启，日常使用无需操作。' +
+        '</div>' +
+      '</div>';
+
+    BootstrapDialog.confirm({
+      closable: true,
+      closeByBackdrop: true,
+      closeByKeyboard: true,
+      title: '<i class="fa fa-refresh" style="margin-right:6px;"></i>重启解释器',
+      message: msgHtml,
+      btnOKLabel: '确认重启',
+      btnCancelLabel: '取消',
+      callback: function(result) {
+        if (result) {
+          const noteId = getCurrentNoteId();
+          $http.put(baseUrlSrv.getRestApiBase() + '/interpreter/setting/restart/' + settingId, {
+            noteId: noteId,
+          })
+            .then(function() {
+              ngToast.success({
+                content: '%' + intpName + ' 解释器已重启',
+                dismissOnTimeout: true,
+              });
+            })
+            .catch(function(err) {
+              BootstrapDialog.alert({
+                title: '重启失败',
+                message: _.escape(err.data ? err.data.message : '未知错误'),
+              });
+            });
+        }
+      },
+    });
   }
 
   function resetCancelUi(finalState, finalStatus) {
