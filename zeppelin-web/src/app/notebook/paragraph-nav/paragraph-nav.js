@@ -217,6 +217,20 @@ function paragraphNav() {
         }
       });
 
+      // Run actions and websocket messages update status on the existing paragraph object.
+      scope.$watchCollection(function() {
+        if (!shouldShowNav()) {
+          return [];
+        }
+        return scope.paragraphs.map(function(p) {
+          return p.status;
+        });
+      }, function() {
+        scope.nodes.forEach(function(node) {
+          node.status = scope.paragraphs[node.index].status || 'READY';
+        });
+      });
+
       scope.$watch('lockedParagraphId', function() {
         updateLockState();
       });

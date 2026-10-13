@@ -25,6 +25,7 @@ limitations under the License.
          ng-mouseleave="onNodeLeave()">
 
       <div class="paragraph-nav-node"
+           aria-label="{{node.title}}: {{getStatusLabel(node.status)}}"
            ng-class="{'current-viewing': isCurrentViewing(node.id),
                       'locked': node.isLocked,
                       'running': node.status === 'RUNNING',
@@ -33,9 +34,8 @@ limitations under the License.
 
         <!-- Status dot -->
         <div class="nav-node-dot"
-             ng-style="{'background': node.status === 'READY' ? 'transparent' : getStatusColor(node.status),
-                        'border-color': getStatusColor(node.status)}">
-          <i ng-if="node.status === 'RUNNING'" class="fa fa-spinner spin-icon"></i>
+             ng-style="{'background': node.status === 'READY' || node.status === 'RUNNING' ? 'transparent' : getStatusColor(node.status),
+                        'border-color': node.status === 'RUNNING' ? 'transparent' : getStatusColor(node.status)}">
           <i ng-if="node.status === 'ERROR'" class="fa fa-times error-icon"></i>
           <i ng-if="node.status === 'ABORT'" class="fa fa-exclamation abort-icon"></i>
         </div>

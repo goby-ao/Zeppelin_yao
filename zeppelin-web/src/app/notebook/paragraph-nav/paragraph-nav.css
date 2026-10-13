@@ -76,10 +76,17 @@
 .paragraph-nav-node.running .nav-node-dot::after {
   content: '';
   position: absolute;
-  inset: -3px;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  box-sizing: border-box;
   border-radius: 50%;
-  border: 2px solid transparent;
+  border: 2px solid #dbeafe;
   border-top-color: #1f6feb;
+  border-right-color: #1f6feb;
+  background: #fff;
   animation: nav-spin 1s linear infinite;
 }
 
@@ -104,12 +111,6 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-}
-
-.nav-node-dot .spin-icon {
-  font-size: 8px;
-  color: #1f6feb;
-  animation: nav-spin 1s linear infinite;
 }
 
 .nav-node-dot .error-icon {
