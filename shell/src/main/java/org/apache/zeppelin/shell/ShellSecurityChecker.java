@@ -19,20 +19,21 @@ package org.apache.zeppelin.shell;
 
 import com.sun.security.auth.module.UnixSystem;
 import org.apache.commons.exec.CommandLine;
-import org.apache.commons.io.IOUtils;
+import org.apache.commons.exec.DefaultExecutor;
 import org.apache.zeppelin.interpreter.InterpreterContext;
 import org.apache.zeppelin.user.AuthenticationInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 /** Authorizes a paragraph and prepares its complete command list before execution. */
@@ -54,17 +55,19 @@ final class ShellSecurityChecker {
     this.processIdentity = processIdentity;
   }
 
-  List<CommandLine> prepare(String script, InterpreterContext context, Properties settings)
+  List<Command> prepare(String script, InterpreterContext context, Properties settings)
       throws Rejected {
     AuthenticationInfo auth = context.getAuthenticationInfo();
     try {
-      String user = requireProcessUser(auth);
+      UnixSystem identity = requireProcessUser(auth);
+      String user = identity.getUsername();
       if (isExempt(user, settings)) {
         LOGGER.info("Shell policy EXEMPT user={} note={} paragraph={}", user, context.getNoteId(),
             context.getParagraphId());
-        return Collections.singletonList(CommandLine.parse("bash -c").addArgument(script, false));
+        return Collections.singletonList(
+            external(CommandLine.parse("bash -c").addArgument(script, false)));
       }
-      List<CommandLine> commands = prepareRestricted(script, user, settings);
+      List<Command> commands = prepareRestricted(script, user, identity.getUid(), settings);
       LOGGER.info("Shell policy DISPATCH user={} note={} paragraph={} commands={}", user,
           context.getNoteId(), context.getParagraphId(), commands.size());
       return commands;
@@ -81,13 +84,13 @@ final class ShellSecurityChecker {
       return false;
     }
     try {
-      return isExempt(requireProcessUser(auth), settings);
+      return isExempt(requireProcessUser(auth).getUsername(), settings);
     } catch (Rejected e) {
       return false;
     }
   }
 
-  private String requireProcessUser(AuthenticationInfo auth) throws Rejected {
+  private UnixSystem requireProcessUser(AuthenticationInfo auth) throws Rejected {
     if (auth == null || auth.isAnonymous()) {
       throw new Rejected("AUTH_REQUIRED", 0);
     }
@@ -100,7 +103,7 @@ final class ShellSecurityChecker {
     if (identity.getUid() == 0 || !user.equals(identity.getUsername())) {
       throw new Rejected("USER_MISMATCH", 0);
     }
-    return user;
+    return identity;
   }
 
   private static boolean isExempt(String user, Properties settings) {
@@ -108,20 +111,21 @@ final class ShellSecurityChecker {
         .map(String::trim).anyMatch(user::equals);
   }
 
-  private List<CommandLine> prepareRestricted(String script, String user, Properties settings)
+  private List<Command> prepareRestricted(String script, String user, long uid, Properties settings)
       throws Rejected {
-    List<CommandLine> commands = new ArrayList<>();
+    List<Command> commands = new ArrayList<>();
     String[] lines = script.split("\\r\\n|\\n|\\r", -1);
     for (int i = 0; i < lines.length; i++) {
       String line = lines[i].trim();
       if (!line.isEmpty() && !line.startsWith("#")) {
-        commands.add(prepareLine(lines[i], i + 1, user, settings));
+        commands.add(prepareLine(lines[i], i + 1, user, uid, settings));
       }
     }
     return commands;
   }
 
-  private CommandLine prepareLine(String line, int lineNumber, String user, Properties settings)
+  private Command prepareLine(String line, int lineNumber, String user, long uid,
+      Properties settings)
       throws Rejected {
     List<String> args;
     try {
@@ -137,31 +141,28 @@ final class ShellSecurityChecker {
     }
     try {
       if (CLIENTS.contains(name)) {
-        return configuredCommand(name, args, settings);
+        return external(configuredCommand(name, args, settings));
       }
       if (FILE_COMMANDS.contains(name)) {
-        return prepareFileCommand(name, args, user, settings, lineNumber);
+        RestrictedFileCommand fileCommand = RestrictedFileCommand.prepare(name, args, user, uid);
+        return (executor, out, cancelled) -> fileCommand.execute(out, cancelled);
       }
-    } catch (IOException | IllegalArgumentException e) {
+    } catch (RestrictedFileCommand.Denied e) {
+      throw new Rejected(e.getMessage(), lineNumber);
+    } catch (IllegalArgumentException e) {
       throw new Rejected("EXECUTABLE_UNAVAILABLE", lineNumber);
     }
     throw new Rejected("COMMAND_DENIED", lineNumber);
   }
 
-  private CommandLine prepareFileCommand(String name, List<String> args, String user,
-      Properties settings, int lineNumber) throws IOException, Rejected {
-    List<String> helperArgs = new ArrayList<>(Arrays.asList("-I", "-B", "-c"));
-    try (InputStream helper = ShellSecurityChecker.class.getResourceAsStream(
-        "/restricted_file_ops.py")) {
-      if (helper == null) {
-        throw new Rejected("FILE_HELPER_UNAVAILABLE", lineNumber);
-      }
-      helperArgs.add(IOUtils.toString(helper, "UTF-8"));
-    }
-    helperArgs.add(user);
-    helperArgs.add(name);
-    helperArgs.addAll(args);
-    return configuredCommand("python3", helperArgs, settings);
+  @FunctionalInterface
+  interface Command {
+    void execute(DefaultExecutor executor, OutputStream out, BooleanSupplier cancelled)
+        throws IOException;
+  }
+
+  private static Command external(CommandLine command) {
+    return (executor, out, cancelled) -> executor.execute(command);
   }
 
   private static CommandLine configuredCommand(String name, List<String> args,
@@ -208,6 +209,10 @@ final class ShellSecurityChecker {
           return "每行只能写一条命令。请检查引号，并移除管道、重定向或命令串联。";
         case "ARGUMENT_DENIED":
           return "删除操作只接受一个明确的文件路径，请去掉选项、通配符或多余路径后重试。";
+        case "FILE_ARGUMENT_DENIED":
+          return "文件命令的参数不符合要求，请检查选项和路径数量。";
+        case "PATH_DENIED":
+          return "该路径不允许操作，请在个人家目录或个人临时目录内选择符合要求的路径。";
         default:
           return "解释器执行配置不可用，请联系平台管理员。";
       }

@@ -54,17 +54,20 @@ only. The client's own local file access, subprocesses and cluster operations
 remain governed by its execution environment and permissions. The interpreter
 does not provide client or OS sandboxing.
 
-For `ls`, `stat`, `cat`, `head`, `tail`, `mkdir`, `cp`, and `rm`, the local
-file helper confines access to `/home/<username>` and
+For `ls`, `stat`, `cat`, `head`, `tail`, `mkdir`, `cp`, and `rm`, Java NIO
+checks local paths against `/home/<username>` and
 `/tmp/zeppelin/<username>`. Provision the temporary directory with mode
 `0700` under an administrator-controlled parent. Paths to credential and
 startup files are denied. Copies must target a new file. Restricted `rm` takes
 one explicit path to an owned, singly linked regular file. It permanently
 removes that file. Options, wildcards, directories, and symlinks are rejected.
+These path checks are not a filesystem sandbox and are not race-free when
+directories are replaced concurrently. Keep OS permissions and the non-root
+interpreter identity in place.
 
 The properties `zeppelin.shell.security.executable.<name>` select trusted
-absolute paths for the four clients and `python3` (3.7 or newer, for the local
-file helper). Each defaults to `/usr/bin/<name>`. Keep the executables, the
+absolute paths for the four clients. Each defaults to `/usr/bin/<name>`. Local
+file commands do not start another process or require Python. Keep the executables, the
 interpreter and its startup configuration under administrator control.
 Verify these paths and interpreter user mapping on each deployment before
 restarting the interpreter with the new policy.

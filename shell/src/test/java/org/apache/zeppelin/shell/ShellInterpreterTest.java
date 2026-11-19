@@ -138,8 +138,11 @@ public class ShellInterpreterTest {
         "# start\r\nhadoop '%s' 'first: '\r\n\r\n"
         + "beeline '%s' 'select 1; /outside/path' # last\r\n", tenant).code());
     assertEquals("first: select 1; /outside/path", tenant.out.toString());
-    shell.setProperty("zeppelin.shell.security.executable.python3", "/usr/bin/true");
-    assertEquals(Code.SUCCESS, shell.interpret("rm 'my test file'", tenant).code());
+    InterpreterResult blockedPath = shell.interpret(
+        "hadoop '%s' skipped\ncat /YOUR_OUTSIDE_PATH/example.txt", tenant);
+    assertEquals(Code.ERROR, blockedPath.code());
+    assertTrue(blockedPath.message().get(0).getData().contains("请检查第 2 行。该路径不允许操作"));
+    assertEquals("first: select 1; /outside/path", tenant.out.toString());
     assertEquals(Code.ERROR, shell.interpret("echo wrong-user", context).code());
   }
 

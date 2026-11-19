@@ -30,6 +30,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.FileSystemException;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -63,6 +66,7 @@ public class ShellInterpreter extends KerberosInterpreter {
   private final String shell = isWindows ? "cmd /c" : "bash -c";
   private ConcurrentHashMap<String, DefaultExecutor> executorMap;
   private ConcurrentHashMap<String, InterpreterContext> contextMap;
+  private long timeoutThreshold;
   private ScheduledExecutorService shellOutputCheckExecutor =
           Executors.newSingleThreadScheduledExecutor();
 
@@ -78,7 +82,7 @@ public class ShellInterpreter extends KerberosInterpreter {
   @Override
   public void open() {
     super.open();
-    long timeoutThreshold = Long.parseLong(getProperty(TIMEOUT_PROPERTY, DEFAULT_TIMEOUT));
+    timeoutThreshold = Long.parseLong(getProperty(TIMEOUT_PROPERTY, DEFAULT_TIMEOUT));
     long timeoutCheckInterval = Long.parseLong(
             getProperty(TIMEOUT_CHECK_INTERVAL_PROPERTY, DEFAULT_CHECK_INTERVAL));
     LOGGER.info("Command timeout property: {}", timeoutThreshold);
@@ -148,7 +152,8 @@ public class ShellInterpreter extends KerberosInterpreter {
     }
   }
 
-  private InterpreterResult execute(List<CommandLine> commands, InterpreterContext context) {
+  private InterpreterResult execute(List<ShellSecurityChecker.Command> commands,
+      InterpreterContext context) {
     String paragraphId = context.getParagraphId();
     if (commands.isEmpty()) {
       return new InterpreterResult(Code.SUCCESS);
@@ -175,11 +180,14 @@ public class ShellInterpreter extends KerberosInterpreter {
         executor.setWorkingDirectory(new File(System.getProperty("user.home")));
       }
 
-      for (CommandLine command : commands) {
+      for (ShellSecurityChecker.Command command : commands) {
         if (executorMap.get(paragraphId) != executor) {
           return new InterpreterResult(Code.INCOMPLETE);
         }
-        executor.execute(command);
+        long startedAt = System.currentTimeMillis();
+        command.execute(executor, context.out, () -> executorMap.get(paragraphId) != executor
+            || System.currentTimeMillis() - Math.max(startedAt, context.out.getLastWriteTimestamp())
+                > timeoutThreshold);
       }
       LOGGER.info("Paragraph {} completed {} commands", paragraphId, commands.size());
       return new InterpreterResult(Code.SUCCESS);
@@ -195,6 +203,15 @@ public class ShellInterpreter extends KerberosInterpreter {
       }
       messageBuilder.append("ExitValue: " + exitValue);
       return new InterpreterResult(code, messageBuilder.toString());
+    } catch (InterruptedIOException e) {
+      return new InterpreterResult(Code.INCOMPLETE, "文件操作已取消或超时。");
+    } catch (RestrictedFileCommand.Denied e) {
+      return new InterpreterResult(Code.ERROR, "根据安全管理规范，文件操作已拦截。"
+          + "该路径不允许操作，请在个人家目录或个人临时目录内选择符合要求的路径。");
+    } catch (FileAlreadyExistsException e) {
+      return new InterpreterResult(Code.ERROR, "目标已存在。为避免覆盖，请指定一个新的目标路径。");
+    } catch (FileSystemException e) {
+      return new InterpreterResult(Code.ERROR, "无法访问指定路径。请确认路径存在、有访问权限，并且未使用符号链接。");
     } catch (IOException e) {
       LOGGER.warn("Shell process start failed for paragraph {}", context.getParagraphId());
       return new InterpreterResult(Code.ERROR, "Unable to start the configured executable");

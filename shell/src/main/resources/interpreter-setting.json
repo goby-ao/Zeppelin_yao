@@ -47,11 +47,6 @@
         "defaultValue": "/usr/bin/beeline",
         "type": "string"
       },
-      "zeppelin.shell.security.executable.python3": {
-        "defaultValue": "/usr/bin/python3",
-        "description": "Trusted Python 3.7+ executable for restricted local file operations.",
-        "type": "string"
-      },
       "zeppelin.shell.auth.type": {
         "envName": null,
         "propertyName": "zeppelin.shell.auth.type",
