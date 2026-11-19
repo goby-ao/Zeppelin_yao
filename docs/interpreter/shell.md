@@ -33,7 +33,46 @@ In Zeppelin notebook, you can use ` %sh ` in the beginning of a paragraph to inv
 ### Terminal interpreter
 Terminal interpreter uses [hterm](https://chromium.googlesource.com/apps/libapps/+/HEAD/hterm), [Pty4J](https://github.com/JetBrains/pty4j) analog terminal operation.
 
-> **Note :** Currently each command runs as the user Zeppelin server is running as.
+### Shell security policy
+
+Run the interpreter in an isolated process per user with user impersonation enabled.
+The authenticated username must match the non-root operating-system account of
+that process. Configure `zeppelin.shell.security.exempt.users` as an exact,
+comma-separated list of trusted accounts. The default is empty. Exempt accounts
+can run Bash scripts under their own identity.
+Administrators configure the Shell interpreter properties in the interpreter
+settings. Notebook `%sh.conf` paragraphs cannot change them.
+
+Other accounts can submit multiple lines, with one command per line. Blank
+lines and comments are ignored, and quoted arguments are supported. The
+interpreter validates the command and shell syntax on every line before starting
+any process. A rejected line blocks the entire paragraph. Commands run in
+order and stop on the first execution error. The interpreter accepts
+`hadoop`, `hdfs`, `hive`, and `beeline`, and sends their arguments directly
+to the client. For these clients, the policy applies to the submitted command
+only. The client's own local file access, subprocesses and cluster operations
+remain governed by its execution environment and permissions. The interpreter
+does not provide client or OS sandboxing.
+
+For `ls`, `stat`, `cat`, `head`, `tail`, `mkdir`, `cp`, and `rm`, the local
+file helper confines access to `/home/<username>` and
+`/tmp/zeppelin/<username>`. Provision the temporary directory with mode
+`0700` under an administrator-controlled parent. Paths to credential and
+startup files are denied. Copies must target a new file. Restricted `rm` takes
+one explicit path to an owned, singly linked regular file. It permanently
+removes that file. Options, wildcards, directories, and symlinks are rejected.
+
+The properties `zeppelin.shell.security.executable.<name>` select trusted
+absolute paths for the four clients and `python3` (3.7 or newer, for the local
+file helper). Each defaults to `/usr/bin/<name>`. Keep the executables, the
+interpreter and its startup configuration under administrator control.
+Verify these paths and interpreter user mapping on each deployment before
+restarting the interpreter with the new policy.
+
+The interactive terminal is disabled by default. An administrator can enable it
+for exempt accounts with `zeppelin.shell.security.terminal.enabled=true` only
+when access to the terminal WebSocket is authenticated and restricted to the
+session owner by the deployment.
 
 ## Configuration
 At the "Interpreters" menu in Zeppelin dropdown menu, you can set the property value for Shell interpreter.
@@ -118,7 +157,7 @@ val members = spark.read.parquet(z.get("dataFileName"))
 
 ```bash
 %sh
-rm -rf {dataFileName}
+stat "{dataFileName}"
 ```
 
 Object interpolation is disabled by default, and can be enabled (for the Shell interpreter) by

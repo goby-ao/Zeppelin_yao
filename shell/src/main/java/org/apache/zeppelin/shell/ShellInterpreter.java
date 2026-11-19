@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
@@ -57,7 +58,7 @@ public class ShellInterpreter extends KerberosInterpreter {
   private static final String DEFAULT_TIMEOUT = "60000";
   private static final String DEFAULT_CHECK_INTERVAL = "10000";
   private static final String DIRECTORY_USER_HOME = "shell.working.directory.user.home";
-
+  private final ShellSecurityChecker securityChecker;
   private final boolean isWindows = System.getProperty("os.name").startsWith("Windows");
   private final String shell = isWindows ? "cmd /c" : "bash -c";
   private ConcurrentHashMap<String, DefaultExecutor> executorMap;
@@ -66,7 +67,12 @@ public class ShellInterpreter extends KerberosInterpreter {
           Executors.newSingleThreadScheduledExecutor();
 
   public ShellInterpreter(Properties property) {
+    this(property, new ShellSecurityChecker());
+  }
+
+  ShellInterpreter(Properties property, ShellSecurityChecker securityChecker) {
     super(property);
+    this.securityChecker = securityChecker;
   }
 
   @Override
@@ -135,40 +141,50 @@ public class ShellInterpreter extends KerberosInterpreter {
   @Override
   public InterpreterResult internalInterpret(String cmd,
                                              InterpreterContext context) {
-    LOGGER.debug("Run shell command '{}'", cmd);
-
-    CommandLine cmdLine = CommandLine.parse(shell);
-    // the Windows CMD shell doesn't handle multiline statements,
-    // they need to be delimited by '&&' instead
-    if (isWindows) {
-      String[] lines = StringUtils.split(cmd, "\n");
-      cmd = StringUtils.join(lines, " && ");
-    }
-    cmdLine.addArgument(cmd, false);
-
     try {
-      contextMap.put(context.getParagraphId(), context);
+      return execute(securityChecker.prepare(cmd, context, properties), context);
+    } catch (ShellSecurityChecker.Rejected e) {
+      return new InterpreterResult(Code.ERROR, e.getMessage());
+    }
+  }
+
+  private InterpreterResult execute(List<CommandLine> commands, InterpreterContext context) {
+    String paragraphId = context.getParagraphId();
+    if (commands.isEmpty()) {
+      return new InterpreterResult(Code.SUCCESS);
+    }
+    try {
+      contextMap.put(paragraphId, context);
 
       DefaultExecutor executor = new DefaultExecutor();
       executor.setStreamHandler(new PumpStreamHandler(
           context.out, context.out));
-      executor.setWatchdog(new ExecuteWatchdog(Long.MAX_VALUE));
-      executorMap.put(context.getParagraphId(), executor);
+      executor.setWatchdog(new ExecuteWatchdog(Long.MAX_VALUE) {
+        @Override
+        public synchronized void start(Process process) {
+          super.start(process);
+          // Cancel may arrive after the loop check but before the process starts.
+          if (executorMap.get(paragraphId) != executor) {
+            destroyProcess();
+          }
+        }
+      });
+      executorMap.put(paragraphId, executor);
 
       if (Boolean.valueOf(getProperty(DIRECTORY_USER_HOME))) {
         executor.setWorkingDirectory(new File(System.getProperty("user.home")));
       }
 
-      int exitVal = executor.execute(cmdLine);
-      LOGGER.info("Paragraph {} return with exit value: {}", context.getParagraphId(), exitVal);
-      if (exitVal == 0) {
-        return new InterpreterResult(Code.SUCCESS);
-      } else {
-        return new InterpreterResult(Code.ERROR);
+      for (CommandLine command : commands) {
+        if (executorMap.get(paragraphId) != executor) {
+          return new InterpreterResult(Code.INCOMPLETE);
+        }
+        executor.execute(command);
       }
+      LOGGER.info("Paragraph {} completed {} commands", paragraphId, commands.size());
+      return new InterpreterResult(Code.SUCCESS);
     } catch (ExecuteException e) {
       int exitValue = e.getExitValue();
-      LOGGER.error("Can not run command: " + cmd, e);
       Code code = Code.ERROR;
       StringBuilder messageBuilder = new StringBuilder();
       if (exitValue == 143) {
@@ -180,13 +196,14 @@ public class ShellInterpreter extends KerberosInterpreter {
       messageBuilder.append("ExitValue: " + exitValue);
       return new InterpreterResult(code, messageBuilder.toString());
     } catch (IOException e) {
-      LOGGER.error("Can not run command: " + cmd, e);
-      return new InterpreterResult(Code.ERROR, e.getMessage());
+      LOGGER.warn("Shell process start failed for paragraph {}", context.getParagraphId());
+      return new InterpreterResult(Code.ERROR, "Unable to start the configured executable");
     } finally {
       executorMap.remove(context.getParagraphId());
       contextMap.remove(context.getParagraphId());
     }
   }
+
 
   @Override
   public void cancel(InterpreterContext context) {

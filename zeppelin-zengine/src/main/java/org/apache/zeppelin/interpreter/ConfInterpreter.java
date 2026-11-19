@@ -62,6 +62,11 @@ public class ConfInterpreter extends Interpreter {
   public InterpreterResult interpret(String st, InterpreterContext context)
       throws InterpreterException {
 
+    if ("sh".equals(interpreterSetting.getGroup())) {
+      return new InterpreterResult(InterpreterResult.Code.ERROR,
+          "根据安全管理规范，笔记中不能修改 Shell 解释器配置。请联系平台管理员在解释器设置中调整。");
+    }
+
     try {
       Properties finalProperties = new Properties();
       finalProperties.putAll(getProperties());

@@ -23,11 +23,30 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 public class ConfInterpreterTest extends AbstractInterpreterTest {
 
   private ExecutionContext executionContext = new ExecutionContext("user1", "note1", "test");
 
+  @Test
+  public void testShellGroupRejectsNoteConfiguration() throws InterpreterException {
+    InterpreterSetting setting = mock(InterpreterSetting.class);
+    when(setting.getGroup()).thenReturn("sh");
+    ConfInterpreter interpreter = new ConfInterpreter(new java.util.Properties(),
+        "session", "group", setting);
+
+    InterpreterResult result = interpreter.interpret("test.property=test-value",
+        InterpreterContext.builder().build());
+
+    assertEquals(InterpreterResult.Code.ERROR, result.code());
+    assertTrue(result.message().get(0).getData().contains("笔记中不能修改 Shell 解释器配置"));
+    verify(setting).getGroup();
+    verifyNoMoreInteractions(setting);
+  }
 
   @Test
   public void testCorrectConf() throws InterpreterException {

@@ -1,0 +1,70 @@
+<!--
+Licensed to the Apache Software Foundation (ASF) under one or more
+contributor license agreements. See the NOTICE file distributed with
+this work for additional information regarding copyright ownership.
+The ASF licenses this file to You under the Apache License, Version 2.0
+(the "License"); you may not use this file except in compliance with
+the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+# Zeppelin %sh 多租户安全配置
+
+## 新增配置
+
+在 Zeppelin 的 **Interpreters → sh → Edit → Properties** 中由管理员配置。已有解释器设置若未显示新字段，可手动添加同名属性。策略值按字面读取，笔记里的 `%sh.conf` 不允许更改 Shell 解释器配置。保存后重启对应的 `sh` 解释器生效。
+
+首次部署时同步更新 `zeppelin-shell` 和服务端的 `zeppelin-zengine`，并重启 Zeppelin 服务以加载配置入口的保护。
+
+| 配置项 | 默认值 | 如何配置 |
+| --- | --- | --- |
+| `zeppelin.shell.security.exempt.users` | 空 | 账号白名单。填实际登录账号，例如 `OPS_USER_1,OPS_USER_2`。英文逗号分隔，精确匹配账号。管理员角色不会自动豁免。 |
+| `zeppelin.shell.security.executable.hadoop` | `/usr/bin/hadoop` | Hadoop 客户端的绝对路径。 |
+| `zeppelin.shell.security.executable.hdfs` | `/usr/bin/hdfs` | HDFS 客户端的绝对路径。 |
+| `zeppelin.shell.security.executable.hive` | `/usr/bin/hive` | Hive CLI 的绝对路径。 |
+| `zeppelin.shell.security.executable.beeline` | `/usr/bin/beeline` | Beeline 客户端的绝对路径。 |
+| `zeppelin.shell.security.executable.python3` | `/usr/bin/python3` | 本地受限文件操作使用的 Python 3.7+ 解释器绝对路径。 |
+| `zeppelin.shell.security.terminal.enabled` | `false` | 交互终端开关，当前需手动添加。默认保持关闭。只有部署侧已验证 WebSocket 身份和会话所有者权限时，才可设为 `true`，且仅白名单账号能启动终端。 |
+
+上线前请核对：
+
+1. 核对线上 Shiro 对解释器管理接口的权限。按 `conf/shiro.ini.template` 将 `/api/interpreter/**` 限制为管理员角色，并用普通账号验证无法更新解释器设置。
+2. 为 `sh` 启用用户模拟（User Impersonate）和按用户隔离进程。登录账号必须与解释器进程的非 root 系统账号一致。
+3. 在每个解释器节点检查五个可执行文件的实际安装路径。默认路径正确时直接沿用。使用可信且由管理员维护的客户端、Python 和启动配置。
+4. 由管理员维护临时目录父目录 `/tmp/zeppelin`，为需要使用个人临时目录的账号预建 `/tmp/zeppelin/<系统用户名>/`。子目录归该用户所有，权限为 `0700`。家目录需位于 `/home/<系统用户名>/` 并归该用户所有。
+
+## 拦截方案
+
+| 类型 | 执行行为 |
+| --- | --- |
+| 白名单账号 | 核验登录身份和进程账号后，直接按原有 Bash 方式执行，跳过命令及路径拦截，仍使用本人的系统账号。 |
+| 普通账号 | 一个段落可以有多行，每行一条命令，跳过空行和注释。逐行检查命令名和语法，整段通过后才启动进程。任一行含未授权命令或不支持的语法时，整段拒绝并报告行号。 |
+| 数据平台客户端 | `hadoop`、`hdfs`、`hive`、`beeline` 是固定命令白名单。独立传递解析后的参数，客户端子命令、参数和路径不做目录限制。其内部文件访问、子进程及集群操作仍受执行环境和账号权限约束。 |
+| 本地文件命令 | 支持 `ls`、`stat`、`cat`、`head`、`tail`、`mkdir`、`cp`、`rm`，从家目录解析相对路径。文件操作只能访问本人家目录和个人临时目录，禁止路径越界、跟随符号链接和访问规则保护的凭据或启动文件。复制校验两端并禁止覆盖。 |
+| 其他命令与语法 | 普通账号执行 `ssh` 等未登记命令会被拒。行内管道、重定向、命令串联等 Shell 语法不支持。带引号的参数仍可包含 SQL 分号等字面字符。 |
+
+例如前两行是允许的 Hadoop 命令，最后一行出现 `ssh`，前两行也不会启动。页面提示「根据安全管理规范，本段落未执行。请检查第 3 行。该命令未获授权，请修改后重试。」审计日志记录 `COMMAND_DENIED`。合法的多行段落逐条按顺序执行。**本地文件参数和实际路径在该命令运行时校验**，运行时报错会停止后续命令，先前已经执行的命令不会回滚。
+
+### 本地文件命令参数
+
+| 命令 | 支持的写法 |
+| --- | --- |
+| `ls` | 可省略路径，默认查看家目录。允许 `-l`、`-a`、`-la`、`-al`。 |
+| `stat`、`cat` | 一个路径。读取文件时检查为普通文件且无多个硬链接。 |
+| `head`、`tail` | 一个文件路径，可加 `-n 1` 至 `-n 1000`，默认 10 行。 |
+| `mkdir`、`cp` | 建目录可带 `-p`。复制只接收一个源文件和一个新目标路径。 |
+| `rm` | 只接收一个明确路径，永久删除允许目录中由该用户拥有、仅有一个硬链接的普通文件。禁止选项、通配符、目录和符号链接。选项或参数数量不合法会在启动前拦截整段。 |
+
+## 验收与排查
+
+- 用普通账号在同一段落逐行运行两个已授权的只读命令，例如 `hadoop version` 和 `hdfs dfs -ls /YOUR_APPROVED_HDFS_PATH`，确认按顺序返回。
+- 在测试环境用普通账号提交前面合法、末行含未授权命令的段落，确认中文提示包含末行行号，且没有前面命令的输出。用白名单账号执行无副作用的多行 Bash 检查原执行路径。
+- 使用测试文件检查个人目录内读取、越界拒绝、复制禁止覆盖和单文件删除。若审计日志出现 `AUTH_REQUIRED` 或 `USER_MISMATCH`，先检查登录身份、用户模拟和解释器进程账号。若启动可执行文件失败，检查绝对路径、执行权限和运行依赖。
+- 解释器日志用 `Shell policy EXEMPT`、`Shell policy DISPATCH`、`Shell policy BLOCKED` 区分白名单放行、通过入口校验和入口拦截。拦截日志含账号、笔记、段落、规则和行号，省略原始命令和参数。

@@ -26,6 +26,32 @@
         "description": "If this set to true, the shell's working directory will be set to user home",
         "type": "checkbox"
       },
+      "zeppelin.shell.security.exempt.users": {
+        "defaultValue": "",
+        "description": "Comma-separated authenticated operating-system users allowed to run Bash scripts.",
+        "type": "string"
+      },
+      "zeppelin.shell.security.executable.hadoop": {
+        "defaultValue": "/usr/bin/hadoop",
+        "type": "string"
+      },
+      "zeppelin.shell.security.executable.hdfs": {
+        "defaultValue": "/usr/bin/hdfs",
+        "type": "string"
+      },
+      "zeppelin.shell.security.executable.hive": {
+        "defaultValue": "/usr/bin/hive",
+        "type": "string"
+      },
+      "zeppelin.shell.security.executable.beeline": {
+        "defaultValue": "/usr/bin/beeline",
+        "type": "string"
+      },
+      "zeppelin.shell.security.executable.python3": {
+        "defaultValue": "/usr/bin/python3",
+        "description": "Trusted Python 3.7+ executable for restricted local file operations.",
+        "type": "string"
+      },
       "zeppelin.shell.auth.type": {
         "envName": null,
         "propertyName": "zeppelin.shell.auth.type",

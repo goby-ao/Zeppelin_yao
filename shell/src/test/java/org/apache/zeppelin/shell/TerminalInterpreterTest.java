@@ -17,6 +17,7 @@
 
 package org.apache.zeppelin.shell;
 
+import com.sun.security.auth.module.UnixSystem;
 import org.apache.zeppelin.interpreter.InterpreterContext;
 import org.apache.zeppelin.interpreter.InterpreterException;
 import org.apache.zeppelin.interpreter.InterpreterResult;
@@ -37,6 +38,8 @@ import java.util.regex.Pattern;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class TerminalInterpreterTest extends BaseInterpreterTest {
   private static final Logger LOGGER = LoggerFactory.getLogger(TerminalInterpreterTest.class);
@@ -49,8 +52,14 @@ public class TerminalInterpreterTest extends BaseInterpreterTest {
   public void setUp() throws InterpreterException {
     Properties p = new Properties();
     intpContext = getIntpContext();
-
-    terminal = new TerminalInterpreter(p);
+    TerminalSocketTest.ReceivedMsg.clear();
+    String user = intpContext.getAuthenticationInfo().getUser();
+    p.setProperty(ShellSecurityChecker.TERMINAL_ENABLED, "true");
+    p.setProperty(ShellSecurityChecker.EXEMPT_USERS, user);
+    UnixSystem processIdentity = mock(UnixSystem.class);
+    when(processIdentity.getUsername()).thenReturn(user);
+    when(processIdentity.getUid()).thenReturn(1234L);
+    terminal = new TerminalInterpreter(p, new ShellSecurityChecker(() -> processIdentity));
     terminal.open();
 
     if (System.getProperty("os.name").startsWith("Windows")) {
@@ -84,7 +93,8 @@ public class TerminalInterpreterTest extends BaseInterpreterTest {
 
       // Send Start terminal service message
       String terminalReadyCmd = String.format("{\"type\":\"TERMINAL_READY\"," +
-          "\"noteId\":\"noteId-1\",\"paragraphId\":\"paragraphId-1\"}");
+          "\"noteId\":\"%s\",\"paragraphId\":\"%s\"}", intpContext.getNoteId(),
+          intpContext.getParagraphId());
       LOGGER.info("send > " + terminalReadyCmd);
       session.getBasicRemote().sendText(terminalReadyCmd);
       Thread.sleep(10000);
@@ -164,7 +174,8 @@ public class TerminalInterpreterTest extends BaseInterpreterTest {
 
       // Send Start terminal service message
       String terminalReadyCmd = String.format("{\"type\":\"TERMINAL_READY\"," +
-          "\"noteId\":\"noteId-1\",\"paragraphId\":\"paragraphId-1\"}");
+          "\"noteId\":\"%s\",\"paragraphId\":\"%s\"}", intpContext.getNoteId(),
+          intpContext.getParagraphId());
       LOGGER.info("send > " + terminalReadyCmd);
       session.getBasicRemote().sendText(terminalReadyCmd);
       Thread.sleep(10000);

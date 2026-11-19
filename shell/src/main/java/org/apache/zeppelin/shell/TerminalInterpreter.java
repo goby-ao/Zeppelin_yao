@@ -53,9 +53,15 @@ import java.util.Properties;
  */
 public class TerminalInterpreter extends KerberosInterpreter {
   private static final Logger LOGGER = LoggerFactory.getLogger(TerminalInterpreter.class);
+  private final ShellSecurityChecker securityChecker;
 
   public TerminalInterpreter(Properties property) {
+    this(property, new ShellSecurityChecker());
+  }
+
+  TerminalInterpreter(Properties property, ShellSecurityChecker securityChecker) {
     super(property);
+    this.securityChecker = securityChecker;
   }
 
   private TerminalThread terminalThread = null;
@@ -87,6 +93,10 @@ public class TerminalInterpreter extends KerberosInterpreter {
 
   @Override
   public void close() {
+    if (intpContext == null) {
+      super.close();
+      return;
+    }
     intpContext.getAngularObjectRegistry().add(TERMINAL_SOCKET_STATUS, TERMINAL_SOCKET_CLOSE,
         intpContext.getNoteId(), intpContext.getParagraphId());
     if (null != terminalThread) {
@@ -103,6 +113,10 @@ public class TerminalInterpreter extends KerberosInterpreter {
 
   @Override
   public InterpreterResult internalInterpret(String cmd, InterpreterContext context) {
+    if (!securityChecker.allowsTerminal(context.getAuthenticationInfo(), properties)) {
+      return new InterpreterResult(Code.ERROR,
+          "根据安全管理规范，当前账号无法打开交互终端。请使用 %sh 运行已授权的命令。");
+    }
     this.intpContext = context;
     TerminalManager.getInstance().setInterpreterContext(context);
 
@@ -240,6 +254,6 @@ public class TerminalInterpreter extends KerberosInterpreter {
 
   @VisibleForTesting
   public boolean terminalThreadIsRunning() {
-    return terminalThread.isRunning();
+    return terminalThread != null && terminalThread.isRunning();
   }
 }
