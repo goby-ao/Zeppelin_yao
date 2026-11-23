@@ -164,13 +164,33 @@ public class ShellInterpreter extends KerberosInterpreter {
       DefaultExecutor executor = new DefaultExecutor();
       executor.setStreamHandler(new PumpStreamHandler(
           context.out, context.out));
-      executor.setWatchdog(new ExecuteWatchdog(Long.MAX_VALUE) {
+      executor.setWatchdog(new ExecuteWatchdog(ExecuteWatchdog.INFINITE_TIMEOUT) {
+        private boolean running;
+        private boolean destroyed;
+
         @Override
         public synchronized void start(Process process) {
+          running = true;
           super.start(process);
-          // Cancel may arrive after the loop check but before the process starts.
-          if (executorMap.get(paragraphId) != executor) {
-            destroyProcess();
+          // Cancel or timeout may arrive before the process starts.
+          if (destroyed || executorMap.get(paragraphId) != executor) {
+            running = false;
+            super.destroyProcess();
+          }
+        }
+
+        @Override
+        public synchronized void stop() {
+          running = false;
+          super.stop();
+        }
+
+        @Override
+        public synchronized void destroyProcess() {
+          destroyed = true;
+          if (running) {
+            running = false;
+            super.destroyProcess();
           }
         }
       });
@@ -185,9 +205,9 @@ public class ShellInterpreter extends KerberosInterpreter {
           return new InterpreterResult(Code.INCOMPLETE);
         }
         long startedAt = System.currentTimeMillis();
-        command.execute(executor, context.out, () -> executorMap.get(paragraphId) != executor
-            || System.currentTimeMillis() - Math.max(startedAt, context.out.getLastWriteTimestamp())
-                > timeoutThreshold);
+        command.execute(executor, context.out, () ->
+            System.currentTimeMillis() - Math.max(startedAt, context.out.getLastWriteTimestamp())
+                > timeoutThreshold || executorMap.get(paragraphId) != executor);
       }
       LOGGER.info("Paragraph {} completed {} commands", paragraphId, commands.size());
       return new InterpreterResult(Code.SUCCESS);
@@ -204,17 +224,17 @@ public class ShellInterpreter extends KerberosInterpreter {
       messageBuilder.append("ExitValue: " + exitValue);
       return new InterpreterResult(code, messageBuilder.toString());
     } catch (InterruptedIOException e) {
-      return new InterpreterResult(Code.INCOMPLETE, "文件操作已取消或超时。");
+      return new InterpreterResult(Code.INCOMPLETE, "执行已取消或超时。");
     } catch (RestrictedFileCommand.Denied e) {
-      return new InterpreterResult(Code.ERROR, "根据安全管理规范，文件操作已拦截。"
-          + "该路径不允许操作，请在个人家目录或个人临时目录内选择符合要求的路径。");
+      return new InterpreterResult(Code.ERROR, "安全拦截：文件操作被拒绝。"
+          + "请确认目标为本人所有的普通文件（非目录、非软硬链接），且个人临时目录权限为 0700。");
     } catch (FileAlreadyExistsException e) {
-      return new InterpreterResult(Code.ERROR, "目标已存在。为避免覆盖，请指定一个新的目标路径。");
+      return new InterpreterResult(Code.ERROR, "目标文件或目录已存在（为防止误覆盖，cp 必须指定尚未存在的新文件路径）。");
     } catch (FileSystemException e) {
-      return new InterpreterResult(Code.ERROR, "无法访问指定路径。请确认路径存在、有访问权限，并且未使用符号链接。");
+      return new InterpreterResult(Code.ERROR, "无法访问指定路径，请确认文件或目录存在且当前账号有读写权限。");
     } catch (IOException e) {
       LOGGER.warn("Shell process start failed for paragraph {}", context.getParagraphId());
-      return new InterpreterResult(Code.ERROR, "Unable to start the configured executable");
+      return new InterpreterResult(Code.ERROR, "命令启动或执行失败，请联系管理员检查客户端安装路径及执行权限。");
     } finally {
       executorMap.remove(context.getParagraphId());
       contextMap.remove(context.getParagraphId());

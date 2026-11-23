@@ -64,7 +64,7 @@ public class ConfInterpreter extends Interpreter {
 
     if ("sh".equals(interpreterSetting.getGroup())) {
       return new InterpreterResult(InterpreterResult.Code.ERROR,
-          "根据安全管理规范，笔记中不能修改 Shell 解释器配置。请联系平台管理员在解释器设置中调整。");
+          "安全拦截：不支持在笔记中通过 %sh.conf 修改配置，请联系管理员在 Interpreters 页面调整。");
     }
 
     try {

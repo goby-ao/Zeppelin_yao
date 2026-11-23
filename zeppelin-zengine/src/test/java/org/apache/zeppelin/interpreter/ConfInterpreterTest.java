@@ -43,7 +43,7 @@ public class ConfInterpreterTest extends AbstractInterpreterTest {
         InterpreterContext.builder().build());
 
     assertEquals(InterpreterResult.Code.ERROR, result.code());
-    assertTrue(result.message().get(0).getData().contains("笔记中不能修改 Shell 解释器配置"));
+    assertTrue(result.message().get(0).getData().contains("不支持在笔记中通过 %sh.conf 修改配置"));
     verify(setting).getGroup();
     verifyNoMoreInteractions(setting);
   }

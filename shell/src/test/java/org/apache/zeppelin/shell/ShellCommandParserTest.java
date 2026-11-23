@@ -28,6 +28,15 @@ public class ShellCommandParserTest {
   public void parsesQuotedSqlAsOneArgument() {
     assertEquals(Arrays.asList("hive", "-e", "select 1; select 2"),
         ShellCommandParser.parse("hive -e 'select 1; select 2'"));
+    assertEquals(Arrays.asList("hive", "-e", "\n  select 1;\n  select 2;\n"),
+        ShellCommandParser.parse("hive -e \"\n  select 1;\n  select 2;\n\""));
+    assertEquals(Arrays.asList("beeline", "-u", "jdbc:hive2://host:10000", "-e", "show tables"),
+        ShellCommandParser.parse(
+            "beeline -u \"jdbc:hive2://host:10000\" \\\n  -e \"show tables\""));
+    assertEquals(Arrays.asList(
+        Arrays.asList("hive", "-e", "show tables"),
+        Arrays.asList("grep", "ods")),
+        ShellCommandParser.parsePipeline("hive -e \"show tables\" | grep ods"));
   }
 
   @Test

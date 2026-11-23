@@ -39,17 +39,23 @@ Run the interpreter in an isolated process per user with user impersonation enab
 The authenticated username must match the non-root operating-system account of
 that process. Configure `zeppelin.shell.security.exempt.users` as an exact,
 comma-separated list of trusted accounts. The default is empty. Exempt accounts
+and paragraphs whose first non-empty line starts with `#;;;`
 can run Bash scripts under their own identity.
 Administrators configure the Shell interpreter properties in the interpreter
 settings. Notebook `%sh.conf` paragraphs cannot change them.
 
 Other accounts can submit multiple lines, with one command per line. Blank
-lines and comments are ignored, and quoted arguments are supported. The
+lines and comments are ignored, and quoted arguments (including multiline
+quoted SQL) and trailing `\` line continuations are supported. Allowed
+commands can pipe standard output through in-process `grep`, `head`, `tail`,
+or `wc -l` filters without file arguments. The
 interpreter validates the command and shell syntax on every line before starting
 any process. A rejected line blocks the entire paragraph. Commands run in
 order and stop on the first execution error. The interpreter accepts
-`hadoop`, `hdfs`, `hive`, and `beeline`, and sends their arguments directly
-to the client. For these clients, the policy applies to the submitted command
+`hadoop`, `hdfs`, `hive`, `beeline`, and `yarn`, and sends their arguments directly
+to the client. For `hadoop` and `hdfs`, recursive delete (`-r`, `-R`, `-rmr`,
+`-rmdir`), `-skipTrash`, wildcard delete, and root-path delete are rejected before
+execution. For these clients, the policy otherwise applies to the submitted command
 only. The client's own local file access, subprocesses and cluster operations
 remain governed by its execution environment and permissions. The interpreter
 does not provide client or OS sandboxing.

@@ -120,30 +120,82 @@ public class ShellInterpreterTest {
     when(processIdentity.getUsername()).thenReturn("tenant");
     shell.setProperty("zeppelin.shell.security.executable.beeline", "/usr/bin/printf");
     shell.setProperty("zeppelin.shell.security.executable.hadoop", "/usr/bin/printf");
+    shell.setProperty("zeppelin.shell.security.executable.hive", "/usr/bin/printf");
+    shell.setProperty("zeppelin.shell.security.executable.yarn", "/usr/bin/printf");
     InterpreterContext tenant = InterpreterContext.builder().setParagraphId("tenant")
         .setInterpreterOut(new InterpreterOutput())
         .setAuthenticationInfo(new AuthenticationInfo("tenant")).build();
     result = shell.interpret("# comment\nhadoop '%s' first\n\nssh YOUR_HOST", tenant);
     assertEquals(Code.ERROR, result.code());
-    assertEquals("根据安全管理规范，本段落未执行。请检查第 4 行。该命令未获授权，请修改后重试。",
+    assertEquals("安全拦截：本段落未执行（请检查第 4 行）："
+        + "不支持该命令（仅支持 hadoop、hdfs、hive、beeline、yarn，"
+        + "本地文件命令 ls、stat、cat、head、tail、mkdir、cp、rm，"
+        + "以及管道过滤 grep、head、tail、wc -l）。",
         result.message().get(0).getData());
     assertEquals("", tenant.out.toString());
     for (String input : new String[] {"beeline '%s' 'select 1' # comment\nssh YOUR_HOST",
         "hadoop '%s' first\nbeeline '%s' second | blocked", "ssh YOUR_HOST",
+        "beeline '%s' 'select 1' | grep ods /etc/passwd", "grep ods /etc/passwd",
+        "beeline '%s' 'select 1' || grep ods", "beeline '%s' 'select 1' |",
+        "hadoop fs -rm /", "hadoop fs -rm hdfs://ns1/", "hadoop fs -rm /user/..",
+        "hadoop fs -rm -r /user/tenant/dir", "hadoop fs -rm -R /user/tenant/dir",
+        "hadoop fs -rm -rf /user/tenant/dir", "hadoop fs -rmr /user/tenant/dir",
+        "hadoop fs -rmdir /user/tenant/dir", "hadoop fs -rm -skipTrash /user/tenant/file",
+        "hadoop fs -rm '/user/tenant/*.txt'", "hadoop fs -rm '/user/tenant/{a,b}'",
         "hadoop '%s' first\nrm -rf YOUR_TEST_PATH", "rm 'YOUR_TEST_PATH/*'", "rm one two"}) {
       assertEquals(Code.ERROR, shell.interpret(input, tenant).code());
       assertEquals("", tenant.out.toString());
     }
+    assertEquals(Code.SUCCESS,
+        shell.interpret("hadoop '%s' fs -rm /user/tenant/file.txt", tenant).code());
+    assertEquals("fs-rm/user/tenant/file.txt", tenant.out.toString());
+    tenant.out.clear();
     assertEquals(Code.SUCCESS, shell.interpret(
         "# start\r\nhadoop '%s' 'first: '\r\n\r\n"
         + "beeline '%s' 'select 1; /outside/path' # last\r\n", tenant).code());
     assertEquals("first: select 1; /outside/path", tenant.out.toString());
+    assertEquals(Code.SUCCESS, shell.interpret(
+        "beeline '%s\\n' 'dim_user' 'ods_order' 'ODS_PAY' 'dwd_log' | grep -i ods | tail -n 1\n"
+        + "beeline '%s\\n' 'ods_1' 'ods_2' 'dim_1' | grep ods | wc -l\n"
+        + "hive '%s\\n' \"\n  select 1;\n  select 2;\n\" | grep 'select 2'\n"
+        + "yarn \\\n  '%s\\n' \\\n  'application_1' | grep application", tenant).code());
+    assertEquals("first: select 1; /outside/pathODS_PAY\n2\n  select 2;\napplication_1\n",
+        tenant.out.toString());
     InterpreterResult blockedPath = shell.interpret(
         "hadoop '%s' skipped\ncat /YOUR_OUTSIDE_PATH/example.txt", tenant);
     assertEquals(Code.ERROR, blockedPath.code());
-    assertTrue(blockedPath.message().get(0).getData().contains("请检查第 2 行。该路径不允许操作"));
-    assertEquals("first: select 1; /outside/path", tenant.out.toString());
+    assertTrue(blockedPath.message().get(0).getData().contains("请检查第 2 行）：不允许访问该路径"));
+    assertEquals("first: select 1; /outside/pathODS_PAY\n2\n  select 2;\napplication_1\n",
+        tenant.out.toString());
     assertEquals(Code.ERROR, shell.interpret("echo wrong-user", context).code());
+    assertEquals(Code.ERROR, shell.interpret("#;;;\necho wrong-user", context).code());
+    assertEquals(Code.ERROR, shell.interpret("# comment\n#;;;\nssh YOUR_HOST", tenant).code());
+    assertEquals(Code.ERROR,
+        shell.interpret("hadoop '%s' first\n#;;;\nssh YOUR_HOST", tenant).code());
+    assertEquals(Code.SUCCESS,
+        shell.interpret("\n#;;; bypass\nprintf ' bypassed' | tr a-z A-Z", tenant).code());
+    assertEquals("first: select 1; /outside/pathODS_PAY\n2\n  select 2;\napplication_1\n BYPASSED",
+        tenant.out.toString());
+  }
+
+  @Test(timeout = 5000)
+  public void cancelDoesNotDeadlockWithoutExternalProcess() throws Exception {
+    when(processIdentity.getUsername()).thenReturn("tenant");
+    final InterpreterContext[] holder = new InterpreterContext[1];
+    InterpreterOutput cancellingOut = new InterpreterOutput() {
+      @Override
+      public long getLastWriteTimestamp() {
+        shell.cancel(holder[0]);
+        return super.getLastWriteTimestamp();
+      }
+    };
+    InterpreterContext tenant = InterpreterContext.builder().setParagraphId("tenant-file")
+        .setInterpreterOut(cancellingOut)
+        .setAuthenticationInfo(new AuthenticationInfo("tenant")).build();
+    holder[0] = tenant;
+    result = shell.interpret("ls", tenant);
+    assertEquals(Code.INCOMPLETE, result.code());
+    assertTrue(shell.getExecutorMap().isEmpty());
   }
 
   @Test
@@ -163,7 +215,7 @@ public class ShellInterpreterTest {
     TerminalInterpreter terminal = new TerminalInterpreter(new Properties());
     result = terminal.internalInterpret("", context);
     assertEquals(Code.ERROR, result.code());
-    assertTrue(result.message().get(0).getData().contains("无法打开交互终端"));
+    assertTrue(result.message().get(0).getData().contains("交互终端（%sh.terminal）已关闭"));
     assertTrue(!terminal.terminalThreadIsRunning());
     terminal.close();
   }

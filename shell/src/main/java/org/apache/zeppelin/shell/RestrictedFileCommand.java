@@ -40,7 +40,9 @@ import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
@@ -82,10 +84,22 @@ final class RestrictedFileCommand {
       String name, List<String> args, Path home, Path tmp, long uid) throws Denied {
     String flag = "";
     int lines = 10;
-    if (!args.isEmpty()) {
+    if ("ls".equals(name)) {
+      StringBuilder lsFlags = new StringBuilder();
+      int index = 0;
+      while (index < args.size() && args.get(index).startsWith("-")) {
+        String option = args.get(index);
+        if (option.length() < 2 || !option.substring(1).matches("[lahtr]+")) {
+          throw new Denied("FILE_ARGUMENT_DENIED");
+        }
+        lsFlags.append(option.substring(1));
+        index++;
+      }
+      flag = lsFlags.toString();
+      args = args.subList(index, args.size());
+    } else if (!args.isEmpty()) {
       String option = args.get(0);
-      if (("ls".equals(name) && Arrays.asList("-l", "-a", "-la", "-al").contains(option))
-          || ("mkdir".equals(name) && "-p".equals(option))) {
+      if ("mkdir".equals(name) && "-p".equals(option)) {
         flag = option;
         args = args.subList(1, args.size());
       } else if (("head".equals(name) || "tail".equals(name)) && "-n".equals(option)
@@ -117,7 +131,9 @@ final class RestrictedFileCommand {
     }
     Path path;
     try {
-      path = home.resolve(value.startsWith("~/") ? value.substring(2) : value);
+      String relative = "~".equals(value)
+          ? "" : (value.startsWith("~/") ? value.substring(2) : value);
+      path = home.resolve(relative);
     } catch (InvalidPathException e) {
       throw new Denied("FILE_ARGUMENT_DENIED");
     }
@@ -243,7 +259,7 @@ final class RestrictedFileCommand {
         }
       }
     }
-    Collections.sort(entries);
+    sortEntries(entries);
     for (Path entry : entries) {
       checkCancelled(cancelled);
       if (flag.contains("l")) {
@@ -254,12 +270,47 @@ final class RestrictedFileCommand {
     }
   }
 
-  private static void printEntry(Path path, OutputStream out) throws IOException {
+  private void sortEntries(List<Path> entries) throws IOException {
+    if (flag.contains("t")) {
+      Map<Path, Long> mtimes = new HashMap<>(entries.size());
+      for (Path entry : entries) {
+        mtimes.put(entry, attributes(entry).lastModifiedTime().toMillis());
+      }
+      entries.sort((left, right) -> {
+        int cmp = Long.compare(mtimes.get(right), mtimes.get(left));
+        return cmp != 0 ? cmp : left.compareTo(right);
+      });
+    } else {
+      Collections.sort(entries);
+    }
+    if (flag.contains("r")) {
+      Collections.reverse(entries);
+    }
+  }
+
+  private void printEntry(Path path, OutputStream out) throws IOException {
     PosixFileAttributes info = Files.readAttributes(
         path, PosixFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
     String type = info.isDirectory() ? "d" : info.isSymbolicLink() ? "l" : "-";
-    writeLine(out, String.format("%s%s %12d %s", type,
-        PosixFilePermissions.toString(info.permissions()), info.size(), label(path)));
+    String size = flag.contains("h")
+        ? String.format("%12s", humanSize(info.size()))
+        : String.format("%12d", info.size());
+    writeLine(out, String.format("%s%s %s %s", type,
+        PosixFilePermissions.toString(info.permissions()), size, label(path)));
+  }
+
+  private static String humanSize(long bytes) {
+    if (bytes < 1024) {
+      return bytes + "B";
+    }
+    double value = bytes;
+    char[] units = {'K', 'M', 'G', 'T', 'P'};
+    int unitIndex = -1;
+    while (value >= 1024 && unitIndex + 1 < units.length) {
+      value /= 1024.0;
+      unitIndex++;
+    }
+    return String.format(Locale.ROOT, "%.1f%c", value, units[unitIndex]);
   }
 
   private static String label(Path path) {

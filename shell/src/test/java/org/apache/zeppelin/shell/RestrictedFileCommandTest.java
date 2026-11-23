@@ -36,6 +36,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -68,6 +69,18 @@ public class RestrictedFileCommandTest {
     assertEquals("one\n", run("head", "-n", "1", "~/queries/day 1/test.txt"));
     assertEquals("two\nthree", run("tail", "-n", "2", source.toString()));
     assertEquals("'day 1'\n", run("ls", "queries"));
+    assertEquals("'queries'\n", run("ls", "~"));
+    assertTrue(run("ls", "-lh", "queries/day 1").contains("13B 'test.txt'"));
+
+    Path older = home.resolve("queries/day 1/older.txt");
+    Files.write(older, new byte[2048]);
+    Files.setLastModifiedTime(older, FileTime.fromMillis(1000L));
+    Files.setLastModifiedTime(source, FileTime.fromMillis(2000L));
+    assertEquals("'test.txt'\n'older.txt'\n", run("ls", "-t", "queries/day 1"));
+    String lrt = run("ls", "-lrt", "-h", "queries/day 1");
+    assertTrue(lrt.indexOf("'older.txt'") < lrt.indexOf("'test.txt'"));
+    assertTrue(lrt.contains("2.0K 'older.txt'"));
+    Files.delete(older);
 
     Path copy = tmp.resolve("copy.txt");
     run("cp", source.toString(), copy.toString());

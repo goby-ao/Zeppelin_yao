@@ -47,6 +47,10 @@
         "defaultValue": "/usr/bin/beeline",
         "type": "string"
       },
+      "zeppelin.shell.security.executable.yarn": {
+        "defaultValue": "/usr/bin/yarn",
+        "type": "string"
+      },
       "zeppelin.shell.auth.type": {
         "envName": null,
         "propertyName": "zeppelin.shell.auth.type",

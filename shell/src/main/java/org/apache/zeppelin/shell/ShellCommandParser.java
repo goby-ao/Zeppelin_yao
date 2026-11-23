@@ -26,13 +26,19 @@ final class ShellCommandParser {
   }
 
   static List<String> parse(String input) {
+    List<List<String>> commands = parsePipeline(input);
+    if (commands.size() != 1) {
+      throw new IllegalArgumentException("Shell operators are not supported");
+    }
+    return commands.get(0);
+  }
+
+  static List<List<String>> parsePipeline(String input) {
     if (input.indexOf(0) >= 0) {
       throw new IllegalArgumentException("NUL bytes are not supported");
     }
     input = input.trim();
-    if (input.indexOf('\n') >= 0 || input.indexOf('\r') >= 0) {
-      throw new IllegalArgumentException("Only one command on one line is supported");
-    }
+    List<List<String>> commands = new ArrayList<>();
     List<String> arguments = new ArrayList<>();
     StringBuilder word = new StringBuilder();
     char quote = 0;
@@ -48,16 +54,40 @@ final class ShellCommandParser {
         inWord = true;
         escaped = false;
       } else if (c == '\\' && quote != '\'') {
-        escaped = true;
-        inWord = true;
+        int continued = skipLineContinuation(input, i, quote);
+        if (continued >= 0) {
+          if (quote == 0 && inWord && continued > i + 1 && input.charAt(i + 1) != '\r'
+              && input.charAt(i + 1) != '\n') {
+            arguments.add(word.toString());
+            word.setLength(0);
+            inWord = false;
+          }
+          i = continued;
+        } else {
+          escaped = true;
+          inWord = true;
+        }
       } else if (quote != 0 && c == quote) {
         quote = 0;
       } else if (quote == 0 && (c == '\'' || c == '"')) {
         quote = c;
         inWord = true;
+      } else if (quote == 0 && (c == '\n' || c == '\r')) {
+        throw new IllegalArgumentException("Only one command on one line is supported");
       } else if (quote == 0 && c == '#' && !inWord && !arguments.isEmpty()) {
         break;
-      } else if (quote == 0 && "|&;<>`$(){}".indexOf(c) >= 0) {
+      } else if (quote == 0 && c == '|') {
+        if (inWord) {
+          arguments.add(word.toString());
+          word.setLength(0);
+          inWord = false;
+        }
+        if (arguments.isEmpty()) {
+          throw new IllegalArgumentException("Shell operators are not supported");
+        }
+        commands.add(arguments);
+        arguments = new ArrayList<>();
+      } else if (quote == 0 && "&;<>`$(){}".indexOf(c) >= 0) {
         throw new IllegalArgumentException("Shell operators are not supported");
       } else if (quote == 0 && Character.isWhitespace(c)) {
         if (inWord) {
@@ -79,6 +109,23 @@ final class ShellCommandParser {
     if (arguments.isEmpty()) {
       throw new IllegalArgumentException("Command is empty");
     }
-    return arguments;
+    commands.add(arguments);
+    return commands;
+  }
+
+  private static int skipLineContinuation(String input, int backslashIndex, char quote) {
+    int i = backslashIndex + 1;
+    if (quote == 0) {
+      while (i < input.length() && (input.charAt(i) == ' ' || input.charAt(i) == '\t')) {
+        i++;
+      }
+    }
+    if (i < input.length() && input.charAt(i) == '\r') {
+      i++;
+    }
+    if (i < input.length() && input.charAt(i) == '\n') {
+      return i;
+    }
+    return -1;
   }
 }
