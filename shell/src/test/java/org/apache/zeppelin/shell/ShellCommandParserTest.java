@@ -37,6 +37,11 @@ public class ShellCommandParserTest {
         Arrays.asList("hive", "-e", "show tables"),
         Arrays.asList("grep", "ods")),
         ShellCommandParser.parsePipeline("hive -e \"show tables\" | grep ods"));
+    ShellCommandParser.ParsedLine redirected = ShellCommandParser.parseCommandLine(
+        "hive -e \"select 1\" | grep 1 >> /tmp/zeppelin/alice/out.txt");
+    assertEquals(2, redirected.stages.size());
+    assertEquals("/tmp/zeppelin/alice/out.txt", redirected.redirectTarget);
+    assertEquals(true, redirected.redirectAppend);
   }
 
   @Test

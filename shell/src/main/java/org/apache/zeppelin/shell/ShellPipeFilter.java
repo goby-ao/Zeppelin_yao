@@ -65,17 +65,17 @@ final class ShellPipeFilter {
 
   static ShellSecurityChecker.Command chain(
       ShellSecurityChecker.Command upstream, List<ShellPipeFilter> filters) {
-    return (executor, out, cancelled) -> {
+    return (executor, out, err, cancelled) -> {
       Stage stage = new SinkStage(out, cancelled);
       for (int i = filters.size() - 1; i >= 0; i--) {
         stage = filters.get(i).factory.create(stage);
       }
       PipeOutputStream pipeOut = new PipeOutputStream(stage, cancelled);
-      executor.setStreamHandler(new PumpStreamHandler(pipeOut, out));
+      executor.setStreamHandler(new PumpStreamHandler(pipeOut, err));
       try {
-        upstream.execute(executor, pipeOut, cancelled);
+        upstream.execute(executor, pipeOut, err, cancelled);
       } finally {
-        executor.setStreamHandler(new PumpStreamHandler(out, out));
+        executor.setStreamHandler(new PumpStreamHandler(out, err));
       }
       pipeOut.finish();
     };

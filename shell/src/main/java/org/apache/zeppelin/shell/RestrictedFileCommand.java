@@ -50,8 +50,11 @@ import java.util.function.BooleanSupplier;
 /** Restricted local filesystem operations, executed as the interpreter's Unix account. */
 final class RestrictedFileCommand {
   private static final int PREVIEW_LIMIT = 1024 * 1024;
-  private static final List<String> PROTECTED_NAMES = Arrays.asList(".ssh", ".gnupg", ".k5login",
-      ".bashrc", ".bash_profile", ".profile", ".hadoop-env", ".hadooprc");
+  private static final List<String> PROTECTED_NAMES = Arrays.asList(
+      ".ssh", ".gnupg", ".k5login", ".netrc",
+      ".bashrc", ".bash_profile", ".bash_login", ".bash_logout", ".profile",
+      ".zshrc", ".zshenv", ".zprofile",
+      ".hadoop-env", ".hadooprc");
   private static final FileAttribute<Set<PosixFilePermission>> PRIVATE_DIRECTORY =
       PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"));
   private static final FileAttribute<Set<PosixFilePermission>> PRIVATE_FILE =
@@ -123,6 +126,21 @@ final class RestrictedFileCommand {
       throw new Denied("PATH_DENIED");
     }
     return new RestrictedFileCommand(name, flag, lines, uid, source, target);
+  }
+
+  static RedirectTarget prepareRedirect(
+      String targetPath, boolean append, String user, long uid) throws Denied {
+    return prepareRedirect(targetPath, append,
+        Paths.get("/home", user), Paths.get("/tmp/zeppelin", user), uid);
+  }
+
+  static RedirectTarget prepareRedirect(
+      String targetPath, boolean append, Path home, Path tmp, long uid) throws Denied {
+    LocalPath target = resolve(targetPath, home, tmp);
+    if (target.path.equals(target.root)) {
+      throw new Denied("PATH_DENIED");
+    }
+    return new RedirectTarget(target, append, uid);
   }
 
   private static LocalPath resolve(String value, Path home, Path tmp) throws Denied {
@@ -403,6 +421,37 @@ final class RestrictedFileCommand {
       this.path = path;
       this.root = root;
       this.privateDirectory = privateDirectory;
+    }
+  }
+
+  static final class RedirectTarget {
+    private final LocalPath target;
+    private final boolean append;
+    private final long uid;
+
+    private RedirectTarget(LocalPath target, boolean append, long uid) {
+      this.target = target;
+      this.append = append;
+      this.uid = uid;
+    }
+
+    OutputStream openOutputStream(BooleanSupplier cancelled) throws IOException {
+      try {
+        checkCancelled(cancelled);
+        RestrictedFileCommand checker = new RestrictedFileCommand(
+            "redirect", "", 0, uid, target, null);
+        Path file = checker.checkedPath(target, false);
+        if (Files.exists(file, LinkOption.NOFOLLOW_LINKS)) {
+          checker.requireRegular(file, true);
+          return Files.newOutputStream(file, StandardOpenOption.WRITE,
+              append ? StandardOpenOption.APPEND : StandardOpenOption.TRUNCATE_EXISTING,
+              LinkOption.NOFOLLOW_LINKS);
+        }
+        Files.createFile(file, PRIVATE_FILE);
+        return Files.newOutputStream(file, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS);
+      } catch (UnsupportedOperationException e) {
+        throw new FileSystemException(null, null, "Unix file attributes required");
+      }
     }
   }
 

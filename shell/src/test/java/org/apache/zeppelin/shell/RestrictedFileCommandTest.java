@@ -95,6 +95,17 @@ public class RestrictedFileCommandTest {
     run("rm", copy.toString());
     assertFalse(Files.exists(copy));
     assertTrue(Files.exists(source));
+
+    Path redirected = tmp.resolve("redirect.txt");
+    try (java.io.OutputStream out = RestrictedFileCommand.prepareRedirect(
+        redirected.toString(), false, home, tmp, uid).openOutputStream(() -> false)) {
+      out.write("hello\n".getBytes(StandardCharsets.UTF_8));
+    }
+    try (java.io.OutputStream out = RestrictedFileCommand.prepareRedirect(
+        redirected.toString(), true, home, tmp, uid).openOutputStream(() -> false)) {
+      out.write("world\n".getBytes(StandardCharsets.UTF_8));
+    }
+    assertEquals("hello\nworld\n", run("cat", redirected.toString()));
   }
 
   @Test

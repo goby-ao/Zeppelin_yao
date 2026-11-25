@@ -122,15 +122,19 @@ public class ShellInterpreterTest {
     shell.setProperty("zeppelin.shell.security.executable.hadoop", "/usr/bin/printf");
     shell.setProperty("zeppelin.shell.security.executable.hive", "/usr/bin/printf");
     shell.setProperty("zeppelin.shell.security.executable.yarn", "/usr/bin/printf");
+    shell.setProperty("zeppelin.shell.security.executable.hbase", "/usr/bin/grep");
     InterpreterContext tenant = InterpreterContext.builder().setParagraphId("tenant")
         .setInterpreterOut(new InterpreterOutput())
         .setAuthenticationInfo(new AuthenticationInfo("tenant")).build();
     result = shell.interpret("# comment\nhadoop '%s' first\n\nssh YOUR_HOST", tenant);
     assertEquals(Code.ERROR, result.code());
-    assertEquals("安全拦截：本段落未执行（请检查第 4 行）："
-        + "不支持该命令（仅支持 hadoop、hdfs、hive、beeline、yarn，"
-        + "本地文件命令 ls、stat、cat、head、tail、mkdir、cp、rm，"
-        + "以及管道过滤 grep、head、tail、wc -l）。",
+    assertEquals("[安全拦截] 根据安全管理要求，本次命令未执行\n"
+        + "拦截位置：第 4 行\n"
+        + "拦截原因：不支持该命令\n"
+        + "处理建议：仅支持 hadoop/hdfs/hive/beeline/yarn/hbase"
+        + "（含 echo \"<命令>\" | hbase shell）、echo、"
+        + "本地文件命令（ls/stat/cat/head/tail/mkdir/cp/rm）"
+        + "及管道过滤（grep/head/tail/wc -l）。",
         result.message().get(0).getData());
     assertEquals("", tenant.out.toString());
     for (String input : new String[] {"beeline '%s' 'select 1' # comment\nssh YOUR_HOST",
@@ -142,6 +146,11 @@ public class ShellInterpreterTest {
         "hadoop fs -rm -rf /user/tenant/dir", "hadoop fs -rmr /user/tenant/dir",
         "hadoop fs -rmdir /user/tenant/dir", "hadoop fs -rm -skipTrash /user/tenant/file",
         "hadoop fs -rm '/user/tenant/*.txt'", "hadoop fs -rm '/user/tenant/{a,b}'",
+        "echo \"drop 't1'\" | hbase shell", "echo \"drop_all 't.*'\" | hbase shell",
+        "echo \"truncate 't1'\" | hbase shell", "echo \"truncate_preserve 't1'\" | hbase shell",
+        "echo \"disable 't1'\" | hbase shell", "echo \"disable_all 't.*'\" | hbase shell",
+        "echo \"list; drop 't1'\" | hbase shell", "echo \"system('id')\" | hbase shell",
+        "hbase shell", "hbase shell /tmp/script.rb",
         "hadoop '%s' first\nrm -rf YOUR_TEST_PATH", "rm 'YOUR_TEST_PATH/*'", "rm one two"}) {
       assertEquals(Code.ERROR, shell.interpret(input, tenant).code());
       assertEquals("", tenant.out.toString());
@@ -149,6 +158,11 @@ public class ShellInterpreterTest {
     assertEquals(Code.SUCCESS,
         shell.interpret("hadoop '%s' fs -rm /user/tenant/file.txt", tenant).code());
     assertEquals("fs-rm/user/tenant/file.txt", tenant.out.toString());
+    tenant.out.clear();
+    assertEquals(Code.SUCCESS, shell.interpret(
+        "echo \"scan 'ods_drop_table', 'shell'\" | hbase shell | grep ods_drop_table",
+        tenant).code());
+    assertEquals("scan 'ods_drop_table', 'shell'\n", tenant.out.toString());
     tenant.out.clear();
     assertEquals(Code.SUCCESS, shell.interpret(
         "# start\r\nhadoop '%s' 'first: '\r\n\r\n"
@@ -164,8 +178,15 @@ public class ShellInterpreterTest {
     InterpreterResult blockedPath = shell.interpret(
         "hadoop '%s' skipped\ncat /YOUR_OUTSIDE_PATH/example.txt", tenant);
     assertEquals(Code.ERROR, blockedPath.code());
-    assertTrue(blockedPath.message().get(0).getData().contains("请检查第 2 行）：不允许访问该路径"));
-    assertEquals("first: select 1; /outside/pathODS_PAY\n2\n  select 2;\napplication_1\n",
+    assertTrue(blockedPath.message().get(0).getData().contains(
+        "拦截位置：第 2 行\n拦截原因：不允许访问该路径\n"
+        + "处理建议：本地文件操作仅限个人家目录（/home/tenant）和个人临时目录（/tmp/zeppelin/tenant）"));
+    assertEquals(Code.ERROR, shell.interpret(
+        "hive '%s' 'select 1' > /etc/passwd", tenant).code());
+    assertEquals(Code.ERROR, shell.interpret(
+        "echo 'evil' > ~/.bashrc", tenant).code());
+    assertEquals(Code.SUCCESS, shell.interpret("echo -n ' echoed'", tenant).code());
+    assertEquals("first: select 1; /outside/pathODS_PAY\n2\n  select 2;\napplication_1\n echoed",
         tenant.out.toString());
     assertEquals(Code.ERROR, shell.interpret("echo wrong-user", context).code());
     assertEquals(Code.ERROR, shell.interpret("#;;;\necho wrong-user", context).code());
@@ -174,8 +195,12 @@ public class ShellInterpreterTest {
         shell.interpret("hadoop '%s' first\n#;;;\nssh YOUR_HOST", tenant).code());
     assertEquals(Code.SUCCESS,
         shell.interpret("\n#;;; bypass\nprintf ' bypassed' | tr a-z A-Z", tenant).code());
-    assertEquals("first: select 1; /outside/pathODS_PAY\n2\n  select 2;\napplication_1\n BYPASSED",
+    assertEquals(
+        "first: select 1; /outside/pathODS_PAY\n2\n  select 2;\napplication_1\n echoed BYPASSED",
         tenant.out.toString());
+    shell.setProperty(ShellSecurityChecker.SECURITY_ENABLED, "false");
+    assertEquals(Code.SUCCESS, shell.interpret("printf ' disabled'", context).code());
+    assertEquals(" disabled", context.out.toString());
   }
 
   @Test(timeout = 5000)
@@ -230,6 +255,9 @@ public class ShellInterpreterTest {
         new TerminalInterpreter(settings, new ShellSecurityChecker(() -> processIdentity));
     assertEquals(Code.ERROR, terminal.internalInterpret("", context).code());
     assertTrue(!terminal.terminalThreadIsRunning());
+    settings.setProperty(ShellSecurityChecker.SECURITY_ENABLED, "false");
+    assertTrue(new ShellSecurityChecker(() -> processIdentity).allowsTerminal(
+        context.getAuthenticationInfo(), settings));
     terminal.close();
   }
 }

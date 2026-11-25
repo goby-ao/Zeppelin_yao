@@ -26,20 +26,31 @@ final class ShellCommandParser {
   }
 
   static List<String> parse(String input) {
-    List<List<String>> commands = parsePipeline(input);
-    if (commands.size() != 1) {
+    ParsedLine parsed = parseCommandLine(input);
+    if (parsed.stages.size() != 1 || parsed.redirectTarget != null) {
       throw new IllegalArgumentException("Shell operators are not supported");
     }
-    return commands.get(0);
+    return parsed.stages.get(0);
   }
 
   static List<List<String>> parsePipeline(String input) {
+    ParsedLine parsed = parseCommandLine(input);
+    if (parsed.redirectTarget != null) {
+      throw new IllegalArgumentException("Shell operators are not supported");
+    }
+    return parsed.stages;
+  }
+
+  static ParsedLine parseCommandLine(String input) {
     if (input.indexOf(0) >= 0) {
       throw new IllegalArgumentException("NUL bytes are not supported");
     }
     input = input.trim();
     List<List<String>> commands = new ArrayList<>();
     List<String> arguments = new ArrayList<>();
+    List<String> redirectArgs = new ArrayList<>();
+    boolean inRedirect = false;
+    boolean redirectAppend = false;
     StringBuilder word = new StringBuilder();
     char quote = 0;
     boolean inWord = false;
@@ -58,7 +69,7 @@ final class ShellCommandParser {
         if (continued >= 0) {
           if (quote == 0 && inWord && continued > i + 1 && input.charAt(i + 1) != '\r'
               && input.charAt(i + 1) != '\n') {
-            arguments.add(word.toString());
+            (inRedirect ? redirectArgs : arguments).add(word.toString());
             word.setLength(0);
             inWord = false;
           }
@@ -74,9 +85,13 @@ final class ShellCommandParser {
         inWord = true;
       } else if (quote == 0 && (c == '\n' || c == '\r')) {
         throw new IllegalArgumentException("Only one command on one line is supported");
-      } else if (quote == 0 && c == '#' && !inWord && !arguments.isEmpty()) {
+      } else if (quote == 0 && c == '#' && !inWord
+          && (inRedirect ? !redirectArgs.isEmpty() : !arguments.isEmpty())) {
         break;
       } else if (quote == 0 && c == '|') {
+        if (inRedirect) {
+          throw new IllegalArgumentException("Shell operators are not supported");
+        }
         if (inWord) {
           arguments.add(word.toString());
           word.setLength(0);
@@ -87,11 +102,30 @@ final class ShellCommandParser {
         }
         commands.add(arguments);
         arguments = new ArrayList<>();
-      } else if (quote == 0 && "&;<>`$(){}".indexOf(c) >= 0) {
+      } else if (quote == 0 && c == '>') {
+        if (inRedirect) {
+          throw new IllegalArgumentException("Shell operators are not supported");
+        }
+        if (inWord) {
+          arguments.add(word.toString());
+          word.setLength(0);
+          inWord = false;
+        }
+        if (arguments.isEmpty()) {
+          throw new IllegalArgumentException("Shell operators are not supported");
+        }
+        commands.add(arguments);
+        arguments = new ArrayList<>();
+        inRedirect = true;
+        if (i + 1 < input.length() && input.charAt(i + 1) == '>') {
+          redirectAppend = true;
+          i++;
+        }
+      } else if (quote == 0 && "&;<`$(){}".indexOf(c) >= 0) {
         throw new IllegalArgumentException("Shell operators are not supported");
       } else if (quote == 0 && Character.isWhitespace(c)) {
         if (inWord) {
-          arguments.add(word.toString());
+          (inRedirect ? redirectArgs : arguments).add(word.toString());
           word.setLength(0);
           inWord = false;
         }
@@ -104,13 +138,31 @@ final class ShellCommandParser {
       throw new IllegalArgumentException("Unclosed quote or escape");
     }
     if (inWord) {
-      arguments.add(word.toString());
+      (inRedirect ? redirectArgs : arguments).add(word.toString());
+    }
+    if (inRedirect) {
+      if (redirectArgs.size() != 1 || redirectArgs.get(0).isEmpty()) {
+        throw new IllegalArgumentException("Invalid redirection target");
+      }
+      return new ParsedLine(commands, redirectArgs.get(0), redirectAppend);
     }
     if (arguments.isEmpty()) {
       throw new IllegalArgumentException("Command is empty");
     }
     commands.add(arguments);
-    return commands;
+    return new ParsedLine(commands, null, false);
+  }
+
+  static final class ParsedLine {
+    final List<List<String>> stages;
+    final String redirectTarget;
+    final boolean redirectAppend;
+
+    private ParsedLine(List<List<String>> stages, String redirectTarget, boolean redirectAppend) {
+      this.stages = stages;
+      this.redirectTarget = redirectTarget;
+      this.redirectAppend = redirectAppend;
+    }
   }
 
   private static int skipLineContinuation(String input, int backslashIndex, char quote) {

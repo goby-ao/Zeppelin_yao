@@ -37,7 +37,9 @@ Terminal interpreter uses [hterm](https://chromium.googlesource.com/apps/libapps
 
 Run the interpreter in an isolated process per user with user impersonation enabled.
 The authenticated username must match the non-root operating-system account of
-that process. Configure `zeppelin.shell.security.exempt.users` as an exact,
+that process. The policy is enabled by default via
+`zeppelin.shell.security.enabled=true` and can be disabled globally by setting it to
+`false`. Configure `zeppelin.shell.security.exempt.users` as an exact,
 comma-separated list of trusted accounts. The default is empty. Exempt accounts
 and paragraphs whose first non-empty line starts with `#;;;`
 can run Bash scripts under their own identity.
@@ -47,15 +49,19 @@ settings. Notebook `%sh.conf` paragraphs cannot change them.
 Other accounts can submit multiple lines, with one command per line. Blank
 lines and comments are ignored, and quoted arguments (including multiline
 quoted SQL) and trailing `\` line continuations are supported. Allowed
-commands can pipe standard output through in-process `grep`, `head`, `tail`,
-or `wc -l` filters without file arguments. The
+commands (including `echo`) can pipe standard output through in-process `grep`,
+`head`, `tail`, or `wc -l` filters without file arguments, and redirect standard
+output (`>` or `>>`) to a regular file inside `/home/<username>` or
+`/tmp/zeppelin/<username>`. The
 interpreter validates the command and shell syntax on every line before starting
 any process. A rejected line blocks the entire paragraph. Commands run in
 order and stop on the first execution error. The interpreter accepts
-`hadoop`, `hdfs`, `hive`, `beeline`, and `yarn`, and sends their arguments directly
+`hadoop`, `hdfs`, `hive`, `beeline`, `yarn`, and `hbase` (including
+`echo "<command>" | hbase shell`), and sends their arguments directly
 to the client. For `hadoop` and `hdfs`, recursive delete (`-r`, `-R`, `-rmr`,
 `-rmdir`), `-skipTrash`, wildcard delete, and root-path delete are rejected before
-execution. For these clients, the policy otherwise applies to the submitted command
+execution. For `hbase shell`, destructive operations such as `drop`, `truncate`,
+and `disable` are rejected. For these clients, the policy otherwise applies to the submitted command
 only. The client's own local file access, subprocesses and cluster operations
 remain governed by its execution environment and permissions. The interpreter
 does not provide client or OS sandboxing.

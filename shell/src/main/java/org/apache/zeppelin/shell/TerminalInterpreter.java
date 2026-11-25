@@ -115,7 +115,9 @@ public class TerminalInterpreter extends KerberosInterpreter {
   public InterpreterResult internalInterpret(String cmd, InterpreterContext context) {
     if (!securityChecker.allowsTerminal(context.getAuthenticationInfo(), properties)) {
       return new InterpreterResult(Code.ERROR,
-          "安全拦截：交互终端（%sh.terminal）已关闭，请直接使用 %sh 执行命令。");
+          "[安全拦截] 根据安全管理要求，本次操作已拦截\n"
+          + "拦截原因：交互终端（%sh.terminal）已关闭\n"
+          + "处理建议：请直接使用 %sh 执行已授权的命令。");
     }
     this.intpContext = context;
     TerminalManager.getInstance().setInterpreterContext(context);

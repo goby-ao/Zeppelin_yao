@@ -26,6 +26,11 @@
         "description": "If this set to true, the shell's working directory will be set to user home",
         "type": "checkbox"
       },
+      "zeppelin.shell.security.enabled": {
+        "defaultValue": true,
+        "description": "Enable multi-tenant shell command and path security policy.",
+        "type": "checkbox"
+      },
       "zeppelin.shell.security.exempt.users": {
         "defaultValue": "",
         "description": "Comma-separated authenticated operating-system users allowed to run Bash scripts.",
@@ -49,6 +54,10 @@
       },
       "zeppelin.shell.security.executable.yarn": {
         "defaultValue": "/usr/bin/yarn",
+        "type": "string"
+      },
+      "zeppelin.shell.security.executable.hbase": {
+        "defaultValue": "/usr/bin/hbase",
         "type": "string"
       },
       "zeppelin.shell.auth.type": {

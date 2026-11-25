@@ -205,7 +205,7 @@ public class ShellInterpreter extends KerberosInterpreter {
           return new InterpreterResult(Code.INCOMPLETE);
         }
         long startedAt = System.currentTimeMillis();
-        command.execute(executor, context.out, () ->
+        command.execute(executor, context.out, context.out, () ->
             System.currentTimeMillis() - Math.max(startedAt, context.out.getLastWriteTimestamp())
                 > timeoutThreshold || executorMap.get(paragraphId) != executor);
       }
@@ -226,8 +226,9 @@ public class ShellInterpreter extends KerberosInterpreter {
     } catch (InterruptedIOException e) {
       return new InterpreterResult(Code.INCOMPLETE, "执行已取消或超时。");
     } catch (RestrictedFileCommand.Denied e) {
-      return new InterpreterResult(Code.ERROR, "安全拦截：文件操作被拒绝。"
-          + "请确认目标为本人所有的普通文件（非目录、非软硬链接），且个人临时目录权限为 0700。");
+      return new InterpreterResult(Code.ERROR, "[安全拦截] 根据安全管理要求，本次文件操作已拦截\n"
+          + "拦截原因：目标路径或文件属性不符合安全要求\n"
+          + "处理建议：请确认目标为本人所有的普通文件（非目录、非软硬链接），且个人临时目录权限为 0700。");
     } catch (FileAlreadyExistsException e) {
       return new InterpreterResult(Code.ERROR, "目标文件或目录已存在（为防止误覆盖，cp 必须指定尚未存在的新文件路径）。");
     } catch (FileSystemException e) {

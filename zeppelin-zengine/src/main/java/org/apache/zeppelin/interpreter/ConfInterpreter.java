@@ -64,7 +64,9 @@ public class ConfInterpreter extends Interpreter {
 
     if ("sh".equals(interpreterSetting.getGroup())) {
       return new InterpreterResult(InterpreterResult.Code.ERROR,
-          "安全拦截：不支持在笔记中通过 %sh.conf 修改配置，请联系管理员在 Interpreters 页面调整。");
+          "[安全拦截] 根据安全管理要求，本次配置修改已拦截\n"
+          + "拦截原因：不支持在笔记中通过 %sh.conf 修改配置\n"
+          + "处理建议：请联系管理员在 Interpreters 页面调整。");
     }
 
     try {
